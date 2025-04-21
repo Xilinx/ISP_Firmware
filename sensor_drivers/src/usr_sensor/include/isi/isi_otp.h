@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2022 Vivante Corporation
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,6 @@
  * DEALINGS IN THE SOFTWARE.
  *
  ****************************************************************************/
-
 #ifndef __ISI_OTP_H__
 #define __ISI_OTP_H__
 #include <ebase/types.h>

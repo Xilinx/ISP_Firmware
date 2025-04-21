@@ -23,7 +23,6 @@
 * DEALINGS IN THE SOFTWARE.
 *
 ****************************************************************************/
-
 #include <ebase/trace.h>
 #include <ebase/builtins.h>
 #include <common/misc.h>
