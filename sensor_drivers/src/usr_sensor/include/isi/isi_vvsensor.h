@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2022 Vivante Corporation
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,26 +23,6 @@
  * DEALINGS IN THE SOFTWARE.
  *
  ****************************************************************************/
-
-/* VeriSilicon 2022 */
-
-/**
- * @file isi_vvsensor.h
- *
- * @brief
- *
- *****************************************************************************/
-/**
- * @page module_name_page Module Name
- * Describe here what this module does.
- *
- * For a detailed list of functions and implementation detail refer to:
- * - @ref module_name
- *
- * @defgroup isi_vvsensor CamerIc Driver API
- * @{
- *
- */
 #ifndef __ISI_VVSENSOR_H__
 #define __ISI_VVSENSOR_H__
 
