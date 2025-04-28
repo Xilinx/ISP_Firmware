@@ -23,23 +23,8 @@
  * DEALINGS IN THE SOFTWARE.
  *
  ****************************************************************************/
-
-/**
- * @file    oslayer.h
- *
- * @brief   Operating System Abstraction Layer
- *
- *          Encapsulates and abstracts services from different operating
- *          system, including user-mode as well as kernel-mode services.
- ******************************************************************************/
 #ifndef OSLAYER_H
 #define OSLAYER_H
-
-/**
- * @defgroup OS_LAYER_CONFIG OS layer configuration
- * @{
- * @brief   Enables/disables the different services provided by the OS layer.
- *****************************************************************************/
 
 /******************************************************************************/
 /** @brief  Include time-stamp handling in OS Abstraction Layer library */
@@ -88,32 +73,6 @@
 
 #define OSLAYER_MEMORY
 
-//Below undef need to be removed as we
-//continue enabling there finctionality in
-//with Thread x OS
-
-//#undef OSLAYER_TIMESTAMP
-//#undef OSLAYER_EVENT
-//#undef OSLAYER_MUTEX
-//#undef OSLAYER_SEMAPHORE
-
-//#undef OSLAYER_QUEUE
-//#undef OSLAYER_ATOMIC
-//#undef OSLAYER_THREAD
-//#undef OSLAYER_IRQ
-//#undef OSLAYER_MISC
-
-#if 0
-typedef unsigned char        uint8_t;
-typedef signed   char        int8_t;
-typedef unsigned short       uint16_t;
-typedef          short       int16_t;
-typedef unsigned int         uint32_t;
-typedef          int         int32_t;
-typedef unsigned char INT8U;
-typedef unsigned int INT32U;
-#endif
-
 //!@} defgroup OS_LAYER_CONFIG
 
 /**
@@ -150,78 +109,48 @@ extern "C"
 {
 #endif
 
-
-
-/* in debug case, each OS layer implementation
-   shall define the following macros as needed */
 #ifndef OSLAYER_ASSERT
 #define OSLAYER_ASSERT(x)
-#endif /* OSLAYER_DEBUG */
-
+#endif
 
 /******************************************************************************/
 /** @brief  Status codes of OS Abstraction Layer operation */
-typedef enum _OSLAYER_STATUS
-{
-    OSLAYER_OK                    = 0,   /*< success */
-    OSLAYER_ERROR                 =-1,   /*< general error */
-    OSLAYER_INVALID_PARAM         =-2,   /*< invalid parameter supplied */
-    OSLAYER_OPERATION_FAILED      =-3,   /*< operation failed (i.e. current operation is interrupted) */
-    OSLAYER_NOT_INITIALIZED       =-4,   /*< resource object is not initialized */
-    OSLAYER_TIMEOUT               =-5,   /*< operation failed due to elapsed timeout */
-    OSLAYER_SIGNAL_PENDING        =-6    /*< operation interrupted due to pending signal for waiting thread/process */
+typedef enum {
+	OSLAYER_OK			= 0,
+	OSLAYER_ERROR			= -1,
+	OSLAYER_INVALID_PARAM		= -2,
+	OSLAYER_OPERATION_FAILED	= -3,
+	OSLAYER_NOT_INITIALIZED		= -4,
+	OSLAYER_TIMEOUT			= -5,
+	OSLAYER_SIGNAL_PENDING		= -6
 } OSLAYER_STATUS;
-
-typedef struct _osInterrupt
-{
-
-    osThread    isr_thread;
-    osEvent     isr_event;
-    osEvent     isr_exit_event;
-	osMutex     isr_access_lock;
-    osEvent     isr_irq_event;
-    osQueue     isr_mis_queue;
-
-
-    uint32_t    irq_num;
-    osIsrFunc   IsrFunc;
-    osDpcFunc   DpcFunc;
-    void*       p_context;
-} osInterrupt;
-
-
 
 /******************************************************************************/
 /** @brief  Priority of thread created by OS Abstraction Layer */
-typedef enum _OSLAYER_THREAD_PRIO
-{
-    OSLAYER_THREAD_PRIO_HIGHEST,
-    OSLAYER_THREAD_PRIO_HIGH,
-    OSLAYER_THREAD_PRIO_NORMAL,
-    OSLAYER_THREAD_PRIO_LOW,
-    OSLAYER_THREAD_PRIO_LOWEST
+typedef enum {
+	OSLAYER_THREAD_PRIO_HIGHEST,
+	OSLAYER_THREAD_PRIO_HIGH,
+	OSLAYER_THREAD_PRIO_NORMAL,
+	OSLAYER_THREAD_PRIO_LOW,
+	OSLAYER_THREAD_PRIO_LOWEST
 } OSLAYER_THREAD_PRIO;
+
+typedef struct {
+	osThread	isr_thread;
+	osEvent		isr_event;
+	osEvent		isr_exit_event;
+	osMutex		isr_access_lock;
+	osEvent		isr_irq_event;
+	osQueue		isr_mis_queue;
+	uint32_t	irq_num;
+	osIsrFunc	IsrFunc;
+	osDpcFunc	DpcFunc;
+	void		*p_context;
+} osInterrupt;
 
 
 /*****************************************************************************/
 /** @brief  Interrupt object of OS Abstraction Layer */
-#if 0
-typedef struct _osInterrupt
-{
-#ifdef OSLAYER_KERNEL
-#else
-    osThread    isr_thread;
-    osEvent     isr_event;
-    osEvent     isr_exit_event;
-	osMutex     isr_access_lock;
-#endif
-    uint32_t    irq_num;
-    osIsrFunc   IsrFunc;
-    osDpcFunc   DpcFunc;
-    void*       p_context;
-} osInterrupt;
-
-#endif
 
 #ifdef OSLAYER_TIMESTAMP
 /******************************************************************************
@@ -252,8 +181,6 @@ extern int32_t osTimeStampUs(int64_t *pTimeStamp);
  ******************************************************************************/
 extern int32_t osTimeStampNs(int64_t *pTimeStamp);
 #endif /* OSLAYER_TIMESTAMP */
-
-
 
 #ifdef OSLAYER_EVENT
 /******************************************************************************
@@ -591,33 +518,24 @@ extern int32_t osSemaphorePost(osSemaphore *pSem);
 extern int32_t osSemaphoreDestroy(osSemaphore *pSem);
 #endif /* OSLAYER_SEMAPHORE */
 
-
-
 #ifdef OSLAYER_QUEUE_GENERIC
 /*****************************************************************************/
 /** @brief  Queue object (generic Version) of OS Abstraction Layer */
-typedef struct _osQueue
-{
-    void    *p_next;            //!< for storing into a list (multiplexer)
-
-    int32_t ItemSize;           //!< Size of queue item.
-    int32_t ItemNum;            //!< Max number of queue items (just for debugging).
-    int32_t ItemCount;          //!< Current number of queue items (just for debugging).
-
-    char    *pItemBuffer;       //!< Pointer to buffer holding queued items.
-    char    *pItemBufferEnd;    //!< Pointer to end of that buffer, used for wrapping.
-    char    *pItemBufferRead;   //!< Pointer to next item to read.
-    char    *pItemBufferWrite;  //!< Pointer to next item to write.
-
-    osSemaphore ItemsFreeSema;  //!< Counting semaphore increased/decreased for every osFree/used item in the queue. Used to synchronize concurrent write accesses.
-    osSemaphore ItemsUsedSema;  //!< Counting semaphore increased/decreased for every used/osFree item in the queue. Used to synchronize concurrent read accesses.
-
-    osMutex AccessMutex;        //!< Must be held to access/modify any of the fields in this struct, but not to get/put the semaphores.
+typedef struct {
+	void		*p_next;
+	int32_t		ItemSize;
+	int32_t		ItemNum;
+	int32_t		ItemCount;
+	char		*pItemBuffer;
+	char		*pItemBufferEnd;
+	char		*pItemBufferRead;
+	char		*pItemBufferWrite;
+	osSemaphore	ItemsFreeSema;
+	osSemaphore	ItemsUsedSema;
+	osMutex AccessMutex;
 } osQueue;
 #endif /*OSLAYER_QUEUE_GENERIC*/
 #ifdef OSLAYER_QUEUE
-
-
 
 /******************************************************************************
  *  osQueueInit()
@@ -639,8 +557,6 @@ typedef struct _osQueue
  *
  ******************************************************************************/
 extern int32_t osQueueInit(osQueue *pQueue, int32_t ItemNum, int32_t ItemSize);
-
-
 
 /******************************************************************************
  *  osQueueEmpty()
@@ -672,8 +588,6 @@ extern bool_t osQueueEmpty(osQueue *pQueue);
  ******************************************************************************/
 extern int32_t osQueueFull(osQueue *pQueue);
 
-
-
 /******************************************************************************
  *  osQueueRead()
  *****************************************************************************/
@@ -693,7 +607,7 @@ extern int32_t osQueueFull(osQueue *pQueue);
  *  @retval OSLAYER_OPERATION_FAILED  Reading from queue failed.
  *
  ******************************************************************************/
-extern int32_t osQueueRead(osQueue *pQueue, void* pvItem);
+extern int32_t osQueueRead(osQueue *pQueue, void *pvItem);
 
 /******************************************************************************
  *  osQueueTimedRead()
@@ -716,7 +630,7 @@ extern int32_t osQueueRead(osQueue *pQueue, void* pvItem);
  *  @retval OSLAYER_OPERATION_FAILED  Reading from queue failed.
  *
  ******************************************************************************/
-extern int32_t osQueueTimedRead(osQueue *pQueue, void* pvItem, uint32_t msec);
+extern int32_t osQueueTimedRead(osQueue *pQueue, void *pvItem, uint32_t msec);
 
 /******************************************************************************
  *  osQueueTryRead()
@@ -738,7 +652,7 @@ extern int32_t osQueueTimedRead(osQueue *pQueue, void* pvItem, uint32_t msec);
  *  @retval OSLAYER_OPERATION_FAILED  Reading from queue failed.
  *
  ******************************************************************************/
-extern int32_t osQueueTryRead(osQueue *pQueue, void* pvItem);
+extern int32_t osQueueTryRead(osQueue *pQueue, void *pvItem);
 
 
 /******************************************************************************
@@ -760,7 +674,7 @@ extern int32_t osQueueTryRead(osQueue *pQueue, void* pvItem);
  *  @retval OSLAYER_OPERATION_FAILED  Reading from queue failed.
  *
  ******************************************************************************/
-extern int32_t osQueueTryReadInISR(osQueue *pQueue, void* pvItem);
+extern int32_t osQueueTryReadInISR(osQueue *pQueue, void *pvItem);
 
 /******************************************************************************
  *  osQueueWrite()
@@ -781,7 +695,7 @@ extern int32_t osQueueTryReadInISR(osQueue *pQueue, void* pvItem);
  *  @retval OSLAYER_OPERATION_FAILED  Writing into queue failed.
  *
  ******************************************************************************/
-extern int32_t osQueueWrite(osQueue *pQueue, void* pvItem);
+extern int32_t osQueueWrite(osQueue *pQueue, void *pvItem);
 
 /******************************************************************************
  *  osQueueWriteInISR()
@@ -801,7 +715,7 @@ extern int32_t osQueueWrite(osQueue *pQueue, void* pvItem);
  *  @retval OSLAYER_OPERATION_FAILED  Writing into queue failed.
  *
  ******************************************************************************/
-extern int32_t osQueueWriteInISR(osQueue *pQueue, void* pvItem);
+extern int32_t osQueueWriteInISR(osQueue *pQueue, void *pvItem);
 
 /******************************************************************************
  *  osQueueTimedWrite()
@@ -826,7 +740,7 @@ extern int32_t osQueueWriteInISR(osQueue *pQueue, void* pvItem);
  *  @retval OSLAYER_OPERATION_FAILED  Writing into queue failed.
  *
  ******************************************************************************/
-extern int32_t osQueueTimedWrite(osQueue *pQueue, void* pvItem, uint32_t msec);
+extern int32_t osQueueTimedWrite(osQueue *pQueue, void *pvItem, uint32_t msec);
 
 /******************************************************************************
  *  osQueueTryWrite()
@@ -849,7 +763,7 @@ extern int32_t osQueueTimedWrite(osQueue *pQueue, void* pvItem, uint32_t msec);
  *  @retval OSLAYER_OPERATION_FAILED  Writing into queue failed.
  *
  ******************************************************************************/
-extern int32_t osQueueTryWrite(osQueue *pQueue, void* pvItem);
+extern int32_t osQueueTryWrite(osQueue *pQueue, void *pvItem);
 
 /******************************************************************************
  *  osQueueDestroy()
@@ -866,8 +780,6 @@ extern int32_t osQueueTryWrite(osQueue *pQueue, void* pvItem);
 extern int32_t osQueueDestroy(osQueue *pQueue);
 #endif /* OSLAYER_QUEUE */
 
-
-
 #ifdef OSLAYER_ATOMIC
 /******************************************************************************
  *  osAtomicInit()
@@ -878,7 +790,7 @@ extern int32_t osQueueDestroy(osQueue *pQueue);
  *  This function must be called before any other osAtomicXXX call.
  *
  ******************************************************************************/
-extern int32_t osAtomicInit();
+extern int32_t osAtomicInit(void);
 
 /******************************************************************************
  *  osAtomicShutdown()
@@ -890,7 +802,7 @@ extern int32_t osAtomicInit();
  *  when osAtomicInit has been called before.
  *
  ******************************************************************************/
-extern int32_t osAtomicShutdown();
+extern int32_t osAtomicShutdown(void);
 
 /******************************************************************************
  *  osAtomicTestAndClearBit()
@@ -907,7 +819,7 @@ extern int32_t osAtomicShutdown();
  *  @return                *pVar & (1 << bitpos)
  *
  ******************************************************************************/
-extern uint32_t osAtomicTestAndClearBit(uint32_t* pVar, uint32_t bitpos);
+extern uint32_t osAtomicTestAndClearBit(uint32_t *pVar, uint32_t bitpos);
 
 /******************************************************************************
  *  osAtomicIncrement()
@@ -923,7 +835,7 @@ extern uint32_t osAtomicTestAndClearBit(uint32_t* pVar, uint32_t bitpos);
  *  @return                ++(*pVar)
  *
  ******************************************************************************/
-extern uint32_t osAtomicIncrement(uint32_t* pVar);
+extern uint32_t osAtomicIncrement(uint32_t *pVar);
 
 /******************************************************************************
  *  osAtomicDecrement()
@@ -939,10 +851,10 @@ extern uint32_t osAtomicIncrement(uint32_t* pVar);
  *  @return                --(*pVar)
  *
  ******************************************************************************/
-extern uint32_t osAtomicDecrement(uint32_t* pVar);
+extern uint32_t osAtomicDecrement(uint32_t *pVar);
 
 /******************************************************************************
-*   osAtomicSetBit()
+ *   osAtomicSetBit()
  *****************************************************************************/
 /**
  *  @brief  Set a bit position atomically.
@@ -955,7 +867,7 @@ extern uint32_t osAtomicDecrement(uint32_t* pVar);
  *
  *  @return                always OSLAYER_OK
  ******************************************************************************/
-extern int32_t osAtomicSetBit(uint32_t* pVar, uint32_t bitpos);
+extern int32_t osAtomicSetBit(uint32_t *pVar, uint32_t bitpos);
 
 /******************************************************************************
  * osAtomicSet()
@@ -970,10 +882,8 @@ extern int32_t osAtomicSetBit(uint32_t* pVar, uint32_t bitpos);
  *
  *  @return                always OSLAYER_OK
  ******************************************************************************/
-extern int32_t osAtomicSet(uint32_t* pVar, uint32_t value);
+extern int32_t osAtomicSet(uint32_t *pVar, uint32_t value);
 #endif /* OSLAYER_ATOMIC */
-
-
 
 #ifdef OSLAYER_THREAD
 /******************************************************************************
@@ -1037,8 +947,6 @@ extern int32_t osThreadWait(osThread *pThread);
 extern int32_t osThreadClose(osThread *pThread);
 #endif /* OSLAYER_THREAD */
 
-
-
 #ifdef OSLAYER_MISC
 /******************************************************************************
  *  osSleep()
@@ -1087,7 +995,7 @@ extern uint64_t osGetFrequency(void);
  *  @param  type       Type of memory block to be allocated
  *
  ******************************************************************************/
-void* osMallocEx(uint32_t size, uint32_t type);
+void *osMallocEx(uint32_t size, uint32_t type);
 #endif
 
 /******************************************************************************
@@ -1099,7 +1007,7 @@ void* osMallocEx(uint32_t size, uint32_t type);
  *  @param  size       Size of memory block to be allocated
  *
  ******************************************************************************/
-extern void* osMalloc(uint32_t size);
+extern void *osMalloc(uint32_t size);
 
 /******************************************************************************
  *  osFree()
@@ -1112,7 +1020,6 @@ extern void* osMalloc(uint32_t size);
  *  @return         always OSLAYER_OK
  ******************************************************************************/
 extern int32_t osFree(void *p);
-
 
 #ifdef OSLAYER_KERNEL
 /******************************************************************************
@@ -1156,15 +1063,12 @@ extern int32_t osSpinLockAcquire(osSpinLock *p_spin_lock, uint32_t flags);
  *  @return                  always OSLAYER_OK
  ******************************************************************************/
 extern int32_t osSpinLockRelease(osSpinLock *p_spin_lock, uint32_t flags);
-#endif /* OSLAYER_KERNEL */
-#endif /* OSLAYER_MISC */
 
+#endif
+#endif
 
 #ifdef __cplusplus
 }
 #endif
 
-
-//!@} defgroup OS_LAYER
-
-#endif /* MSVD_KAL_H */
+#endif

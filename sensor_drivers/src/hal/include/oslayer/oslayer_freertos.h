@@ -23,14 +23,6 @@
  * DEALINGS IN THE SOFTWARE.
  *
  ****************************************************************************/
-/**
- * Module    : Operating System Abstraction Layer
- *
- * Hierarchy :
- *
- * Purpose   : Encapsulates and abstracts services from different operating
- *             system, including user-mode as well as kernel-mode services.
- ******************************************************************************/
 #ifdef FREERTOS
 
 #include <stdlib.h>
@@ -41,133 +33,88 @@
 #include "semphr.h"
 #include "event_groups.h"
 
-
-//#include <ucos_ii.h>
-//#include "types.h"
-//#include "dct_assert.h"
-
-//AMD,Copied below defines from ebase/types.h
-// Need to check how to include types.h file
-
-#if 0
-typedef unsigned char        uint8_t;
-typedef signed   char        int8_t;
-typedef unsigned short       uint16_t;
-typedef          short       int16_t;
-typedef unsigned int         uint32_t;
-typedef          int         int32_t;
-typedef unsigned char INT8U;
-typedef unsigned int INT32U;
-#endif
-
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-#define UCOSII_STACK_SIZE   1024
-#define OSLAYER_ASSERT      DCT_ASSERT
-
+#define UCOSII_STACK_SIZE	(1024)
+#define OSLAYER_ASSERT		(DCT_ASSERT)
 
 typedef int32_t (*osThreadFunc)(void *);
 typedef int32_t (*osIsrFunc)(void *);
 typedef int32_t (*osDpcFunc)(void *);
 
-
-
 #ifdef OSLAYER_EVENT
 /*****************************************************************************/
 /*  @brief  Event object (Linux Version) of OS Abstraction Layer */
-typedef struct _osEvent
-{
-
-    EventGroupHandle_t event_flags;
-    int32_t automatic;		/* Decides if flag to be consumed (xClearOnExit) */
-    int32_t state;			/* Not used in Freertos */
-    int32_t waitforall;		/* Added for future extension */
-    char *name_ptr;
+typedef struct _osEvent {
+	EventGroupHandle_t	event_flags;
+	int32_t			automatic;
+	int32_t			state;
+	int32_t			waitforall;
+	char *name_ptr;
 } osEvent;
-#endif /* OSLAYER_EVENT */
-
+#endif
 
 #ifdef OSLAYER_MUTEX
 /*****************************************************************************/
 /*  @brief  Mutex object (Linux Version) of OS Abstraction Layer */
-typedef struct _osMutex
-{
-	SemaphoreHandle_t mutex;
-    char *name_ptr;
-
+typedef struct {
+	SemaphoreHandle_t	mutex;
+	char			*name_ptr;
 } osMutex;
-#endif /* OSLAYER_MUTEX */
-
+#endif
 
 #ifdef OSLAYER_SEMAPHORE
 /*****************************************************************************/
 /*  @brief  Semaphore object (Linux Version) of OS Abstraction Layer */
-typedef struct _osSemaphore
-{
-	SemaphoreHandle_t sem;
-    char *name_ptr;
+typedef struct {
+	SemaphoreHandle_t	sem;
+	char			*name_ptr;
 } osSemaphore;
-#endif /* OSLAYER_SEMAPHORE */
+#endif
 
 #ifdef OSLAYER_QUEUE
-typedef struct _osQueue
-{
-	xQueueHandle	qHandle;
-	UBaseType_t 	qlen;
-	UBaseType_t 	qitemsize;
+typedef struct {
+	xQueueHandle		qHandle;
+	UBaseType_t		qlen;
+	UBaseType_t		qitemsize;
 } osQueue;
-#endif /*OSLAYER_QUEUE */
-
-
-
+#endif
 
 #ifdef OSLAYER_THREAD
-
 /*****************************************************************************/
 /*  @brief  Thread object (Linux Version) of OS Abstraction Layer */
-typedef struct _osThread
-{
-  //  void (*Task)(void *);			//passed as argument to osthread create
-      char *pcName;
-	 configSTACK_DEPTH_TYPE usStackDepth;
-//	void * const pvParameters;		//passed as argument to osthread create
-	UBaseType_t uxPriority;
-	TaskHandle_t pxCreatedTask;
+typedef struct {
+	char			*pcName;
+	configSTACK_DEPTH_TYPE	usStackDepth;
+	UBaseType_t		uxPriority;
+	TaskHandle_t		pxCreatedTask;
 } osThread;
-#endif /* OSLAYER_THREAD */
+#endif
 
 #ifdef OSLAYER_MISC
 /*****************************************************************************/
 /*  @brief  Spin Lock object (Linux Kernel Version only) of OS Abstraction */
 /*          Layer */
-typedef struct _osSpinLock
-{
-	UINTPTR Xil_Spinlock_Addr_tr;
-	UINTPTR Xil_Spinlock_Flag_Addr_tr;
-	UINTPTR base_addr;				//this points to memory region ,where this spinlock physically Resides at runtime
-	u32		initstatus;				// This helps in avoiding access of spinlock varaible ,before being initialized
+typedef struct {
+	UINTPTR			Xil_Spinlock_Addr_tr;
+	UINTPTR			Xil_Spinlock_Flag_Addr_tr;
+	UINTPTR			base_addr;
+	u32			initstatus;
 } osSpinLock;
 
+typedef struct {
+	UINTPTR			start_addr;
+	UINTPTR			end_addr;
+	u32			num_regions;
+	u32			initmpuregion;
+	u32			erg_size;
+} spinlock_sharedmem_t;
 
-typedef struct spinlock_sharedmem_t
-{
-	UINTPTR start_addr;
-	UINTPTR end_addr;
-	u32 num_regions;
-	u32 initmpuregion;
-	 u32 erg_size;
-}spinlock_sharedmem_t;
-
-
-
-#endif  /* OSLAYER_MISC */
+#endif
 #ifdef __cplusplus
 }
 #endif
-
-
-
-#endif /* FREERTOS */
+#endif

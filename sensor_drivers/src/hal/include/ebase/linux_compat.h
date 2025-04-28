@@ -23,32 +23,15 @@
  * DEALINGS IN THE SOFTWARE.
  *
  ****************************************************************************/
-
-/* VeriSilicon 2020 */
-
-/**
- * @file linux_compat.h
- *
- * @brief
- *   Linux compatibility layer.
- *
- *****************************************************************************/
 #ifndef LINUX_COMPAT_H_
 #define LINUX_COMPAT_H_
 
-/***** macro definitions *****************************************************/
+#ifdef __cplusplus
+#include <cstdio>
+#include <cstdlib>
+#else
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 
-#   ifdef __cplusplus
-#       include <cstdio>
-#       include <cstdlib>
-#   else
-#       include <stdio.h>
-#       include <stdlib.h>
-#   endif
-
-/***** public type definitions ***********************************************/
-
-/***** public function prototypes ********************************************/
-
-#endif /* LINUX_COMPAT_H_ */
-
+#endif

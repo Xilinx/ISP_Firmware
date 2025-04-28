@@ -34,14 +34,13 @@ extern "C"
 {
 #endif
 
-typedef struct IsiSensorContext_s
-{
-    IsiSensor_t    *pSensor;            /**< point to the sensor device */
-    HalI2cHandle_t halI2cHandle;        /**< Handle of HAL I2C session to use. */
+typedef struct {
+	IsiSensor_t		*pSensor;
+	HalI2cHandle_t		halI2cHandle;
 } IsiSensorContext_t;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ISI_PRIV_H */
+#endif

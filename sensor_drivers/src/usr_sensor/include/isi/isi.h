@@ -33,191 +33,171 @@
 #include <isi/isi_otp.h>
 #include <isi/isi_metadata.h>
 
-#define ISI_LINEAR_PARAS               0
-#define ISI_DUAL_EXP_L_PARAS           0
-#define ISI_DUAL_EXP_S_PARAS           1
-#define ISI_TRI_EXP_L_PARAS            0
-#define ISI_TRI_EXP_S_PARAS            1
-#define ISI_TRI_EXP_VS_PARAS           2
-#define ISI_QUAD_EXP_L_PARAS           0
-#define ISI_QUAD_EXP_S_PARAS           1
-#define ISI_QUAD_EXP_VS_PARAS          2
-#define ISI_QUAD_EXP_VVS_PARAS         3
-
-#define ISI_EXP_NUM_MAX 4
-
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
+#define ISI_LINEAR_PARAS	(0)
+#define ISI_DUAL_EXP_L_PARAS	(0)
+#define ISI_DUAL_EXP_S_PARAS	(1)
+#define ISI_TRI_EXP_L_PARAS	(0)
+#define ISI_TRI_EXP_S_PARAS	(1)
+#define ISI_TRI_EXP_VS_PARAS	(2)
+#define ISI_QUAD_EXP_L_PARAS	(0)
+#define ISI_QUAD_EXP_S_PARAS	(1)
+#define ISI_QUAD_EXP_VS_PARAS	(2)
+#define ISI_QUAD_EXP_VVS_PARAS	(3)
+#define ISI_EXP_NUM_MAX		(4)
+
 typedef void *IsiSensorHandle_t;
 typedef struct IsiSensor_s IsiSensor_t;
 
-typedef struct IsiResolution_s
-{
-    uint16_t width;
-    uint16_t height;
-}IsiResolution_t;
-
-/*****************************************************************************/
-/**
- * @brief   This structure defines the sensor capabilities.
- */
-/*****************************************************************************/
-typedef struct IsiCaps_s {
-    uint32_t bitWidth;                  /**< supported bus-width */
-    uint32_t mode;                      /**< supported operating modes */
-    uint32_t bayerPattern;              /**< bayer pattern */
-    IsiResolution_t resolution;         /**< supported resolutions */
-    uint32_t vinType;
-
-	uint32_t mipiMode;	  /**< vinType: ISI_ITF_TYPE_MIPI  bitWidth*/
-	uint32_t mipiLanes;   /**< vinType: ISI_ITF_TYPE_MIPI  */
-
-	IsiSyncSignalPolarity_t hSyncPol;	 /**< vinType: ISI_ITF_TYPE_DVP/ISI_ITF_TYPE_BT601  */
-	IsiSyncSignalPolarity_t vSyncPol;	 /**< vinType: ISI_ITF_TYPE_DVP/ISI_ITF_TYPE_BT601  */
-	IsiSampleEdgePolarity_t sampleEdge;  /**< vinType: ISI_ITF_TYPE_DVP/ISI_ITF_TYPE_BT601  */
-	IsiSensorCCIRSequence_t ccirSeq;     /**< vinType: ISI_ITF_TYPE_BT601*/
-} IsiCaps_t;
-
-typedef struct IsiIspStatus_s {
-    bool_t useSensorAE;
-    bool_t useSensorBLC;
-    bool_t useSensorAWB;
-} IsiIspStatus_t;
-
-typedef struct IsiIrLightExp_s {
-	bool_t    irOn;
-	uint8_t  irStrength;
-}IsiIrLightExp_t;
-
-typedef struct IsiIrLightRange_s {
-	uint8_t  minIrStrength;
-	uint8_t  maxIrStrength;
-	uint8_t  irStrengthStep;
-}IsiIrLightRange_t;
-
-typedef struct IsiIrLightInfo_s {
-	bool_t            irSuppAeCtrl;
-	IsiIrLightRange_t irRangeInfo;
-	uint8_t           irDelayFrame;
-}IsiIrLightInfo_t;
-
-typedef enum IsiFocusPosMode_enum {
-    ISI_FOCUS_POS_ABSOLUTE = 0,
-    ISI_FOCUS_POS_RELATIVE,
-    DUMMY_ISI_014 = 0xdeadfeed
+typedef enum {
+	ISI_FOCUS_POS_ABSOLUTE		= 0,
+	ISI_FOCUS_POS_RELATIVE		= 1,
+	DUMMY_ISI_014			= 0xdeadfeed
 } IsiFocusPosMode_e;
 
-typedef enum IsiPdafSensorType_enum {
-    ISI_PDAF_SENSOR_DUAL_PIXEL = 0,
-    ISI_PDAF_SENSOR_OCL2X1 = 1,
-    ISI_PDAF_SENSOR_TYPE_MAX,
-    DUMMY_ISI_015 = 0xdeadfeed
+typedef enum {
+	ISI_PDAF_SENSOR_DUAL_PIXEL	= 0,
+	ISI_PDAF_SENSOR_OCL2X1		= 1,
+	ISI_PDAF_SENSOR_TYPE_MAX	= 2,
+	DUMMY_ISI_015			= 0xdeadfeed
 } IsiPdafSensorType_e;
 
-typedef struct IsiFocusPosInfo_s {
-    uint32_t minPos;
-    uint32_t maxPos;
-    uint32_t minStep;
+typedef struct {
+	uint16_t			width;
+	uint16_t			height;
+} IsiResolution_t;
+
+typedef struct {
+	uint32_t			bitWidth;
+	uint32_t			mode;
+	uint32_t			bayerPattern;
+	IsiResolution_t			resolution;
+	uint32_t			vinType;
+	uint32_t			mipiMode;
+	uint32_t			mipiLanes;
+	IsiSyncSignalPolarity_t		hSyncPol;
+	IsiSyncSignalPolarity_t		vSyncPol;
+	IsiSampleEdgePolarity_t		sampleEdge;
+	IsiSensorCCIRSequence_t		ccirSeq;
+} IsiCaps_t;
+
+typedef struct {
+	bool_t				useSensorAE;
+	bool_t				useSensorBLC;
+	bool_t				useSensorAWB;
+} IsiIspStatus_t;
+
+typedef struct {
+	bool_t				irOn;
+	uint8_t				irStrength;
+} IsiIrLightExp_t;
+
+typedef struct {
+	uint8_t				minIrStrength;
+	uint8_t				maxIrStrength;
+	uint8_t				irStrengthStep;
+} IsiIrLightRange_t;
+
+typedef struct {
+	bool_t				irSuppAeCtrl;
+	IsiIrLightRange_t		irRangeInfo;
+	uint8_t				irDelayFrame;
+} IsiIrLightInfo_t;
+
+typedef struct {
+	uint32_t			minPos;
+	uint32_t			maxPos;
+	uint32_t			minStep;
 } IsiFocusPosInfo_t;
 
-typedef struct IsiFocusPDInfo_s {
-    IsiPdafSensorType_e sensorType;
-    IsiBayerPattern_t bayerPattern;
-    bool_t   ocl2x1Shield;
-    uint8_t  bitWidth;
-    uint32_t imageWidth;
-    uint32_t imageHeight;
-    uint16_t pdArea[4];
-    uint32_t correctRect[4];
-    uint8_t  pdNumPerArea[2];
-    uint8_t  pdShiftL2R[2];
-    uint8_t  pdShiftMark[32];
-    uint8_t  pdFocalHeigh;
-    uint8_t  pdFocalWidth;
-    uint8_t  pdDistance;
-    int      pdFocal[48];
+typedef struct {
+	IsiPdafSensorType_e		sensorType;
+	IsiBayerPattern_t		bayerPattern;
+	bool_t				ocl2x1Shield;
+	uint8_t				bitWidth;
+	uint32_t			imageWidth;
+	uint32_t			imageHeight;
+	uint16_t			pdArea[4];
+	uint32_t			correctRect[4];
+	uint8_t				pdNumPerArea[2];
+	uint8_t				pdShiftL2R[2];
+	uint8_t				pdShiftMark[32];
+	uint8_t				pdFocalHeigh;
+	uint8_t				pdFocalWidth;
+	uint8_t				pdDistance;
+	int				pdFocal[48];
 } IsiFocusPDInfo_t;
 
-typedef struct IsiFocusCalibAttr_s {
-    IsiFocusPosInfo_t posInfo;
-    IsiFocusPDInfo_t  pdInfo;
+typedef struct {
+	IsiFocusPosInfo_t		posInfo;
+	IsiFocusPDInfo_t		pdInfo;
 } IsiFocusCalibAttr_t;
 
-typedef struct IsiFocusPos_s {
-    IsiFocusPosMode_e posType;
-    uint32_t pos;
+typedef struct {
+	IsiFocusPosMode_e		posType;
+	uint32_t			pos;
 } IsiFocusPos_t;
 
-typedef struct IsiBus_s {
-    uint8_t      type;
-    union {
-        struct I2C{
-            uint8_t               i2cBusNum;          /**< The I2C bus the sensor is connected to. */
-            uint16_t              slaveAddr;          /**< The I2C slave addr the sensor is configured to. */
-            uint8_t               addrWidth;
-            uint8_t               dataWidth;
-        }i2c;
-
-        struct SPI{
-            uint8_t spiNum;
-        }spi;
-    };
+typedef struct {
+	uint8_t				type;
+	union {
+		struct I2C {
+			uint8_t		i2cBusNum;
+			uint16_t	slaveAddr;
+			uint8_t		addrWidth;
+			uint8_t		dataWidth;
+		} i2c;
+		struct SPI {
+			uint8_t		spiNum;
+		} spi;
+	};
 } IsiBus_t;
 
-typedef struct IsiSensorInstanceConfig_s
-{
-    uint32_t              halDevID;           /**< HAL device ID of this sensor(reserved). */
-    IsiBus_t              sensorBus;          /**< BUS info of this sensor. */
-    IsiBus_t              motorBus;           /**< BUS info of this sensor motor. */
-    uint32_t              instanceID;         /**< instance ID of this sensor. */
-    uint32_t              cameraDriverID;     /**< camera driver ID of this sensor. */
-    uint32_t              cameraDevId;         /**< camera device ID. */
-    IsiSensor_t           *pSensor;           /**< Sensor driver interface */
+typedef struct {
+	uint32_t			halDevID;
+	IsiBus_t			sensorBus;
+	IsiBus_t			motorBus;
+	uint32_t			instanceID;
+	uint32_t			cameraDriverID;
+	uint32_t			cameraDevId;
+	IsiSensor_t			*pSensor;
 } IsiSensorInstanceConfig_t;
 
-
-
-typedef struct IsiAeBaseInfo_s
-{
-    float32_t aecCurGain;
-    float32_t aecCurIntTime;
-    IsiSensorGain_t curGain; /*gain[0]: Long gain; gain[1]: Short gain; gain[2]: VS gain; gain[3]: VVS gain;*/
-    IsiSensorIntTime_t curIntTime; /*IntTime[0]: Long gain; gain[1]: Short gain; gain[2]: VS gain; gain[3]: VVS gain;*/
-    float32_t aecGainStep;
-    float32_t aecIntTimeStep;
-    IsiSensorStitchingMode_t stitchingMode;
-    IsiSensorNativeMode_t nativeMode;
-    float32_t nativeHdrRatio[3]; /* 0: L/S, 1: S/VS, 2:VS/VVS */
-    float32_t conversionGainDCG;
-
-    IsiRange_t longGain, shortGain, vsGain, vvsGain, gain; /* total gain*/
-    IsiRange_t longIntTime, shortIntTime, vsIntTime, vvsIntTime, intTime; /* total integrationtime */
-
-    IsiGainInfo_t aLongGain, aShortGain, aVSGain, aVVSGain, aGain; /* analog gain of each exp*/
-    IsiGainInfo_t dLongGain, dShortGain, dVSGain, dVVSGain, dGain; /* digital gain of each exp*/
-
-    IsiIrLightExp_t        aecIrLightExp;
-    IsiIrLightInfo_t       aecIrLightInfo;
+typedef struct {
+	float32_t			aecCurGain;
+	float32_t			aecCurIntTime;
+	IsiSensorGain_t			curGain;
+	IsiSensorIntTime_t		curIntTime;
+	float32_t			aecGainStep;
+	float32_t			aecIntTimeStep;
+	IsiSensorStitchingMode_t	stitchingMode;
+	IsiSensorNativeMode_t		nativeMode;
+	float32_t			nativeHdrRatio[3];
+	float32_t			conversionGainDCG;
+	IsiRange_t			longGain, shortGain, vsGain, vvsGain, gain;
+	IsiRange_t			longIntTime, shortIntTime, vsIntTime, vvsIntTime, intTime;
+	IsiGainInfo_t			aLongGain, aShortGain, aVSGain, aVVSGain, aGain;
+	IsiGainInfo_t			dLongGain, dShortGain, dVSGain, dVVSGain, dGain;
+	IsiIrLightExp_t			aecIrLightExp;
+	IsiIrLightInfo_t		aecIrLightInfo;
 } IsiAeBaseInfo_t;
 
+typedef struct {
+	float32_t			gain;
+	float32_t			integrationTime;
+	float32_t			ispRatio[ISI_EXP_NUM_MAX-1];
+} IsiExpDecomposeParam_t;
 
-typedef struct IsiExpDecomposeParam_s
-{
-	float32_t gain;
-	float32_t integrationTime;
-	float32_t ispRatio[ISI_EXP_NUM_MAX-1];
-}IsiExpDecomposeParam_t;
-
-typedef struct IsiExpDecomposeResult_s
-{
-	float32_t sensorAgain[ISI_EXP_NUM_MAX];
-	float32_t sensorDgain[ISI_EXP_NUM_MAX];
-	float32_t sensorExpTime[ISI_EXP_NUM_MAX];
-	float32_t sensorRatio[ISI_EXP_NUM_MAX-1];
-}IsiExpDecomposeResult_t;
+typedef struct {
+	float32_t			sensorAgain[ISI_EXP_NUM_MAX];
+	float32_t			sensorDgain[ISI_EXP_NUM_MAX];
+	float32_t			sensorExpTime[ISI_EXP_NUM_MAX];
+	float32_t			sensorRatio[ISI_EXP_NUM_MAX-1];
+} IsiExpDecomposeResult_t;
 
 /*****************************************************************************/
 /**
@@ -233,12 +213,7 @@ typedef struct IsiExpDecomposeResult_s
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiOpenIss
-(
-    IsiSensorHandle_t handle,
-    uint32_t          mode
-);
-
+RESULT IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode);
 
 /*****************************************************************************/
 /**
@@ -253,11 +228,7 @@ RESULT IsiOpenIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiCloseIss
-(
-    IsiSensorHandle_t handle
-);
-
+RESULT IsiCloseIss(IsiSensorHandle_t handle);
 
 /*****************************************************************************/
 /**
@@ -276,13 +247,7 @@ RESULT IsiCloseIss
  * @retval  RET_NOTSUPP
  *
  *****************************************************************************/
-RESULT IsiReadRegIss
-(
-    IsiSensorHandle_t   handle,
-    const uint16_t      addr,
-    uint16_t            *pValue
-);
-
+RESULT IsiReadRegIss(IsiSensorHandle_t handle, const uint16_t addr, uint16_t *pValue);
 
 /*****************************************************************************/
 /**
@@ -301,13 +266,7 @@ RESULT IsiReadRegIss
  * @retval  RET_NOTSUPP
  *
  *****************************************************************************/
-RESULT IsiWriteRegIss
-(
-    IsiSensorHandle_t   handle,
-    const uint16_t      addr,
-    const uint16_t      value
-);
-
+RESULT IsiWriteRegIss(IsiSensorHandle_t handle, const uint16_t addr, const uint16_t value);
 
 /*****************************************************************************/
 /**
@@ -322,12 +281,7 @@ RESULT IsiWriteRegIss
  * @retval  RET_WRONG_HANDLE
  *
  *****************************************************************************/
-RESULT IsiGetModeIss
-(
-    IsiSensorHandle_t   handle,
-    IsiSensorMode_t     *pMode
-);
-
+RESULT IsiGetModeIss(IsiSensorHandle_t handle, IsiSensorMode_t *ModePtr);
 
 /*****************************************************************************/
 /**
@@ -336,7 +290,7 @@ RESULT IsiGetModeIss
  * @brief   query sensor info.
  *
  * @param   handle                  sensor instance handle
- * @param   pEnumMode               sensor query mode
+ * @param   EnumModePtr               sensor query mode
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -344,12 +298,7 @@ RESULT IsiGetModeIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiEnumModeIss
-(
-    IsiSensorHandle_t    handle,
-    IsiSensorEnumMode_t  *pEnumMode
-);
-
+RESULT IsiEnumModeIss(IsiSensorHandle_t handle, IsiSensorEnumMode_t *EnumModePtr);
 
 /*****************************************************************************/
 /**
@@ -365,12 +314,7 @@ RESULT IsiEnumModeIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiGetCapsIss
-(
-    IsiSensorHandle_t   handle,
-    IsiCaps_t           *pCaps
-);
-
+RESULT IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *CapsPtr);
 
 /*****************************************************************************/
 /**
@@ -385,11 +329,7 @@ RESULT IsiGetCapsIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiCheckConnectionIss
-(
-    IsiSensorHandle_t   handle
-);
-
+RESULT IsiCheckConnectionIss(IsiSensorHandle_t handle);
 
 /*****************************************************************************/
 /**
@@ -407,12 +347,7 @@ RESULT IsiCheckConnectionIss
  * @retval  RET_NOTSUPP
  *
  *****************************************************************************/
-RESULT IsiGetRevisionIss
-(
-    IsiSensorHandle_t   handle,
-    uint32_t            *pRevision
-);
-
+RESULT IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *pRevision);
 
 /*****************************************************************************/
 /**
@@ -430,11 +365,7 @@ RESULT IsiGetRevisionIss
  * @retval  RET_WRONG_STATE
  *
  *****************************************************************************/
-RESULT IsiSetStreamingIss
-(
-    IsiSensorHandle_t   handle,
-    bool_t              on
-);
+RESULT IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t on);
 
 /*****************************************************************************/
 /**
@@ -445,8 +376,8 @@ RESULT IsiSetStreamingIss
  * @param   totalGain      the sensor total gain need to execute
  * @param   aGain          the limit of sensor analog gain
  * @param   dGain          the limit of sensor digital gain
- * @param   splitAgain     the pointer of split analog gain
- * @param   splitDgain     the pointer of split digital gain
+ * @param   psplitAgain    the pointer of split analog gain
+ * @param   psplitDgain    the pointer of split digital gain
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -455,15 +386,8 @@ RESULT IsiSetStreamingIss
  * @retval  RET_WRONG_STATE
  *
  *****************************************************************************/
-RESULT IsiGainExecuteIss
-(
-    float32_t          totalGain,
-    IsiGainInfo_t  aGain,
-    IsiGainInfo_t  dGain,
-    float32_t          *splitAgain,
-    float32_t          *splitDgain
-);
-
+RESULT IsiGainExecuteIss(float32_t totalGain, IsiGainInfo_t aGain, IsiGainInfo_t dGain,
+	float32_t *splitAgainPtr, float32_t *splitDgainPtr);
 
 /*****************************************************************************/
 /**
@@ -481,13 +405,8 @@ RESULT IsiGainExecuteIss
  * @retval  RET_WRONG_STATE
  *
  *****************************************************************************/
-RESULT IsiExpDecomposeControl
-(
-	IsiSensorHandle_t handle,
-	const IsiExpDecomposeParam_t *pDecParam,
-	IsiExpDecomposeResult_t *pDecResult
-);
-
+RESULT IsiExpDecomposeControl(IsiSensorHandle_t handle, const IsiExpDecomposeParam_t *pDecParam,
+	IsiExpDecomposeResult_t *pDecResult);
 
 /*****************************************************************************/
 /**
@@ -496,8 +415,8 @@ RESULT IsiExpDecomposeControl
  * @brief   Returns the Ae base info of a sensor
  *          instance
  *
- * @param   handle      sensor instance handle
- * @param   pAeBaseInfo Pointer to the sensor aebase info value
+ * @param   handle        sensor instance handle
+ * @param   pAeBaseInfo   Pointer to the sensor aebase info value
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -505,11 +424,7 @@ RESULT IsiExpDecomposeControl
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiGetAeBaseInfoIss
-(
-    IsiSensorHandle_t   handle,
-    IsiAeBaseInfo_t     *pAeBaseInfo
-);
+RESULT IsiGetAeBaseInfoIss(IsiSensorHandle_t handle, IsiAeBaseInfo_t *pAeBaseInfo);
 
 /*****************************************************************************/
 /**
@@ -517,8 +432,8 @@ RESULT IsiGetAeBaseInfoIss
  *
  * @brief   Reads gain values from the image sensor module.
  *
- * @param   handle                  sensor instance handle
- * @param   pSensorAGain            pointer to sensor again to get
+ * @param   handle                    sensor instance handle
+ * @param   pSensorAGain              pointer to sensor again to get
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -526,11 +441,7 @@ RESULT IsiGetAeBaseInfoIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiGetAGainIss
-(
-    IsiSensorHandle_t   handle,
-    IsiSensorGain_t     *pSensorAGain
-);
+RESULT IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
 
 /*****************************************************************************/
 /**
@@ -538,8 +449,8 @@ RESULT IsiGetAGainIss
  *
  * @brief   Reads gain values from the image sensor module.
  *
- * @param   handle                  sensor instance handle
- * @param   pSensorDGain            pointer to sensor dgain to get
+ * @param   handle                   sensor instance handle
+ * @param   pSensorDGain             pointer to sensor dgain to get
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -547,11 +458,7 @@ RESULT IsiGetAGainIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiGetDGainIss
-(
-    IsiSensorHandle_t   handle,
-    IsiSensorGain_t     *pSensorDGain
-);
+RESULT IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *SensorDGainPtr);
 
 /*****************************************************************************/
 /**
@@ -568,11 +475,7 @@ RESULT IsiGetDGainIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiSetAGainIss
-(
-    IsiSensorHandle_t   handle,
-    IsiSensorGain_t     *pSensorAGain
-);
+RESULT IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
 
 /*****************************************************************************/
 /**
@@ -580,8 +483,8 @@ RESULT IsiSetAGainIss
  *
  * @brief   Writes gain values to the image sensor module.
  *
- * @param   handle                  sensor instance handle
- * @param   pSensorDGain            pointer to sensor dgain to set
+ * @param   handle                   sensor instance handle
+ * @param   pSensorDGain             pointer to sensor dgain to set
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -589,12 +492,7 @@ RESULT IsiSetAGainIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiSetDGainIss
-(
-    IsiSensorHandle_t   handle,
-    IsiSensorGain_t     *pSensorDGain
-);
-
+RESULT IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain);
 
 /*****************************************************************************/
 /**
@@ -602,20 +500,15 @@ RESULT IsiSetDGainIss
  *
  * @brief   Reads integration time values from the image sensor module.
  *
- * @param   handle                  sensor instance handle
- * @param   pSensorIntTime          pointer to integration time to get
+ * @param   handle                   sensor instance handle
+ * @param   pSensorIntTime           pointer to integration time to get
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
  * @retval  RET_WRONG_HANDLE
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiGetIntTimeIss
-(
-    IsiSensorHandle_t   handle,
-    IsiSensorIntTime_t  *pSensorIntTime
-);
-
+RESULT IsiGetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pSensorIntTime);
 
 /*****************************************************************************/
 /**
@@ -623,8 +516,8 @@ RESULT IsiGetIntTimeIss
  *
  * @brief   Writes integration time values to the image sensor module.
  *
- * @param   handle                  sensor instance handle
- * @param   pSensorIntTime          pointer to sensor integration time to set
+ * @param   handle                   sensor instance handle
+ * @param   pSensorIntTime           pointer to sensor integration time to set
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -632,12 +525,7 @@ RESULT IsiGetIntTimeIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiSetIntTimeIss
-(
-    IsiSensorHandle_t   handle,
-    const IsiSensorIntTime_t  *pSensorIntTime
-);
-
+RESULT IsiSetIntTimeIss(IsiSensorHandle_t handle, const IsiSensorIntTime_t *SensorIntTimePtr);
 
 /*****************************************************************************/
 /**
@@ -645,8 +533,8 @@ RESULT IsiSetIntTimeIss
  *
  * @brief   Get Sensor Fps Config.
  *
- * @param   handle                  sensor instance handle
- * @param   pFps                    current fps
+ * @param   handle                   sensor instance handle
+ * @param   pFps                     current fps
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -654,12 +542,7 @@ RESULT IsiSetIntTimeIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiGetFpsIss
-(
-    IsiSensorHandle_t   handle,
-    uint32_t            *pFps
-);
-
+RESULT IsiGetFpsIss(IsiSensorHandle_t handle, uint32_t *pFps);
 
 /*****************************************************************************/
 /**
@@ -676,12 +559,7 @@ RESULT IsiGetFpsIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiSetFpsIss
-(
-    IsiSensorHandle_t   handle,
-    uint32_t            fps
-);
-
+RESULT IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps);
 
 /*****************************************************************************/
 /**
@@ -689,8 +567,8 @@ RESULT IsiSetFpsIss
  *
  * @brief   Get sensor isp status.
  *
- * @param   handle                  sensor instance handle
- * @param   pSensorIspStatus        sensor isp status
+ * @param   handle                    sensor instance handle
+ * @param   pSensorIspStatus          sensor isp status
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -698,12 +576,7 @@ RESULT IsiSetFpsIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiGetIspStatusIss
-(
-    IsiSensorHandle_t    handle,
-    IsiIspStatus_t       *pIspStatus
-);
-
+RESULT IsiGetIspStatusIss(IsiSensorHandle_t handle, IsiIspStatus_t *pIspStatus);
 
 /*****************************************************************************/
 /**
@@ -712,19 +585,15 @@ RESULT IsiGetIspStatusIss
  * @brief   set sensor linear mode black level
  *
  *
- * @param   handle          sensor instance handle
- * @param   pBlc            blc params pointer
+ * @param   handle            sensor instance handle
+ * @param   pBlc              blc params pointer
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
  * @retval  RET_FAILURE
  *
  *****************************************************************************/
-RESULT IsiSetBlcIss
-(
-    IsiSensorHandle_t handle,
-    const IsiSensorBlc_t    *pBlc
-);
+RESULT IsiSetBlcIss(IsiSensorHandle_t handle, const IsiSensorBlc_t *pBlc);
 
 /*****************************************************************************/
 /**
@@ -733,20 +602,15 @@ RESULT IsiSetBlcIss
  * @brief   set sensor linear mode black level
  *
  *
- * @param   handle          sensor instance handle
- * @param   pBlc            blc params point
+ * @param   handle            sensor instance handle
+ * @param   pBlc              blc params point
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
  * @retval  RET_FAILURE
  *
  *****************************************************************************/
-RESULT IsiGetBlcIss
-(
-    IsiSensorHandle_t handle,
-    IsiSensorBlc_t    *pBlc
-);
-
+RESULT IsiGetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBlc);
 
 /*****************************************************************************/
 /**
@@ -755,19 +619,15 @@ RESULT IsiGetBlcIss
  * @brief   set sensor linear mode white balance
  *          or hdr mode normal exp frame white balance
  *
- * @param   handle          sensor instance handle
- * @param   pWb             wb params pointer
+ * @param   handle            sensor instance handle
+ * @param   pWb               wb params pointer
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
  * @retval  RET_FAILURE
  *
  *****************************************************************************/
-RESULT IsiSetWBIss
-(
-    IsiSensorHandle_t handle,
-    const IsiSensorWb_t     *pWb
-);
+RESULT IsiSetWBIss(IsiSensorHandle_t handle, const IsiSensorWb_t *pWb);
 
 /*****************************************************************************/
 /**
@@ -776,20 +636,15 @@ RESULT IsiSetWBIss
  * @brief   set sensor linear mode white balance
  *          or hdr mode normal exp frame white balance
  *
- * @param   handle          sensor instance handle
- * @param   pWb             wb params point
+ * @param   handle            sensor instance handle
+ * @param   pWb               wb params point
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
  * @retval  RET_FAILURE
  *
  *****************************************************************************/
-RESULT IsiGetWBIss
-(
-    IsiSensorHandle_t handle,
-    IsiSensorWb_t     *pWb
-);
-
+RESULT IsiGetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb);
 
 /*****************************************************************************/
 /**
@@ -805,11 +660,7 @@ RESULT IsiGetWBIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiSetTpgIss
-(
-    IsiSensorHandle_t   handle,
-    IsiSensorTpg_t      tpg
-);
+RESULT IsiSetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t tpg);
 
 /*****************************************************************************/
 /**
@@ -817,7 +668,7 @@ RESULT IsiSetTpgIss
  *
  * @brief   set sensor test pattern.
  *
- * @param   handle      Sensor instance handle
+ * @param   handle       Sensor instance handle
  * @param   pTpg         Sensor test pattern ptr
  *
  * @return  Return the result of the function call.
@@ -825,12 +676,7 @@ RESULT IsiSetTpgIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-
-RESULT IsiGetTpgIss
-(
-    IsiSensorHandle_t   handle,
-    IsiSensorTpg_t      *pTpg
-);
+RESULT IsiGetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg);
 
 /*****************************************************************************/
 /**
@@ -838,20 +684,15 @@ RESULT IsiGetTpgIss
  *
  * @brief   get sensor expand curve
  *
- * @param   handle          sensor instance handle
- * @param   pCurve          expand curve pointer
+ * @param   handle            sensor instance handle
+ * @param   pCurve            expand curve pointer
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
  * @retval  RET_FAILURE
  *
  *****************************************************************************/
-RESULT IsiGetExpandCurveIss
-(
-    IsiSensorHandle_t         handle,
-    IsiSensorCompandCurve_t   *pCurve
-);
-
+RESULT IsiGetExpandCurveIss(IsiSensorHandle_t handle, IsiSensorCompandCurve_t *pCurve);
 
 /*****************************************************************************/
 /**
@@ -859,20 +700,15 @@ RESULT IsiGetExpandCurveIss
  *
  * @brief   get sensor compress curve
  *
- * @param   handle          sensor instance handle
- * @param   pCurve          compress curve pointer
+ * @param   handle            sensor instance handle
+ * @param   pCurve            compress curve pointer
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
  * @retval  RET_FAILURE
  *
  *****************************************************************************/
-RESULT IsiGetCompressCurveIss
-(
-    IsiSensorHandle_t        handle,
-    IsiSensorCompandCurve_t  *pCurve
-);
-
+RESULT IsiGetCompressCurveIss(IsiSensorHandle_t handle, IsiSensorCompandCurve_t  *pCurve);
 
 /*****************************************************************************/
 /**
@@ -880,8 +716,8 @@ RESULT IsiGetCompressCurveIss
  *
  * @brief   sensor extend function.
  *
- * @param   handle                  sensor instance handle
- * @param   pUserData               sensor extend info
+ * @param   handle                    sensor instance handle
+ * @param   pUserData                 sensor extend info
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -889,12 +725,7 @@ RESULT IsiGetCompressCurveIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiExtendFuncIss
-(
-    IsiSensorHandle_t   handle,
-    void                *pUserData
-);
-
+RESULT IsiExtendFuncIss(IsiSensorHandle_t handle, void *pUserData);
 
 /*****************************************************************************/
 /**
@@ -911,12 +742,7 @@ RESULT IsiExtendFuncIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiGetOtpDataIss
-(
-    IsiSensorHandle_t   handle,
-    IsiOTP_t            *pOtpData
-);
-
+RESULT IsiGetOtpDataIss(IsiSensorHandle_t handle, IsiOTP_t *pOtpData);
 
 /*****************************************************************************/
 /**
@@ -932,11 +758,7 @@ RESULT IsiGetOtpDataIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiFocusCreateIss
-(
-    IsiSensorHandle_t   handle
-);
-
+RESULT IsiFocusCreateIss(IsiSensorHandle_t handle);
 
 /*****************************************************************************/
 /**
@@ -952,11 +774,7 @@ RESULT IsiFocusCreateIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiFocusReleaseIss
-(
-    IsiSensorHandle_t   handle
-);
-
+RESULT IsiFocusReleaseIss(IsiSensorHandle_t handle);
 
 /*****************************************************************************/
 /**
@@ -964,8 +782,8 @@ RESULT IsiFocusReleaseIss
  *
  * @brief   Triggers a forced calibration of the focus hardware.
  *
- * @param   handle          sensor instance handle
- * @param   pFocusCalib     sensor focus calib pointor
+ * @param   handle            sensor instance handle
+ * @param   pFocusCalib       sensor focus calib pointor
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -973,12 +791,7 @@ RESULT IsiFocusReleaseIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiFocusGetCalibrateIss
-(
-    IsiSensorHandle_t   handle,
-    IsiFocusCalibAttr_t *pFocusCalib
-);
-
+RESULT IsiFocusGetCalibrateIss(IsiSensorHandle_t handle, IsiFocusCalibAttr_t *pFocusCalib);
 
 /*****************************************************************************/
 /**
@@ -986,8 +799,8 @@ RESULT IsiFocusGetCalibrateIss
  *
  * @brief   Drives the lens system to a certain focus point.
  *
- * @param   handle          sensor instance handle
- * @param   pPos            focus position pointer
+ * @param   handle            sensor instance handle
+ * @param   pPos              focus position pointer
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -995,12 +808,7 @@ RESULT IsiFocusGetCalibrateIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiFocusSetIss
-(
-    IsiSensorHandle_t   handle,
-    const IsiFocusPos_t       *pPos
-);
-
+RESULT IsiFocusSetIss(IsiSensorHandle_t handle, const IsiFocusPos_t *pPos);
 
 /*****************************************************************************/
 /**
@@ -1008,9 +816,9 @@ RESULT IsiFocusSetIss
  *
  * @brief   Retrieves the currently applied focus point.
  *
- * @param   handle          sensor instance handle
+ * @param   handle            sensor instance handle
  * @param   pPos            pointer to a variable to receive the current
- *                          focus point
+ *                            focus point
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -1018,62 +826,18 @@ RESULT IsiFocusSetIss
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT IsiFocusGetIss
-(
-    IsiSensorHandle_t   handle,
-    IsiFocusPos_t       *pPos
-);
-
-RESULT IsiSetInfraredLightExpParamIss
-(
-	IsiSensorHandle_t handle,
-	IsiIrLightExp_t *pIrExpParam
-);
-
-RESULT IsiGetInfraredLightExpParamIss
-(
-	IsiSensorHandle_t handle,
-	IsiIrLightExp_t *pIrExpParam
-);
-
-
-RESULT IsiQueryMetadataAttrIss
-(
-    IsiSensorHandle_t handle,
-    IsiMetadataAttr_t *pAttr
-);
-
-RESULT IsiSetMetadataAttrEnableIss
-(
-    IsiSensorHandle_t handle,
-    IsiMetadataAttr_t attr
-);
-
-RESULT IsiGetMetadataAttrEnableIss
-(
-    IsiSensorHandle_t handle,
-    IsiMetadataAttr_t *pAttr
-);
-
-RESULT IsiGetMetadataWindowIss
-(
-    IsiSensorHandle_t handle,
-    IsiMetadataWinInfo_t *pMetaWin
-);
-
-RESULT IsiParserMetadataIss
-(
-    IsiSensorHandle_t handle,
-    const MetadataBufInfo_t *pMetaBuf,
-    IsiSensorMetadata_t *pMetaInfo
-);
+RESULT IsiFocusGetIss(IsiSensorHandle_t handle, IsiFocusPos_t *pPos);
+RESULT IsiSetInfraredLightExpParamIss(IsiSensorHandle_t handle, IsiIrLightExp_t *pIrExpParam);
+RESULT IsiGetInfraredLightExpParamIss(IsiSensorHandle_t handle, IsiIrLightExp_t *pIrExpParam);
+RESULT IsiQueryMetadataAttrIss(IsiSensorHandle_t handle, IsiMetadataAttr_t *AttrPtr);
+RESULT IsiSetMetadataAttrEnableIss(IsiSensorHandle_t handle, IsiMetadataAttr_t attr);
+RESULT IsiGetMetadataAttrEnableIss(IsiSensorHandle_t handle, IsiMetadataAttr_t *AttrPtr);
+RESULT IsiGetMetadataWindowIss(IsiSensorHandle_t handle, IsiMetadataWinInfo_t *MetaWinPtr);
+RESULT IsiParserMetadataIss(IsiSensorHandle_t handle, const MetadataBufInfo_t *MetaBufPtr,
+	IsiSensorMetadata_t *MetaInfoPtr);
 
 #ifdef __cplusplus
 }
 #endif
 
-
-/* @} isi */
-
-
-#endif /* __ISI_H__ */
+#endif

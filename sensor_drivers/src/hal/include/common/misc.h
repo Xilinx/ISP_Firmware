@@ -23,46 +23,35 @@
  * DEALINGS IN THE SOFTWARE.
  *
  ****************************************************************************/
-
-/* VeriSilicon 2020 */
-
-/**
- * @file misc.h
- *
- * @brief   Some often used little helpers; mainly implemented as macros.
- *
- *****************************************************************************/
 #ifndef __MISC_H__
 #define __MISC_H__
 
-/* beware of macro side effects! */
-
 #ifndef __FLT_EPSILON__
-#define __FLT_EPSILON__     0.000000119209289550781250000000
-#endif /* __FLT_EPSILON__ */
+#define __FLT_EPSILON__		(0.000000119209289550781250000000)
+#endif
 
 #ifndef FLT_EPSILON
-#define FLT_EPSILON         __FLT_EPSILON__
-#endif /* FLT_EPSILON */
+#define FLT_EPSILON		__FLT_EPSILON__
+#endif
 
 #ifndef FLT_MAX
-#define FLT_MAX     ((float)3.40282346638528860e+38)
-#endif /* FLT_MAX */
+#define FLT_MAX			((float)3.40282346638528860e+38)
+#endif
 
 #ifndef MIN
-#define MIN(a, b)   ( ((a)<(b)) ? (a) : (b) )
-#endif /* MIN */
+#define MIN(a, b)		(((a) < (b)) ? (a) : (b))
+#endif
 
 #ifndef MAX
-#define MAX(a, b)   ( ((a)>(b)) ? (a) : (b) )
-#endif /* MAX */
+#define MAX(a, b)		(((a) > (b)) ? (a) : (b))
+#endif
 
 #ifndef ABS
-#define ABS(a)      ( ((a)<0) ? -(a) : (a) )
-#endif /*ABS */
+#define ABS(a)			(((a) < 0) ? -(a) : (a))
+#endif
 
 #ifndef SIGN
-#define SIGN(a)     ( ((a)<0) ? -1 : ((a)>0) ? 1 : 0 )
-#endif /* SIGN */
+#define SIGN(a)			(((a) < 0) ? -1 : ((a) > 0) ? 1 : 0)
+#endif
 
-#endif /* __MISC_H__ */
+#endif

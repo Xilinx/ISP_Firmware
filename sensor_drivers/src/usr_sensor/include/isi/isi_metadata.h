@@ -25,68 +25,58 @@
  ****************************************************************************/
 #ifndef __ISI_METADATA_H__
 #define __ISI_METADATA_H__
+
 #include <ebase/types.h>
 #include <isi/isi_vvsensor.h>
-
-#define ISI_METADATA_WIN_NUM_MAX 3
-
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-typedef union IsiMetadataAttr_s
-{
-    struct {
-        uint32_t support  : 1;   /**< bit 0: 0-disable 1-enable */
-        uint32_t regInfo  : 1;   /**< bit 1 */
-        uint32_t expTime  : 1;   /**< bit 2 */
-        uint32_t again    : 1;   /**< bit 3 */
-        uint32_t dgain    : 1;   /**< bit 4 */
-        uint32_t bls      : 1;   /**< bit 5 */
-        uint32_t hist     : 1;   /**< bit 6 */
-        uint32_t meanLuma : 1;   /**< bit 7 */
-        uint32_t reservedEnable : 23;/**< bit 8:31 */
-    }subAttr;
-    uint32_t mainAttr;
+#define ISI_METADATA_WIN_NUM_MAX	(3)
+
+typedef union {
+	struct {
+		uint32_t	support		: 1;
+		uint32_t	regInfo		: 1;
+		uint32_t	expTime		: 1;
+		uint32_t	again		: 1;
+		uint32_t	dgain		: 1;
+		uint32_t	bls		: 1;
+		uint32_t	hist		: 1;
+		uint32_t	meanLuma	: 1;
+		uint32_t	reservedEnable	: 23;
+	} subAttr;
+	uint32_t		mainAttr;
 } IsiMetadataAttr_t;
 
-typedef struct IsiMetadataWinInfo_s
-{
-    uint8_t winNum;
-    IsiSensorWin_t metaWin[ISI_METADATA_WIN_NUM_MAX];
+typedef struct {
+	uint8_t			winNum;
+	IsiSensorWin_t		metaWin[ISI_METADATA_WIN_NUM_MAX];
 } IsiMetadataWinInfo_t;
 
-typedef struct IsiMetadataParserInfo_s
-{
-    IsiMetadataAttr_t validMask;
-
-    uint32_t regNum;
-    IsiSensorReg_t *pReg;
-
-    uint8_t expFrmNum;
-    IsiSensorIntTime_t expTime;
-    IsiSensorGain_t    aGain;
-    IsiSensorGain_t    dGain;
-    IsiSensorBlc_t     blc;
-    IsiSensorHist_t    hist;
-    IsiSensorMeanLuma_t meanLuma;
-
+typedef struct {
+	IsiMetadataAttr_t	validMask;
+	uint32_t		regNum;
+	IsiSensorReg_t		*RegPtr;
+	uint8_t			expFrmNum;
+	IsiSensorIntTime_t	expTime;
+	IsiSensorGain_t		aGain;
+	IsiSensorGain_t		dGain;
+	IsiSensorBlc_t		blc;
+	IsiSensorHist_t		hist;
+	IsiSensorMeanLuma_t	meanLuma;
 } IsiMetadataParserInfo_t;
 
-
-typedef struct IsiSensorMetadata_s
-{
-    uint32_t chipId;   //sensor version id
-    uint32_t frmCount;
-
-    IsiMetadataParserInfo_t data;
+typedef struct {
+	uint32_t		chipId;
+	uint32_t		frmCount;
+	IsiMetadataParserInfo_t	data;
 } IsiSensorMetadata_t;
-
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif //__ISI_METADATA_H__
+#endif
