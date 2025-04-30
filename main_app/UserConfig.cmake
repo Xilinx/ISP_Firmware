@@ -27,9 +27,6 @@ set(USER_UNDEFINED_SYMBOLS
 
 set(USER_INCLUDE_DIRECTORIES
 "isp_fw_main.h"
-#"/wrk/paeg1/users/prasadbe/telluride/M15/amd_M15/sensor_lib/src/hal/include"
-#"/wrk/paeg1/users/prasadbe/telluride/M15/amd_M15/sensor_lib/src/usr_sensor/include"
-#"/wrk/paeg1/users/prasadbe/telluride/M15/amd_M15/sensor_lib/src/usr_sensor/include/sensor_drv"
 )
 set(USER_COMPILE_SOURCES
 "main.c"
@@ -120,8 +117,6 @@ set(USER_LINK_LIBRARIES
 # Example 1: Adding /proj/compression/lib will pass -L/proj/compression/lib to the linker.
 # Example 2: Adding ../../common/lib will consider the path as relative to this directory and will pass the path to -L option.
 set(USER_LINK_DIRECTORIES
-"/wrk/paeg1/users/prasadbe/telluride/M15/amd_M15/sensor_lib/build/" 
-"/wrk/paeg1/users/prasadbe/telluride/M15/amd_M15/isp_fw_lib/build"
 )
 
 # -----------------------------------------

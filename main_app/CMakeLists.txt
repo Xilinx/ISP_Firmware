@@ -53,9 +53,8 @@ add_executable(${APP_NAME}.elf ${CMAKE_SOURCE_DIR}/main.c)
 set_target_properties(${APP_NAME}.elf PROPERTIES LINK_DEPENDS ${CMAKE_SOURCE_DIR}/lscript.ld )
 
 #add_library(isp_fw_lib STATIC IMPORTED)
-#set_target_properties(isp_fw_lib PROPERTIES IMPORTED_LOCATION /wrk/paeg1/users/prasadbe/telluride/M15/amd_M15/isp_fw_lib/build/libisp_fw_lib.a)
 # Define a root directory variable once
-set(LIB_ROOT /wrk/paeg/users/prabhujn/AMD_M2_release/m15_isp_fw_lib)
+set(LIB_ROOT ../../../m15_isp_fw_lib)
 
 #stripped binary
 add_library(isp_fw_lib STATIC IMPORTED)
@@ -83,12 +82,11 @@ set_target_properties(xiltimer PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/platform
 
 target_link_libraries(versal2_main.elf
   PRIVATE
-    -Wl,-Map=telluride.map
+    -Wl,-Map=versal2.map
     -Wl,--build-id=none
     -Wl,--gc-sections
     -T${CMAKE_SOURCE_DIR}/lscript.ld
     -L${CMAKE_LIBRARY_PATH}
-    -L${USER_LINK_DIRECTORIES}
     -Wl,--start-group
     isp_fw_lib
     sensor_lib
