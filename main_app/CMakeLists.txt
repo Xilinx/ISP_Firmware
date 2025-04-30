@@ -48,35 +48,35 @@ string(APPEND CMAKE_CXX_FLAGS ${USER_COMPILE_OPTIONS})
 string(REPLACE "-O2" "-O0" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
 message("Build sources are ${CMAKE_CURRENT_SOURCE_DIR}")
-message("Build library paths are ${USER_LINK_DIRECTORIES}")
+#message("Build library paths are ${USER_LINK_DIRECTORIES}")
 add_executable(${APP_NAME}.elf ${CMAKE_SOURCE_DIR}/main.c)
 set_target_properties(${APP_NAME}.elf PROPERTIES LINK_DEPENDS ${CMAKE_SOURCE_DIR}/lscript.ld )
 
 #add_library(isp_fw_lib STATIC IMPORTED)
 # Define a root directory variable once
-set(LIB_ROOT ../../../m15_isp_fw_lib)
+set(LIB_ROOT ../../prebuilt_lib/)
 
 #stripped binary
-add_library(isp_fw_lib STATIC IMPORTED)
-set_target_properties(isp_fw_lib PROPERTIES  IMPORTED_LOCATION ${LIB_ROOT}/isp_fw_lib/build/libisp_fw_lib.a)
-
 add_library(sensor_lib STATIC IMPORTED)
-set_target_properties(sensor_lib PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/sensor_lib/build/libsensor_lib.a)
+set_target_properties(sensor_lib PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/libsensor_lib.a)
+
+add_library(isp_fw_lib STATIC IMPORTED)
+set_target_properties(isp_fw_lib PROPERTIES  IMPORTED_LOCATION ${LIB_ROOT}/libisp_fw_lib.a)
 
 add_library(freertos STATIC IMPORTED)
-set_target_properties(freertos PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/platform/cortexr52_6/freertos_cortexr52_6/bsp/lib/libfreertos.a)
+set_target_properties(freertos PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/libfreertos.a)
 
 add_library(xilffs STATIC IMPORTED)
-set_target_properties(xilffs PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/platform/cortexr52_6/freertos_cortexr52_6/bsp/lib/libxilffs.a)
+set_target_properties(xilffs PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/libxilffs.a)
 
 add_library(xilstandalone STATIC IMPORTED)
-set_target_properties(xilstandalone PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/platform/cortexr52_6/freertos_cortexr52_6/bsp/lib/libxilstandalone.a)
+set_target_properties(xilstandalone PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/libxilstandalone.a)
 
 add_library(xil STATIC IMPORTED)
-set_target_properties(xil PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/platform/export/platform/sw/freertos_cortexr52_6/lib/libxil.a)
+set_target_properties(xil PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/libxil.a)
 
 add_library(xiltimer STATIC IMPORTED)
-set_target_properties(xiltimer PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/platform/export/platform/sw/freertos_cortexr52_6/lib/libxiltimer.a)
+set_target_properties(xiltimer PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/libxiltimer.a)
 
 
 
@@ -86,10 +86,9 @@ target_link_libraries(versal2_main.elf
     -Wl,--build-id=none
     -Wl,--gc-sections
     -T${CMAKE_SOURCE_DIR}/lscript.ld
-    -L${CMAKE_LIBRARY_PATH}
     -Wl,--start-group
-    isp_fw_lib
     sensor_lib
+    isp_fw_lib
       xilstandalone
       freertos
       xilffs
