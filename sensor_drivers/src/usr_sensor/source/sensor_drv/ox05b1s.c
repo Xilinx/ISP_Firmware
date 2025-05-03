@@ -577,7 +577,7 @@ static RESULT Ox05b1s_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 			}
 			break;
 		case 1:
-			for (int i = 0; i < ARRAY__SIZE(Ox05b1s_mipi4lane_ABmode_init); i++) {
+			for (int i = 0; i < ARRAY_SIZE(Ox05b1s_mipi4lane_ABmode_init); i++) {
 				if (Ox05b1s_mipi4lane_ABmode_init[i][0] ==
 						OX05B1S_TABLE_WAIT) {
 					vTaskDelay(Ox05b1s_mipi4lane_ABmode_init[i][1]);

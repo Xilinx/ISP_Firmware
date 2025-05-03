@@ -11,6 +11,3 @@ collect (PROJECT_LIB_SOURCES ox08b40.c)
 collect (PROJECT_LIB_SOURCES sensor_drv.c)
 
 collect (PROJECT_LIB_SOURCES virtual_sensor.c)
-
-collect (PROJECT_LIB_SOURCES sensor_emu.c)
-

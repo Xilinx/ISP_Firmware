@@ -54,4 +54,6 @@
 #define SIGN(a)			(((a) < 0) ? -1 : ((a) > 0) ? 1 : 0)
 #endif
 
+#define ARRAY_SIZE(arr)		(sizeof(arr) / sizeof((arr)[0]))
+
 #endif

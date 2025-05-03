@@ -37,7 +37,6 @@ extern IsiCamDrvConfig_t Ox03f10_IsiCamDrvConfig;
 extern IsiCamDrvConfig_t Ox08b40_IsiCamDrvConfig;
 extern IsiCamDrvConfig_t Ox05b1s_IsiCamDrvConfig;
 extern IsiCamDrvConfig_t virtualSensor_IsiCamDrvConfig;
-extern IsiCamDrvConfig_t Semu_IsiCamDrvConfig;
 
 extern IsiSensorMode_t pox03f10_mode_info[];
 

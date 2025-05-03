@@ -43,7 +43,6 @@ set(USER_INCLUDE_DIRECTORIES
 
 set(USER_COMPILE_SOURCES
 "usr_sensor/source/sensor_drv/virtual_sensor.c"
-"usr_sensor/source/sensor_drv/sensor_emu.c"
 "usr_sensor/source/sensor_drv/sensor_drv.c"
 "usr_sensor/source/sensor_drv/ox08b40.c"
 "usr_sensor/source/sensor_drv/ox05b1s.c"

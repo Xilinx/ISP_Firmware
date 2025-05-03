@@ -27,6 +27,7 @@
 #include <ebase/types.h>
 #include <ebase/trace.h>
 #include <common/return_codes.h>
+#include <common/misc.h>
 #include <string.h>
 
 CREATE_TRACER(SENSOR_DRV_INFO, "SENSOR_INFO: ", INFO, 1);
@@ -67,8 +68,7 @@ RESULT SensorDrvConfigMapping(const char *pSensorName, IsiCamDrvConfig_t **pSens
 	SensorDrvConfig_t sensorConfig[] = {
 		{"ox03f10", &Ox03f10_IsiCamDrvConfig},
 		{"ox08b40", &Ox08b40_IsiCamDrvConfig},
-		{"ox05b1s", &Ox05b1s_IsiCamDrvConfig},
-		{"semu", &Semu_IsiCamDrvConfig}
+		{"ox05b1s", &Ox05b1s_IsiCamDrvConfig}
 	};
 
 	if (apuSensor) {
