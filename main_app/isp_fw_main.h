@@ -24,3 +24,23 @@
  * *
  * ****************************************************************************/
 int main_lib(void);
+
+#define RPU6_FW_START_ADDR 					(0x0C000000U)
+#define RPU6_FW_SIZE 						(0x5125fff)
+			
+#define RPU6_LOAD_CALIB_START_ADDR           (0x11126000U)
+#define RPU6_LOAD_CALIB_SIZE     	         (0x28000U)
+
+#define RPU6_PRIV_MEM_START_ADDR              (0x1114E000U)
+#define RPU6_PRIV_MEM_SIZE     	             (0x1001000U)
+
+
+#define RPU6_MBOX_START_ADDR		    	(0x1829E000)
+#define RPU6_MBOX_SIZE                      (0x400000U)
+
+
+/*User shall not modify the below MACROS*/
+#define RPU6_SHM_SIZE                      (0X40000U)  
+#define RPU6_MBOX_RPUSHM_SIZE        	  (RPU6_MBOX_SIZE + RPU6_SHM_SIZE - 1 )
+#define RPU6_LOAD_CALIB_PRIV_MEM_SIZE     (RPU6_LOAD_CALIB_SIZE +RPU6_PRIV_MEM_SIZE -1 )
+

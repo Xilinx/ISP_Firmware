@@ -117,6 +117,10 @@ set(USER_LINK_LIBRARIES
 # Example 1: Adding /proj/compression/lib will pass -L/proj/compression/lib to the linker.
 # Example 2: Adding ../../common/lib will consider the path as relative to this directory and will pass the path to -L option.
 set(USER_LINK_DIRECTORIES
+"${CMAKE_SOURCE_DIR}/../../sensor_lib/build/" 
+"${CMAKE_SOURCE_DIR}/../../isp_fw_lib/build/"
+"${CMAKE_SOURCE_DIR}/../../isp_fw_lib/src/platform"
+
 )
 
 # -----------------------------------------

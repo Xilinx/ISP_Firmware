@@ -14,21 +14,10 @@ _IRQ_STACK_SIZE = DEFINED(_IRQ_STACK_SIZE) ? _IRQ_STACK_SIZE : 1024;
 _FIQ_STACK_SIZE = DEFINED(_FIQ_STACK_SIZE) ? _FIQ_STACK_SIZE : 1024;
 _UNDEF_STACK_SIZE = DEFINED(_UNDEF_STACK_SIZE) ? _UNDEF_STACK_SIZE : 1024;
 
-   _RPU_SHARED_MEM_SIZE = 0x40000;
-   _LOADCALIB_MEM_SIZE  = 0x28000;
-   _MBOX_MEM_SIZE = 0x400000;
-   _HALMEM_PRIV_SIZE = 0x01000000;
-   _HALMEM_OPEN_SIZE = 0x00000000;
-/* Define Memories in the system */
 
 MEMORY
 {
 	pmc_ram : ORIGIN = 0xF2000000, LENGTH = 0x20000
-   load_calib : ORIGIN =0x11126000, LENGTH = 0x28000	 /*Reserve this memory for load_calib*/
-   mailbox : ORIGIN =0x24B00000, LENGTH = 0x400000	 /*Reserve this memory for APU<->RPU communication*/
-   rpu_shared_mem : ORIGIN = 0x24F01000, LENGTH = 0x40000	 /*Reserve this memory for sharing data between RPU*/
-   HAL_RESERVED_MEM_PRIV : ORIGIN = 0x1114E000, LENGTH = 0x01000000	 /*for disable the cache of the memory that ISP and DMA use*/
-  /* HAL_RESERVED_MEM_OPEN : ORIGIN = 0x17429000, LENGTH =0x0000000*/ /*0x1F00000	*/ /*for disable the cache of the memory that ISP and DMA use*/
    r52_tcm_alias : ORIGIN = 0x0, LENGTH = 0x2000
    r52_tcm_alias_bootdata : ORIGIN = 0x2400, LENGTH = 0x20000
 	axi_noc2_s0_ddr_memory : ORIGIN = 0xC000000, LENGTH =0x5126000
@@ -315,29 +304,4 @@ _SDA2_BASE_ = __sdata2_start + ((__sbss2_end - __sdata2_start) / 2 );
    __undef_stack = .;
 } > axi_noc2_s0_ddr_memory
 
-.cam_load_calib : {
-	__cam_load_calib_start = .;
-   /* . += _LOADCALIB_MEM_SIZE; */
-	__cam_load_calib_end = .;
-} > load_calib
-
-.rpu_shared_mem : {
-     __rpu_shared_mem_start = .;
-    . += _RPU_SHARED_MEM_SIZE;
-     __rpu_shared_mem_end = .;
- } > rpu_shared_mem
- 
-.mbox : {
-     __mbox_start = .;
- /*  . += _MBOX_MEM_SIZE; */
-     __mbox_end = .;
- } > mailbox
- 
- 
-  .hal_mem_priv : {
-     __hal_mem_priv_start = .;
- /*  . += _HALMEM_PRIV_SIZE; */
-     __hal_mem_priv_end = .;
- } >  HAL_RESERVED_MEM_PRIV
-end = .;
 }
