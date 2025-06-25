@@ -1303,7 +1303,7 @@ RESULT Ox03f10_IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps)
 		TRACE(Ox03f10_ERROR, "%s: Invalid sensor handle (NULL ptr detected)\n", __func__);
 		return RET_WRONG_HANDLE;
 	}
-
+#if 0
 	if (pOx03f10Ctx->sensorDevId == 4 || pOx03f10Ctx->sensorDevId == 5) {
 #ifdef MIPI5_10FPS
 		fps = 10;
@@ -1331,8 +1331,11 @@ RESULT Ox03f10_IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps)
 		result |= Ox03f10_IsiWriteRegIss(handle, 0x380e, 0x03);
 		result |= Ox03f10_IsiWriteRegIss(handle, 0x380f, 0x30);
 #endif
+
 		pOx03f10Ctx->currFps = fps;
+
 	} else {
+#endif
 		if (fps > pOx03f10Ctx->maxFps) {
 			TRACE(Ox03f10_ERROR, "%s: set fps(%d) outofrange, correct to %d (%d, %d)\n",
 				__func__, fps, pOx03f10Ctx->maxFps, pOx03f10Ctx->minFps,
@@ -1364,7 +1367,7 @@ RESULT Ox03f10_IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps)
 		pOx03f10Ctx->maxSPDIntegrationLine = pOx03f10Ctx->curFrameLengthLines - 13;
 		pOx03f10Ctx->aecMaxIntegrationTime =
 				pOx03f10Ctx->maxDCGIntegrationLine * pOx03f10Ctx->oneLineDCGExpTime;
-	}
+//	}
 
 	TRACE(Ox03f10_INFO, "%s: (exit)\n", __func__);
 

@@ -272,6 +272,7 @@ void ser_stats(int i)
 		Status = HalXilReadI2CReg(0, ser_addr, 0x11a, 2, &pipe_u_s, 1);
 		if (Status != XST_SUCCESS)
 			DCT_ASSERT(0);
+		xil_printf("middha - ser[%x]: Px:0x%x, Py: 0x%x, Pz: 0x%x, Pu: 0x%x\n", i + 1, pipe_x_s, pipe_y_s, pipe_z_s, pipe_u_s);
 	}
 }
 
