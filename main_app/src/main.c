@@ -23,51 +23,13 @@
  * * DEALINGS IN THE SOFTWARE.
  * *
  * ****************************************************************************/
+#include "isp_fw_main.h"
 
-/* Xilinx includes. */
-#include "xil_printf.h"
-#include "cpu_info.h"
+extern int main_lib();
 
-#define VER_MAJOR (0U)
-#define VER_MINOR (3U)
-
-#define SDK_RELEASE_YEAR    (2025)
-#define SDK_RELEASE_QUARTER (2)
-
-#if (ELF_FLAG)
-int main( void )
+int main()
 {
-	xil_printf("\n****************************************\n");
-	xil_printf("Versal Gen2 ISP Firmware\n");
-	xil_printf("Release %d.%d ",SDK_RELEASE_YEAR, SDK_RELEASE_QUARTER);
-	xil_printf("%s - %s \n", __DATE__, __TIME__);
-	xil_printf("ISP FW Version : v%d.%d\n", VER_MAJOR, VER_MINOR);
-	xil_printf("****************************************\n");
-	print_memory_layout_info();
-#else
-int main_lib( void )
-{
-	xil_printf("\n****************************************\n");
-	xil_printf("Versal Gen2 ISP Firmware\n");
-	xil_printf("Release %d.%d ",SDK_RELEASE_YEAR, SDK_RELEASE_QUARTER);
-	xil_printf("%s - %s \n", __DATE__, __TIME__);
-	xil_printf("ISP FW Version : v%d.%d\n", VER_MAJOR, VER_MINOR);
-	xil_printf("****************************************\n");
-#endif
-	xil_printf( "Running Firmware for cpu-id: %d\r\n", get_cpu_id() );
-
-	amp_core_data_init();
-//  test_spinlock();
-	control_init();
-//  stats();
-	/* Start the tasks and timer running. */
-	vTaskStartScheduler();
-
-	/* If all is well, the scheduler will now be running, and the following line
-	will never be reached.  If the following line does execute, then there was
-	insufficient FreeRTOS heap memory available for the idle and/or timer tasks
-	to be created.  See the memory management section on the FreeRTOS web site
-	for more details. */
-	for( ;; );
+    main_lib();
+    return 0;
 }
 
