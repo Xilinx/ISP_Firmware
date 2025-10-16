@@ -23,122 +23,51 @@
  * * DEALINGS IN THE SOFTWARE.
  * *
  * ****************************************************************************/
-#include "isp_fw_main.h"
-#include "xil_mpu.h"
-#include "xreg_cortexr5.h"
 
-XMpuConfig_Initial InitialMpu_Config __attribute__((section(".bootdata"))) = {
+/* Xilinx includes. */
+#include "xil_printf.h"
+#include "cpu_info.h"
 
-	{
-		/* TCM  */
-		0x00000000U,
-		0x2000,
-		NORM_NSHARED_WT_NWA | PRIV_RO_USER_RO,
-	},
-	{
-		/* BootData */
-		0x2400,
-		0x20000,
-		NORM_NSHARED_WT_NWA | PRIV_RW_USER_RW,
-	}, 
-	{
-		RPU6_FW_START_ADDR,
-		RPU6_FW_SIZE,
-		NORM_NSHARED_WT_NWA | PRIV_RW_USER_RW,
-	},
-	{
-	
-		RPU6_LOAD_CALIB_START_ADDR,
-      		RPU6_LOAD_CALIB_PRIV_MEM_SIZE,
-		STRONG_ORDERD_SHARED | PRIV_RW_USER_RW,
+#define VER_MAJOR (0U)
+#define VER_MINOR (3U)
 
+#define SDK_RELEASE_YEAR    (2025)
+#define SDK_RELEASE_QUARTER (2)
 
-	},
-	{
-
-	        RPU6_MBOX_START_ADDR,
-		RPU6_MBOX_RPUSHM_SIZE,
-		STRONG_ORDERD_SHARED | PRIV_RW_USER_RW,
-	},
-	{
-		/* 512 MB LPD to AFI fabric slave port */
-		0x80000000U,
-		0x1FFFFFFF,
-		DEVICE_NONSHARED | PRIV_RW_USER_RW,
-	},
-	{
-		0xA0000000U,
-		0x17FFFFFF,
-		DEVICE_NONSHARED | PRIV_RW_USER_RW,
-	},
-	{
-		/* 2 MB OCM */
-		0xBBE00000U,
-		0x1FFFFF,
-		NORM_NSHARED_WT_NWA | PRIV_RW_USER_RW,
-	},
-	{
-		/* 512 MB xSPI + 16 MB Coresight */
-		0xC0000000U,
-		0x20FFFFFF,
-		DEVICE_NONSHARED | PRIV_RW_USER_RW,
-	},
-	{
-		/* 2MB RPU GIC */
-		0xE2000000U,
-		0x1FFFFF,
-		DEVICE_NONSHARED | PRIV_RW_USER_RW,
-	},
-	{
-	    /* 8MB VCU and ISP */
-		0xE8000000U,
-		0x7FFFFF,
-		DEVICE_NONSHARED | PRIV_RW_USER_RW,
-        },
-	{
-		/* 16MB FPD + 32MB LPD + 16MB MMI */
-		0xEA000000U,
-		0x3FFFFFF,
-		DEVICE_NONSHARED | PRIV_RW_USER_RW,
-	},
-	{
-		/* 128MB PMC + 64MB PS_FPD_CMN */
-		0xF0000000U,
-		0xBFFFFFF,
-		DEVICE_NONSHARED | PRIV_RW_USER_RW,
-	},
-	/* A total of 9 MPU regions are allocated with another 7 being free for users */
-	{
-		0U
-	}
-};
-
-uint32_t cam_load_calib			= RPU6_LOAD_CALIB_START_ADDR;
-uint32_t MBOX_start_Addr  		= RPU6_MBOX_START_ADDR;
-uint32_t _MBOX_MEM_SIZE 		= RPU6_MBOX_SIZE;
-uint32_t HAL_RESERVED_MEM_PRIV_START 	= RPU6_PRIV_MEM_START_ADDR ;
-uint32_t HAL_RESERVED_MEM_PRIV_SIZE	= RPU6_PRIV_MEM_SIZE;
-
-extern int main_lib();
-
-int main()
+#if (ELF_FLAG)
+int main( void )
 {
-    print_memory_layout_info();
-    main_lib();
-    return 0;
+	xil_printf("\n****************************************\n");
+	xil_printf("Versal Gen2 ISP Firmware\n");
+	xil_printf("Release %d.%d ",SDK_RELEASE_YEAR, SDK_RELEASE_QUARTER);
+	xil_printf("%s - %s \n", __DATE__, __TIME__);
+	xil_printf("ISP FW Version : v%d.%d\n", VER_MAJOR, VER_MINOR);
+	xil_printf("****************************************\n");
+	print_memory_layout_info();
+#else
+int main_lib( void )
+{
+	xil_printf("\n****************************************\n");
+	xil_printf("Versal Gen2 ISP Firmware\n");
+	xil_printf("Release %d.%d ",SDK_RELEASE_YEAR, SDK_RELEASE_QUARTER);
+	xil_printf("%s - %s \n", __DATE__, __TIME__);
+	xil_printf("ISP FW Version : v%d.%d\n", VER_MAJOR, VER_MINOR);
+	xil_printf("****************************************\n");
+#endif
+	xil_printf( "Running Firmware for cpu-id: %d\r\n", get_cpu_id() );
+
+	amp_core_data_init();
+//  test_spinlock();
+	control_init();
+//  stats();
+	/* Start the tasks and timer running. */
+	vTaskStartScheduler();
+
+	/* If all is well, the scheduler will now be running, and the following line
+	will never be reached.  If the following line does execute, then there was
+	insufficient FreeRTOS heap memory available for the idle and/or timer tasks
+	to be created.  See the memory management section on the FreeRTOS web site
+	for more details. */
+	for( ;; );
 }
 
-void print_memory_layout_info( )
-{
-	xil_printf("RPU_FW_START_ADDR - 0x%x \n",RPU6_FW_START_ADDR);
-	xil_printf("RPU_FW_SIZE - 0x%x \n",RPU6_FW_SIZE);
-	xil_printf("RPU_LOAD_CALIB_START_ADDR - 0x%x \n",RPU6_LOAD_CALIB_START_ADDR);
-	xil_printf("RPU_LOAD_CALIB_SIZE - 0x%x \n",RPU6_LOAD_CALIB_SIZE);
-	xil_printf("RPU_PRIV_MEM_START_ADDR - 0x%x \n",RPU6_PRIV_MEM_START_ADDR);
-	xil_printf("RPU_PRIV_MEM_SIZE - 0x%x \n",RPU6_PRIV_MEM_SIZE);
-	xil_printf("RPU_MBOX_START_ADDR - 0x%x \n",RPU6_MBOX_START_ADDR);
-	xil_printf("RPU_MBOX_SIZE - 0x%x \n",RPU6_MBOX_SIZE);
-	xil_printf("RPU_SHM_SIZE - 0x%x \n",RPU6_SHM_SIZE);
-	xil_printf("RPU_MBOX_RPUSHM_SIZE - 0x%x \n",RPU6_MBOX_RPUSHM_SIZE);
-	xil_printf("RPU_LOAD_CALIB_PRIV_MEM_SIZE - 0x%x \n",RPU6_LOAD_CALIB_PRIV_MEM_SIZE);
-}
