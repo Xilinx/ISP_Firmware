@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 VeriSilicon Holdings Co., Ltd. ("VeriSilicon")
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,7 +22,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
+
 #ifndef ISI_PRIV_H
 #define ISI_PRIV_H
 
@@ -30,6 +31,7 @@
 #include "isi/isi.h"
 
 #ifdef __cplusplus
+
 extern "C"
 {
 #endif

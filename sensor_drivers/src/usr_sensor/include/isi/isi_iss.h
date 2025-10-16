@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 VeriSilicon Holdings Co., Ltd. ("VeriSilicon")
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,7 +22,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
 #ifndef __ISI_ISS_H__
 #define __ISI_ISS_H__
 
@@ -35,64 +35,74 @@ extern "C"
 {
 #endif
 
-typedef RESULT (*IsiCreateIss_t)(IsiSensorInstanceConfig_t *pConfig, IsiSensorHandle_t *HandlePtr);
+typedef RESULT (*IsiCreateIss_t)(IsiSensorInstanceConfig_t *pConfig, IsiSensorHandle_t *pHandle);
 typedef RESULT (*IsiOpenIss_t)(IsiSensorHandle_t handle, uint32_t mode);
 typedef RESULT (*IsiCloseIss_t)(IsiSensorHandle_t handle);
 typedef RESULT (*IsiReleaseIss_t)(IsiSensorHandle_t handle);
 typedef RESULT (*IsiReadRegIss_t)(IsiSensorHandle_t handle, const uint16_t addr,
-					uint16_t *ValuePtr);
+					uint16_t *pValue);
 typedef RESULT (*IsiWriteRegIss_t)(IsiSensorHandle_t handle, const uint16_t addr,
 					const uint16_t value);
-typedef RESULT (*IsiGetModeIss_t)(IsiSensorHandle_t handle, IsiSensorMode_t *ModePtr);
-typedef RESULT (*IsiEnumModeIss_t)(IsiSensorHandle_t handle, IsiSensorEnumMode_t *EnumModePtr);
-typedef RESULT (*IsiGetCapsIss_t)(IsiSensorHandle_t handle, IsiCaps_t *CapsPtr);
+typedef RESULT (*IsiGetModeIss_t)(IsiSensorHandle_t handle, IsiSensorMode_t *pMode);
+typedef RESULT (*IsiEnumModeIss_t)(IsiSensorHandle_t handle, IsiSensorEnumMode_t *pEnumMode);
+typedef RESULT (*IsiGetCapsIss_t)(IsiSensorHandle_t handle, IsiCaps_t *pCaps);
 typedef RESULT (*IsiCheckConnectionIss_t)(IsiSensorHandle_t handle);
-typedef RESULT (*IsiGetRevisionIss_t)(IsiSensorHandle_t handle, uint32_t *RevisionPtr);
+typedef RESULT (*IsiGetRevisionIss_t)(IsiSensorHandle_t handle, uint32_t *pRevision);
 typedef RESULT (*IsiSetStreamingIss_t)(IsiSensorHandle_t handle, bool_t on);
-typedef RESULT (*IsiGetAeBaseInfoIss_t)(IsiSensorHandle_t handle, IsiAeBaseInfo_t *AeBaseInfoPtr);
+
+typedef RESULT (*IsiGetAeBaseInfoIss_t)(IsiSensorHandle_t handle, IsiAeBaseInfo_t *pAeBaseInfo);
+typedef RESULT (*IsiExcuteExpCtrlIss_t)(IsiSensorHandle_t handle,
+					const IsiSensorExpParam_t *pExpParam,
+					IsiSensorExpParam_t *pExpResult);
 typedef RESULT (*IsiExpDecomposeCtrlIss_t)(IsiSensorHandle_t handle,
-					const IsiExpDecomposeParam_t *DecParamPtr,
-					IsiExpDecomposeResult_t *DecResultPtr);
-typedef RESULT (*IsiGetAGainIss_t)(IsiSensorHandle_t handle, IsiSensorGain_t *SensorAGainPtr);
-typedef RESULT (*IsiSetAGainIss_t)(IsiSensorHandle_t handle, IsiSensorGain_t *SensorAGainPtr);
-typedef RESULT (*IsiGetDGainIss_t)(IsiSensorHandle_t handle, IsiSensorGain_t *SensorDGainPtr);
-typedef RESULT (*IsiSetDGainIss_t)(IsiSensorHandle_t handle, IsiSensorGain_t *SensorDGainPtr);
+					const IsiExpDecomposeParam_t *pDecParam,
+					IsiExpDecomposeResult_t *pDecResult);
+typedef RESULT (*IsiGetAGainIss_t)(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
+typedef RESULT (*IsiSetAGainIss_t)(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
+typedef RESULT (*IsiGetDGainIss_t)(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain);
+typedef RESULT (*IsiSetDGainIss_t)(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain);
 typedef RESULT (*IsiGetIntTimeIss_t)(IsiSensorHandle_t handle,
-					IsiSensorIntTime_t *SensorIntTimePtr);
+					IsiSensorIntTime_t *pSensorIntTime);
 typedef RESULT (*IsiSetIntTimeIss_t)(IsiSensorHandle_t handle,
-					const IsiSensorIntTime_t *SensorIntTimePtr);
-typedef RESULT (*IsiGetFpsIss_t)(IsiSensorHandle_t handle, uint32_t *FpsPtr);
+					const IsiSensorIntTime_t *pSensorIntTime);
+typedef RESULT (*IsiGetFpsIss_t)(IsiSensorHandle_t handle, uint32_t *pFps);
 typedef RESULT (*IsiSetFpsIss_t)(IsiSensorHandle_t handle, uint32_t fps);
-typedef RESULT (*IsiGetIspStatusIss_t)(IsiSensorHandle_t handle, IsiIspStatus_t *IspStatusPtr);
-typedef RESULT (*IsiSetBlcIss_t)(IsiSensorHandle_t handle, const IsiSensorBlc_t *BlcPtr);
-typedef RESULT (*IsiGetBlcIss_t)(IsiSensorHandle_t handle, IsiSensorBlc_t *BlcPtr);
-typedef RESULT (*IsiSetWBIss_t)(IsiSensorHandle_t handle, const IsiSensorWb_t *WbPtr);
-typedef RESULT (*IsiGetWBIss_t)(IsiSensorHandle_t handle, IsiSensorWb_t *WbPtr);
+
+typedef RESULT (*IsiGetIspStatusIss_t)(IsiSensorHandle_t handle, IsiIspStatus_t *pIspStatus);
+typedef RESULT (*IsiSetBlcIss_t)(IsiSensorHandle_t handle, const IsiSensorBlc_t *pBlc);
+typedef RESULT (*IsiGetBlcIss_t)(IsiSensorHandle_t handle, IsiSensorBlc_t *pBlc);
+typedef RESULT (*IsiSetWBIss_t)(IsiSensorHandle_t handle, const IsiSensorWb_t *pWb);
+typedef RESULT (*IsiGetWBIss_t)(IsiSensorHandle_t handle, IsiSensorWb_t *pWb);
+
 typedef RESULT (*IsiSetTpgIss_t)(IsiSensorHandle_t handle, IsiSensorTpg_t tpg);
-typedef RESULT (*IsiGetTpgIss_t)(IsiSensorHandle_t handle, IsiSensorTpg_t *TpgPtr);
+typedef RESULT (*IsiGetTpgIss_t)(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg);
 typedef RESULT (*IsiGetExpandCurveIss_t)(IsiSensorHandle_t handle,
-					IsiSensorCompandCurve_t *CurvePtr);
+					IsiSensorCompandCurve_t *pCurve);
 typedef RESULT (*IsiGetCompressCurveIss_t)(IsiSensorHandle_t handle,
-					IsiSensorCompandCurve_t *CurvePtr);
-typedef RESULT (*IsiExtendFuncIss_t)(IsiSensorHandle_t handle, void *UserDataPtr);
-typedef RESULT (*IsiGetOtpDataIss_t)(IsiSensorHandle_t handle, IsiOTP_t *OtpDataPtr);
+					IsiSensorCompandCurve_t *pCurve);
+typedef RESULT (*IsiExtendFuncIss_t)(IsiSensorHandle_t handle, void *pUserData);
+typedef RESULT (*IsiGetOtpDataIss_t)(IsiSensorHandle_t handle, IsiOTP_t *pOtpData);
+
 typedef RESULT (*IsiFocusCreateIss_t)(IsiSensorHandle_t handle);
 typedef RESULT (*IsiFocusReleaseIss_t)(IsiSensorHandle_t handle);
 typedef RESULT (*IsiFocusGetCalibrateIss_t)(IsiSensorHandle_t handle,
-					IsiFocusCalibAttr_t *FocusCalibPtr);
-typedef RESULT (*IsiFocusSetIss_t)(IsiSensorHandle_t handle, const IsiFocusPos_t *PosPtr);
-typedef RESULT (*IsiFocusGetIss_t)(IsiSensorHandle_t handle, IsiFocusPos_t *PosPtr);
+					IsiFocusCalibAttr_t *pFocusCalib);
+typedef RESULT (*IsiFocusSetIss_t)(IsiSensorHandle_t handle, const IsiFocusPos_t *pPos);
+typedef RESULT (*IsiFocusGetIss_t)(IsiSensorHandle_t handle, IsiFocusPos_t *pPos);
+
 typedef RESULT (*IsiSetIRLightExpIss_t)(IsiSensorHandle_t handle, const IsiIrLightExp_t
-					*IrExpParamPtr);
-typedef RESULT (*IsiGetIRLightExpIss_t)(IsiSensorHandle_t handle, IsiIrLightExp_t *IrExpParamPtr);
-typedef RESULT (*IsiQueryMetadataAttrIss_t)(IsiSensorHandle_t handle, IsiMetadataAttr_t *AttrPtr);
+					*pIrExpParam);
+typedef RESULT (*IsiGetIRLightExpIss_t)(IsiSensorHandle_t handle, IsiIrLightExp_t *pIrExpParam);
+
+typedef RESULT (*IsiQueryMetadataAttrIss_t)(IsiSensorHandle_t handle, IsiMetadataAttr_t *pAttr);
 typedef RESULT (*IsiSetMetadataAttrEnableIss_t)(IsiSensorHandle_t handle, IsiMetadataAttr_t attr);
 typedef RESULT (*IsiGetMetadataAttrEnableIss_t)(IsiSensorHandle_t handle, IsiMetadataAttr_t
-					*AttrPtr);
+					*pAttr);
 typedef RESULT (*IsiGetMetadataWindowIss_t)(IsiSensorHandle_t handle, IsiMetadataWinInfo_t
-					*MetaWinPtr);
+					*pMetaWin);
 typedef RESULT (*IsiParserMetadataIss_t)(IsiSensorHandle_t handle, const MetadataBufInfo_t
-					*MetaBufPtr, IsiSensorMetadata_t *MetaInfoPtr);
+					*pMetaBuf, IsiSensorMetadata_t *pMetaInfo);
+
 
 struct IsiSensor_s {
 	const char			*pszName;
@@ -109,7 +119,9 @@ struct IsiSensor_s {
 	IsiCheckConnectionIss_t		pIsiCheckConnectionIss;
 	IsiGetRevisionIss_t		pIsiGetRevisionIss;
 	IsiSetStreamingIss_t		pIsiSetStreamingIss;
+
 	IsiGetAeBaseInfoIss_t		pIsiGetAeBaseInfoIss;
+	IsiExcuteExpCtrlIss_t		pIsiExcuteExpCtrlIss;
 	IsiExpDecomposeCtrlIss_t	pIsiExpDecomposeCtrlIss;
 	IsiGetAGainIss_t		pIsiGetAGainIss;
 	IsiSetAGainIss_t		pIsiSetAGainIss;
@@ -119,24 +131,29 @@ struct IsiSensor_s {
 	IsiSetIntTimeIss_t		pIsiSetIntTimeIss;
 	IsiGetFpsIss_t			pIsiGetFpsIss;
 	IsiSetFpsIss_t			pIsiSetFpsIss;
+
 	IsiGetIspStatusIss_t		pIsiGetIspStatusIss;
 	IsiSetBlcIss_t			pIsiSetBlcIss;
 	IsiGetBlcIss_t			pIsiGetBlcIss;
 	IsiSetWBIss_t			pIsiSetWBIss;
 	IsiGetWBIss_t			pIsiGetWBIss;
+
 	IsiSetTpgIss_t			pIsiSetTpgIss;
 	IsiGetTpgIss_t			pIsiGetTpgIss;
 	IsiGetExpandCurveIss_t		pIsiGetExpandCurveIss;
 	IsiGetCompressCurveIss_t	pIsiGetCompressCurveIss;
 	IsiExtendFuncIss_t		pIsiExtendFuncIss;
 	IsiGetOtpDataIss_t		pIsiGetOtpDataIss;
+
 	IsiFocusCreateIss_t		pIsiFocusCreateIss;
 	IsiFocusReleaseIss_t		pIsiFocusReleaseIss;
 	IsiFocusGetCalibrateIss_t	pIsiFocusGetCalibrateIss;
 	IsiFocusSetIss_t		pIsiFocusSetIss;
 	IsiFocusGetIss_t		pIsiFocusGetIss;
+
 	IsiSetIRLightExpIss_t		pIsiSetIRLightExpIss;
 	IsiGetIRLightExpIss_t		pIsiGetIRLightExpIss;
+
 	IsiQueryMetadataAttrIss_t	pIsiQueryMetadataAttrIss;
 	IsiSetMetadataAttrEnableIss_t	pIsiSetMetadataAttrEnableIss;
 	IsiGetMetadataAttrEnableIss_t	pIsiGetMetadataAttrEnableIss;
@@ -144,8 +161,16 @@ struct IsiSensor_s {
 	IsiParserMetadataIss_t		pIsiParserMetadataIss;
 };
 
-typedef RESULT (*IsiGetSensorIss_t)(IsiSensor_t *IsiSensorPtr);
+typedef RESULT (*IsiGetSensorIss_t)(IsiSensor_t *pIsiSensor);
 
+/*****************************************************************************/
+/**
+ *          IsiCamDrvConfig_t
+ *
+ * @brief   Camera sensor driver specific data
+ *
+ */
+/*****************************************************************************/
 typedef struct {
 	uint32_t		cameraDriverID;
 	IsiGetSensorIss_t	pIsiGetSensorIss;
@@ -169,7 +194,7 @@ typedef struct {
  *
  *****************************************************************************/
 RESULT IsiSensorDrvHandleRegisterIss(IsiCamDrvConfig_t *pCamDrvConfig,
-					IsiSensorHandle_t *pSensorHandle);
+				IsiSensorHandle_t *pSensorHandle);
 
 /*****************************************************************************/
 /**
@@ -192,3 +217,4 @@ RESULT IsiSensorDrvHandleUnRegisterIss(IsiSensorHandle_t handle);
 #endif
 
 #endif
+

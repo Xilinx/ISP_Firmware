@@ -36,8 +36,16 @@
 #define OX03F10_TABLE_END	(0xffff)
 #define OX03F10_TABLE_WAIT	(0xfffe)
 #define OX03F10_TABLE_WAIT_MS	(210)
+
 #define DSER_ADDR		(0x68)
 #define SER_ADDR		(0x62)
+
+#define MIPI_2_BASE_ADDR	(0x81000000)
+#define MIPI_6_BASE_ADDR	(0x81060000)
+#define MIPI_ENABLE		(0x5)
+#define MIPI_DISABLE		(0x0)
+#define SENSOR_ID_2		(2)
+#define SENSOR_ID_6		(6)
 
 extern int g_Sensor_frame_count;
 
@@ -60,9 +68,8 @@ typedef struct {
 
 	bool_t			isAfpsRun;
 
-	float			oneLineDCGExpTime;
-	float			oneLineSPDExpTime;
-	float			oneLineVSExpTime;
+	float			oneLineExpTime;
+
 	uint16_t		maxDCGIntegrationLine;
 	uint16_t		minDCGIntegrationLine;
 	uint16_t		maxSPDIntegrationLine;
@@ -102,27 +109,27 @@ typedef struct {
 	uint32_t		sensorDevId;
 } Ox03f10_Context_t;
 
-static RESULT Ox03f10_IsiCreateIss(IsiSensorInstanceConfig_t *ConfigPtr,
-					IsiSensorHandle_t *HandlePtr);
+static RESULT Ox03f10_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
+					IsiSensorHandle_t *pHandle);
 static RESULT Ox03f10_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode);
 static RESULT Ox03f10_IsiCloseIss(IsiSensorHandle_t handle);
 static RESULT Ox03f10_IsiReleaseIss(IsiSensorHandle_t handle);
-static RESULT Ox03f10_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *CapsPtr);
+static RESULT Ox03f10_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps);
 static RESULT Ox03f10_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t on);
-static RESULT Ox03f10_IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *ValuePtr);
+static RESULT Ox03f10_IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *pValue);
 static RESULT Ox03f10_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
-					IsiAeBaseInfo_t *AeBaseInfoPtr);
-static RESULT Ox03f10_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *SensorAGainPtr);
-static RESULT Ox03f10_IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *SensorDGainPtr);
-static RESULT Ox03f10_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *SensorAGainPtr);
-static RESULT Ox03f10_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *SensorDGainPtr);
+					IsiAeBaseInfo_t *pAeBaseInfo);
+static RESULT Ox03f10_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
+static RESULT Ox03f10_IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain);
+static RESULT Ox03f10_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
+static RESULT Ox03f10_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain);
 static RESULT Ox03f10_IsiGetIntTimeIss(IsiSensorHandle_t handle,
-					IsiSensorIntTime_t *SensorIntTimePtr);
+					IsiSensorIntTime_t *pSensorIntTime);
 static RESULT Ox03f10_IsiSetIntTimeIss(IsiSensorHandle_t handle,
-					IsiSensorIntTime_t *SensorIntTimePtr);
+					IsiSensorIntTime_t *pSensorIntTime);
 static RESULT Ox03f10_SetIntTime(IsiSensorHandle_t handle, float newIntegrationTime);
 
-static uint16_t Ox03f10_1080p_init[][2] = {
+static uint16_t Ox03f10_mipi4lane_1080p_native4dol_init[][2] = {
 	{0x0103, 0x01},
 	{0x0100, 0x00},
 	{0x0107, 0x01},
@@ -1745,6 +1752,7 @@ static uint16_t Ox03f10_1080p_init[][2] = {
 	{0x0405, 0x54},
 	{0x0406, 0x30},
 	{0x0407, 0x08},
+
 #if (SENSOR_10FPS_OLD)
 	{0x380c, 0x06},
 	{0x380d, 0x4e},
@@ -1755,6 +1763,7 @@ static uint16_t Ox03f10_1080p_init[][2] = {
 	{0x380e, 0x09},
 	{0x380f, 0x90},
 #endif
+
 #if (SENSOR_10FPS_NEW)
 	{0x380c, 0x10},
 	{0x380d, 0x80},
@@ -1765,6 +1774,7 @@ static uint16_t Ox03f10_1080p_init[][2] = {
 	{0x380e, 0x03},
 	{0x380f, 0x30},
 #endif
+
 #if (SENSOR_30FPS)
 	{0x380c, 0x06},
 	{0x380d, 0x60},
@@ -1775,6 +1785,7 @@ static uint16_t Ox03f10_1080p_init[][2] = {
 	{0x380e, 0x03},
 	{0x380f, 0x30},
 #endif
+
 #if (SENSOR_20FPS)
 	{0x380c, 0x10},
 	{0x380d, 0x00},
@@ -1816,10 +1827,10 @@ static uint16_t Ox03f10_1080p_init[][2] = {
 	{0x4f03, 0x2c},
 	{0x3820, 0x04},
 	{OX03F10_TABLE_WAIT, OX03F10_TABLE_WAIT_MS},
-	{OX03F10_TABLE_END, 0x00}
+	{OX03F10_TABLE_END, 0}
 };
 
-static uint16_t Ox03f10_720p_init[][2] = {
+static uint16_t Ox03f10_mipi4lane_1080p_native4dol_1280_720_init[][2] = {
 	{0x0103, 0x01},
 	{0x0100, 0x00},
 	{0x0107, 0x01},
@@ -3482,10 +3493,10 @@ static uint16_t Ox03f10_720p_init[][2] = {
 	{0x4f03, 0x2c},
 	{0x3820, 0x04},
 	{OX03F10_TABLE_WAIT, OX03F10_TABLE_WAIT_MS},
-	{OX03F10_TABLE_END, 0x00}
+	{OX03F10_TABLE_END, 0}
 };
 
-static uint16_t Ox03f10_480p_init[][2] = {
+static uint16_t Ox03f10_mipi4lane_1080p_native4dol_640_480_init[][2] = {
 	{0x0103, 0x01},
 	{0x0100, 0x00},
 	{0x0107, 0x01},
@@ -5148,11 +5159,11 @@ static uint16_t Ox03f10_480p_init[][2] = {
 	{0x4f03, 0x2c},
 	{0x3820, 0x04},
 	{OX03F10_TABLE_WAIT, OX03F10_TABLE_WAIT_MS},
-	{OX03F10_TABLE_END, 0x00}
+	{OX03F10_TABLE_END, 0}
 };
+#endif
 
 #ifdef __cplusplus
 }
-#endif
 
 #endif

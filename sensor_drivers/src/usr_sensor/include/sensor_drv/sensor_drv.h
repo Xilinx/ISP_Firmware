@@ -23,6 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  *
  ****************************************************************************/
+
 #ifndef __SENSOR_DRV_H__
 #define __SENSOR_DRV_H__
 
@@ -33,56 +34,94 @@ extern "C"
 {
 #endif
 
-extern IsiCamDrvConfig_t Ox03f10_IsiCamDrvConfig;
-extern IsiCamDrvConfig_t Ox08b40_IsiCamDrvConfig;
-extern IsiCamDrvConfig_t Ox05b1s_IsiCamDrvConfig;
-extern IsiCamDrvConfig_t virtualSensor_IsiCamDrvConfig;
-
-extern IsiSensorMode_t pox03f10_mode_info[];
-
 typedef struct {
-	const char *pSensorName;
-	IsiCamDrvConfig_t *pSensorConfig;
+	const char		*pSensorName;
+	IsiCamDrvConfig_t	*pSensorConfig;
 } SensorDrvConfig_t;
 
 typedef struct {
-	char name[20];
-	IsiSensorMode_t *pSensorMode;
+	char			name[20];
+	IsiSensorMode_t		*pSensorMode;
+	int			mode_num;
 } SensorDrvList_t;
 
 typedef struct {
-	uint32_t chipId;
-	char name[20];
+	uint32_t	chipId;
+	char		name[20];
 } sensorPortInfo_t;
 
 typedef struct {
-	char *pSensorName;
-	uint32_t slaveAddr;
-	uint8_t regWidth;
-	uint8_t dataWidth;
-	uint16_t regAddr[3];
-	uint32_t sensorId;
+	char		*pSensorName;
+	uint16_t	regAddr[3];
+	uint32_t	sensorId;
 } SensorDrvConfigList_t;
 
 /*****************************************************************************/
 /**
- * SensorDrvConfigMapping
+ *          SensorDrvConfigMapping
  *
- * @brief sensor config mapping.
+ * @brief   sensor config mapping.
  *
- * @param pSensorName Pointer to the sensor name
- * @param pSensorConfig Pointer to the isi sensor driver config
+ * @param   pSensorName      Pointer to the sensor name
+ * @param   pSensorConfig    Pointer to the isi sensor driver config
  *
- * @return Return the result of the function call.
- * @retval RET_SUCCESS
- * @retval RET_NULL_POINTER
- * @retval RET_OUTOFMEM
+ * @return  Return the result of the function call.
+ * @retval  RET_SUCCESS
+ * @retval  RET_NULL_POINTER
+ * @retval  RET_OUTOFMEM
  *
  *****************************************************************************/
-RESULT SensorDrvConfigMapping(const char *SensorNamePtr, IsiCamDrvConfig_t **SensorConfigPtr);
-RESULT SensorDrvGetSensorNumber(uint16_t *NumberPtr);
-RESULT SensorDrvGetConfigList(SensorDrvList_t *SensorDrvListPtr);
-RESULT SensorDrvGetPortInfo(sensorPortInfo_t *PortInfoPtr, uint32_t sensorDevId);
+RESULT SensorDrvConfigMapping(const char *pSensorName, IsiCamDrvConfig_t **pSensorConfig);
+
+/*****************************************************************************/
+/**
+ *          SensorDrvGetSensorNumber
+ *
+ * @brief   Get the number of available sensors.
+ *
+ * @param   pNumber         Pointer to store the sensor number
+ *
+ * @return  Return the result of the function call.
+ * @retval  RET_SUCCESS
+ * @retval  RET_NULL_POINTER
+ * @retval  RET_FAILURE
+ *
+ *****************************************************************************/
+RESULT SensorDrvGetSensorNumber(uint16_t *pNumber);
+
+/*****************************************************************************/
+/**
+ *          SensorDrvGetConfigList
+ *
+ * @brief   Get sensor driver configuration list.
+ *
+ * @param   sensorNum           Sensor number
+ * @param   pSensorDrvList      Pointer to sensor driver list structure
+ *
+ * @return  Return the result of the function call.
+ * @retval  RET_SUCCESS
+ * @retval  RET_NULL_POINTER
+ * @retval  RET_FAILURE
+ *
+ *****************************************************************************/
+RESULT SensorDrvGetConfigList(const uint16_t sensorNum, SensorDrvList_t *pSensorDrvList);
+
+/*****************************************************************************/
+/**
+ *          SensorDrvGetPortInfo
+ *
+ * @brief   Get sensor port information.
+ *
+ * @param   pPortInfo       Pointer to sensor port information structure
+ * @param   sensorDevId     Sensor device ID
+ *
+ * @return  Return the result of the function call.
+ * @retval  RET_SUCCESS
+ * @retval  RET_NULL_POINTER
+ * @retval  RET_FAILURE
+ *
+ *****************************************************************************/
+RESULT SensorDrvGetPortInfo(sensorPortInfo_t *pPortInfo, uint32_t sensorDevId);
 
 #ifdef __cplusplus
 }

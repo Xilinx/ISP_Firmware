@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 VeriSilicon Holdings Co., Ltd. ("VeriSilicon")
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,7 +22,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
+
 #ifndef __RETURN_CODES_H__
 #define __RETURN_CODES_H__
 
@@ -46,6 +47,7 @@ typedef int RESULT;
 #define RET_WRONG_CONFIG		(15)
 #define RET_TIME_OUT			(16)
 #define RET_UNSUPPORT_ID		(0xFFFF)
+
 
 #define UPDATE_RESULT(cur_res, new_res)				\
 		{ RESULT __lres__ = (new_res);			\

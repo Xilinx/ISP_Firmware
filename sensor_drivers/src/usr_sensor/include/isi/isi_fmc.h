@@ -22,7 +22,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
 #ifndef __ISI_FMC_H_
 #define __ISI_FMC_H_
 
@@ -31,16 +31,17 @@
 #include "queue.h"
 #include "timers.h"
 #include "xparameters.h"
+
 #if !defined(ISP_PRESI)
 #include "xgpiops.h"
 #endif
+
 #include "xiicps.h"
 #include "xiicps.h"
 #include "xil_printf.h"
 #include "xil_types.h"
 #include "xiicps.h"
 #include "hal/hal_i2c.h"
-
 
 #define IN_PIPE_0				(0)
 #define IN_PIPE_1				(1)
@@ -55,9 +56,14 @@
 #define IN_PIPE_10				(10)
 #define IN_PIPE_11				(11)
 #define IN_PIPE_12				(12)
-#define IN_PIPE_LAST				(IN_PIPE_12)
 
+#define IN_PIPE_LAST				(IN_PIPE_12)
 #define MAPPING_INPIPE_TO_DES_ID(pipeId)	(pipeId / 2)
+
+#define SENSOR_ID0				(0)
+#define SENSOR_ID1				(1)
+#define SENSOR_ID2				(2)
+#define SENSOR_ID3				(3)
 
 #define MAX_SER_COUNT				(IN_PIPE_LAST+1+1)
 #define MAX_SENSOR_COUNT			(IN_PIPE_LAST+1+1)
@@ -67,6 +73,12 @@
 #define I2C_4					(0x0044)
 #define I2C_5					(0x0045)
 
+#define SERIALIZER_ADDR				(0x80)
+#define IMAGER_ADDR				(0x20)
+#define FPGA_ADDR				(0x88)
+#define GMSL2
+#define YUV_SENSOR
+
 #define SENSOR_3MP				(0)
 #define SENSOR_5MP				(1)
 #define SENSOR_8MP				(2)
@@ -75,6 +87,13 @@
 #define RESOLUTION_720P				(1)
 #define RESOLUTION_1080P			(2)
 
+#define FRAMERATE_10				(0)
+#define FRAMERATE_30				(1)
+
+#define FORMAT_0				(0)
+#define FORMAT_1				(1)
+
+#define SENSOR_ADDR				(0x36)
 #define LINK_MASK				(0x3)
 #define LINK_A					(0x01)
 #define LINK_B					(0x02)
@@ -86,6 +105,7 @@
 #define AUTO_LINK				(0x4)
 #define RESET_ONE_SHOT				(0x5)
 #define LOCKED					(0x3)
+
 
 #define DEV_ADDR_REG				(0x00)
 #define CTRL0_REG				(0x10)
@@ -143,14 +163,17 @@
 #define SERIALIZER_11_ALIAS_ADDR		(0x8A)
 
 #define SENSOR_OX3F10_ADDRESS			(0x6C)
+#define SENSOR_OX8B40_ADDRESS			(0x6C)
 #define SENSOR_OX5B_ADDRESS			(0x20)
-#define SENSOR_DEFAULT_ADDRSS			(SENSOR_OX3F10_ADDRESS)
+#define SENSOR_IMX728_ADDRESS			(0x36)
+#define SENSOR_IMX623_ADDRESS			(0x36)
 
+#define SENSOR_DEFAULT_ADDRSS			(SENSOR_OX3F10_ADDRESS)
 #define SENSOR_0_ALIAS_ADDR			(SENSOR_DEFAULT_ADDRSS)
 #define SENSOR_1_ALIAS_ADDR			(0x30)
 #define SENSOR_2_ALIAS_ADDR			(0x32)
 #define SENSOR_3_ALIAS_ADDR			(0x34)
-#define SENSOR_4_ALIAS_ADDR			(0x36)
+#define SENSOR_4_ALIAS_ADDR			(0x26)
 #define SENSOR_5_ALIAS_ADDR			(0x38)
 #define SENSOR_6_ALIAS_ADDR			(0x3A)
 #define SENSOR_7_ALIAS_ADDR			(0x3C)
@@ -159,12 +182,19 @@
 #define SENSOR_10_ALIAS_ADDR			(0x22)
 #define SENSOR_11_ALIAS_ADDR			(0x24)
 #define SENSOR_MAX				(12)
-
 #define TABLE_WAIT				(0xfffe)
 #define TABLE_END				(0xffff)
 
+
+/*****************************************************************************/
+/**
+ *          transition_state
+ *
+ * @brief   State machine transitions for FMC device initialization and operation.
+ */
+/*****************************************************************************/
 typedef enum {
-	in_deinit = 0,
+	in_deinit	= 0,
 	in_progress,
 	in_init,
 	in_running,
@@ -179,13 +209,13 @@ typedef struct {
 } dslink;
 
 typedef struct {
-	u8		des_actual_addr;
-	u8		des_alias_addr;
-	u8		Port_DES_index;
+	u8			des_actual_addr;
+	u8			des_alias_addr;
+	u8			Port_DES_index;
 	transition_state	des_state;
-	u8		link_type;
-	dslink		link_a;
-	dslink		link_b;
+	u8			link_type;
+	dslink			link_a;
+	dslink			link_b;
 } desInterface;
 
 typedef struct {
@@ -202,13 +232,13 @@ typedef struct {
 	int		deserializer_slave_address;
 } IsiFmcInstanceConfig_t;
 
-typedef int (*IsiCreateFmcIss_t)();
-typedef int (*IsiFmcSetup)(int);
-typedef int (*IsiDeserSetup)(desInterface *);
-typedef int (*IsiDeserEnable)(u8);
-typedef int (*IsiDeserDisable)(u8);
+typedef int (*IsiCreateFmcIss_t) ();
+typedef int (*IsiFmcSetup) (int);
+typedef int (*IsiDeserSetup) (desInterface *);
+typedef int (*IsiDeserEnable) (u8);
+typedef int (*IsiDeserDisable) (u8);
 
-typedef struct {
+struct IsiFmc_s {
 	char				FmcName[30];
 	IsiCreateFmcIss_t		pIsiCreateFmcIss;
 	IsiFmcSetup			pIsiIsiFmcSetup;
@@ -217,9 +247,10 @@ typedef struct {
 	IsiDeserDisable			pIsiDeserDisable;
 	struct serializer_driver	*serializer_array[MAX_SER_COUNT];
 	struct sensor_driver		*sensor_array[MAX_SENSOR_COUNT];
-	struct accessIIC		*iic_array[MAX_SENSOR_COUNT];
-} IsiFmc_t;
+	struct accessIIC		*accessiic_array[MAX_SENSOR_COUNT];
+};
 
+typedef struct IsiFmc_s IsiFmc_t;
 extern IsiFmc_t g_fmc_single;
 
 typedef struct {
@@ -267,20 +298,24 @@ struct serializer_driver {
 	int (*set_virt_ch_map)(struct serializer_driver *ser_inst, struct map_struct *map,
 				int map_count);
 	int (*set_sensor_addr_map)(struct serializer_driver *ser_inst,
-		struct map_struct *map, int map_count);
+				struct map_struct *map, int map_count);
 	int (*set_broadcast_addr)(struct serializer_driver *ser_inst,
-		int addr);
+				int addr);
 	int (*send_broadcast)(struct serializer_driver *ser_inst, char *data,
-		int size);
+				int size);
 	int (*i2c_write)(struct serializer_driver *ser_inst, char *data,
 				int size);
 	int (*i2c_read)(struct serializer_driver *ser_inst, char *data,
-			int size);
+				int size);
 };
 
+
 struct accessIIC {
-	int (*readIIC)(HalI2cHandle_t HalI2cHandle, uint16_t addr, uint16_t *pValue);
-	int (*writeIIC)(HalI2cHandle_t HalI2cHandle,  uint16_t addr, uint16_t value);
+	u8	i2cBusId;
+	int (*readIIC)(u8 i2cBusId, u8 slave_addr, uint16_t addr, uint8_t regWidth,
+			uint16_t *pValue, uint8_t dataWidth);
+	int (*writeIIC)(u8 i2cBusId, u8 slave_addr, uint16_t addr, uint8_t regWidth,
+			uint16_t value, uint8_t dataWidth);
 };
 
 struct sensor_driver {
@@ -295,21 +330,37 @@ struct sensor_driver {
 	reg_8		*fps_array;
 	u32		fps_array_len;
 	u8		sensor_alias_addr;
-	int (*init_sensor)(struct sensor_driver *sensor_inst);
-	int (*deinit_sensor)(struct sensor_driver *sensor_inst);
-	int (*stream_on)(struct sensor_driver *sensor_inst);
-	int (*stream_off)(struct sensor_driver *sensor_inst);
+	int (*init_sensor)(struct sensor_driver *);
+	int (*deinit_sensor)(struct sensor_driver *);
+	int (*stream_on)(struct sensor_driver *);
+	int (*stream_off)(struct sensor_driver *);
 	transition_state	sensor_state;
 };
 
 typedef struct {
-	u32		SensorCfg_Enabled;
-	u32		Sensortype;
-	u32		Sensor_resolution;
-	u32		Sensor_format;
-	u32		Sensor_framerate;
+	u32	SensorCfg_Enabled;
+	u32	Sensortype;
+	u32	Sensor_resolution;
+	u32	Sensor_format;
+	u32	Sensor_framerate;
 } Sensor_device;
 
+/*****************************************************************************/
+/**
+ *          i2cPs_write32
+ *
+ * @brief   Write 32-bit data to I2C PS device.
+ *
+ * @param   iic_instance        pointer to I2C PS instance
+ * @param   chipAddress         I2C chip address
+ * @param   addr                register address
+ * @param   data                32-bit data to write
+ *
+ * @return  Return the result of the function call.
+ * @retval  0           success
+ * @retval  non-zero    failure
+ *
+ *****************************************************************************/
 int i2cPs_write32(XIicPs *iic_instance, u8 chipAddress, u32 addr, u32 data);
 
 #endif

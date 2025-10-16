@@ -2,6 +2,10 @@
 
 # SPDX-License-Identifier: MIT
 
+collect (PROJECT_LIB_SOURCES imx623.c)
+
+collect (PROJECT_LIB_SOURCES imx728.c)
+
 collect (PROJECT_LIB_SOURCES ox03f10.c)
 
 collect (PROJECT_LIB_SOURCES ox05b1s.c)
@@ -11,3 +15,6 @@ collect (PROJECT_LIB_SOURCES ox08b40.c)
 collect (PROJECT_LIB_SOURCES sensor_drv.c)
 
 collect (PROJECT_LIB_SOURCES virtual_sensor.c)
+
+collect (PROJECT_LIB_SOURCES sensor_emu.c)
+

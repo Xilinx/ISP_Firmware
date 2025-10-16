@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 VeriSilicon Holdings Co., Ltd. ("VeriSilicon")
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,26 +22,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
-/* VeriSilicon 2022 */
+ ******************************************************************************/
 
-/**
- * @file isi_vvsensor.h
- *
- * @brief
- *
- *****************************************************************************/
-/**
- * @page module_name_page Module Name
- * Describe here what this module does.
- *
- * For a detailed list of functions and implementation detail refer to:
- * - @ref module_name
- *
- * @defgroup isi_vvsensor CamerIc Driver API
- * @{
- *
- */
 #ifndef __ISI_VVSENSOR_H__
 #define __ISI_VVSENSOR_H__
 
@@ -55,6 +37,13 @@ extern "C"
 #define ISI_SENSOR_HIST_BIN_NUM_MAX	(256)
 #define ISI_SENSOR_EXP_ROI_NUM_MAX	(64)
 
+/*****************************************************************************/
+/**
+ *          IsiSensorHdrMode_t
+ *
+ * @brief   Sensor HDR mode configuration options.
+ */
+/*****************************************************************************/
 typedef enum {
 	ISI_SENSOR_MODE_LINEAR,
 	ISI_SENSOR_MODE_HDR_STITCH,
@@ -62,6 +51,13 @@ typedef enum {
 	DUMMY_ISI_010 = 0xdeadfeed
 } IsiSensorHdrMode_t;
 
+/*****************************************************************************/
+/**
+ *          IsiSensorAfMode_t
+ *
+ * @brief   Sensor autofocus mode configuration options.
+ */
+/*****************************************************************************/
 typedef enum {
 	ISI_SENSOR_AF_MODE_NOTSUPP,
 	ISI_SENSOR_AF_MODE_CDAF,
@@ -69,6 +65,13 @@ typedef enum {
 	DUMMY_ISI_011 = 0xdeadfeed
 } IsiSensorAfMode_t;
 
+/*****************************************************************************/
+/**
+ *          IsiSensorStitchingMode_t
+ *
+ * @brief   Sensor stitching mode configuration for HDR processing.
+ */
+/*****************************************************************************/
 typedef enum {
 	ISI_SENSOR_STITCHING_DUAL_DCG		= 0,
 	ISI_SENSOR_STITCHING_3DOL		= 1,
@@ -82,6 +85,13 @@ typedef enum {
 	DUMMY_ISI_012				= 0xdeadfeed
 } IsiSensorStitchingMode_t;
 
+/*****************************************************************************/
+/**
+ *          IsiSensorNativeMode_t
+ *
+ * @brief   Sensor native mode configuration for HDR capture.
+ */
+/*****************************************************************************/
 typedef enum {
 	ISI_SENSOR_NATIVE_DCG			= 0,
 	ISI_SENSOR_NATIVE_L_AND_S		= 1,
@@ -196,7 +206,7 @@ typedef struct {
 	uint32_t			mipiLane;
 	uint32_t			fps;
 	uint32_t			bitWidth;
-	void				*regDataPtr;
+	void				*pregData;
 	uint32_t			regCount;
 } IsiSensorMode_t;
 

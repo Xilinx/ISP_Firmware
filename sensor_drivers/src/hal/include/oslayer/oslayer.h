@@ -22,65 +22,119 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
+
 #ifndef OSLAYER_H
 #define OSLAYER_H
 
-/******************************************************************************/
-/** @brief  Include time-stamp handling in OS Abstraction Layer library */
+/*****************************************************************************/
+/**
+ *          OSLAYER_TIMESTAMP
+ *
+ * @brief   Include time-stamp handling in OS Abstraction Layer library
+ *
+ *****************************************************************************/
 #define OSLAYER_TIMESTAMP
 
-/******************************************************************************/
-/** @brief  Include event handling in OS Abstraction Layer library */
+/*****************************************************************************/
+/**
+ *          OSLAYER_EVENT
+ *
+ * @brief   Include event handling in OS Abstraction Layer library
+ *
+ *****************************************************************************/
 #define OSLAYER_EVENT
 
-/******************************************************************************/
-/** @brief  Include mutex handling in OS Abstraction Layer library */
+/*****************************************************************************/
+/**
+ *          OSLAYER_MUTEX
+ *
+ * @brief   Include mutex handling in OS Abstraction Layer library
+ *
+ *****************************************************************************/
 #define OSLAYER_MUTEX
 
-/******************************************************************************/
-/** @brief  Include semaphore handling in OS Abstraction Layer library */
+/*****************************************************************************/
+/**
+ *          OSLAYER_SEMAPHORE
+ *
+ * @brief   Include semaphore handling in OS Abstraction Layer library
+ *
+ *****************************************************************************/
 #define OSLAYER_SEMAPHORE
 
-/******************************************************************************/
-/** @brief  Include queue handling in OS Abstraction Layer library */
+/*****************************************************************************/
+/**
+ *          OSLAYER_QUEUE
+ *
+ * @brief   Include queue handling in OS Abstraction Layer library
+ *
+ *****************************************************************************/
 #if defined OSLAYER_SEMAPHORE && defined OSLAYER_MUTEX
 #define OSLAYER_QUEUE
 #endif
 
-/******************************************************************************/
-/** @brief  Include atomic operations in OS Abstraction Layer library */
+/*****************************************************************************/
+/**
+ *          OSLAYER_ATOMIC
+ *
+ * @brief   Include atomic operations in OS Abstraction Layer library
+ *
+ *****************************************************************************/
 #define OSLAYER_ATOMIC
 
-/******************************************************************************/
-/** @brief  Include thread handling in OS Abstraction Layer library */
+/*****************************************************************************/
+/**
+ *          OSLAYER_THREAD
+ *
+ * @brief   Include thread handling in OS Abstraction Layer library
+ *
+ *****************************************************************************/
 #if defined OSLAYER_EVENT && defined OSLAYER_MUTEX
 #define OSLAYER_THREAD
 #endif
 
-/******************************************************************************/
-/** @brief  Include IRQ service functionality in OS Abstraction Layer library */
+/*****************************************************************************/
+/**
+ *          OSLAYER_IRQ
+ *
+ * @brief   Include IRQ service functionality in OS Abstraction Layer library
+ *
+ *****************************************************************************/
 #if defined OSLAYER_EVENT && defined OSLAYER_MUTEX && defined OSLAYER_THREAD
 #define OSLAYER_IRQ
 #endif
 
-/******************************************************************************/
-/** @brief  Include misc functionality in OS Abstraction Layer library */
+/*****************************************************************************/
+/**
+ *          OSLAYER_MISC
+ *
+ * @brief   Include misc functionality in OS Abstraction Layer library
+ *
+ *****************************************************************************/
 #define OSLAYER_MISC
 
-/******************************************************************************/
-/** @brief  Include Memory management functionality in OS Abstraction Layer library */
-
+/*****************************************************************************/
+/**
+ *          OSLAYER_MEMORY
+ *
+ * @brief   Include Memory management functionality in OS Abstraction Layer library
+ *
+ *****************************************************************************/
 #define OSLAYER_MEMORY
 
 //!@} defgroup OS_LAYER_CONFIG
 
+/*****************************************************************************/
 /**
+ *          OS_LAYER
+ *
  * @defgroup OS_LAYER OS layer interface
  * @{
  * @brief   Encapsulates and abstracts services from different operating
  *          system, including user-mode as well as kernel-mode services,
  *          in a operating system independent way.
+ *
  *****************************************************************************/
 
 #ifdef WIN32
@@ -110,11 +164,24 @@ extern "C"
 #endif
 
 #ifndef OSLAYER_ASSERT
+/*****************************************************************************/
+/**
+ *          OSLAYER_ASSERT
+ *
+ * @brief   Default assertion macro for OS Abstraction Layer
+ *
+ *****************************************************************************/
 #define OSLAYER_ASSERT(x)
 #endif
 
-/******************************************************************************/
-/** @brief  Status codes of OS Abstraction Layer operation */
+
+/*****************************************************************************/
+/**
+ *          OSLAYER_STATUS
+ *
+ * @brief   Status codes of OS Abstraction Layer operation
+ *
+ *****************************************************************************/
 typedef enum {
 	OSLAYER_OK			= 0,
 	OSLAYER_ERROR			= -1,
@@ -125,8 +192,13 @@ typedef enum {
 	OSLAYER_SIGNAL_PENDING		= -6
 } OSLAYER_STATUS;
 
-/******************************************************************************/
-/** @brief  Priority of thread created by OS Abstraction Layer */
+/*****************************************************************************/
+/**
+ *          OSLAYER_THREAD_PRIO
+ *
+ * @brief   Priority of thread created by OS Abstraction Layer
+ *
+ *****************************************************************************/
 typedef enum {
 	OSLAYER_THREAD_PRIO_HIGHEST,
 	OSLAYER_THREAD_PRIO_HIGH,
@@ -135,6 +207,17 @@ typedef enum {
 	OSLAYER_THREAD_PRIO_LOWEST
 } OSLAYER_THREAD_PRIO;
 
+/*****************************************************************************/
+/**
+ *          osInterrupt
+ *
+ * @brief   Interrupt service structure for OS Abstraction Layer
+ *
+ * @note    This structure encapsulates interrupt handling functionality
+ *          including thread management, event signaling, and queue operations
+ *          for interrupt service routines.
+ *
+ *****************************************************************************/
 typedef struct {
 	osThread	isr_thread;
 	osEvent		isr_event;
@@ -148,9 +231,6 @@ typedef struct {
 	void		*p_context;
 } osInterrupt;
 
-
-/*****************************************************************************/
-/** @brief  Interrupt object of OS Abstraction Layer */
 
 #ifdef OSLAYER_TIMESTAMP
 /******************************************************************************
@@ -180,7 +260,8 @@ extern int32_t osTimeStampUs(int64_t *pTimeStamp);
  *
  ******************************************************************************/
 extern int32_t osTimeStampNs(int64_t *pTimeStamp);
-#endif /* OSLAYER_TIMESTAMP */
+#endif
+
 
 #ifdef OSLAYER_EVENT
 /******************************************************************************
@@ -321,8 +402,7 @@ extern int32_t osEventTimedWait(osEvent *pEvent, uint32_t msec);
  *  @return             always OSLAYER_OK
  ******************************************************************************/
 extern int32_t osEventDestroy(osEvent *pEvent);
-#endif /* OSLAYER_EVENT */
-
+#endif
 
 
 #ifdef OSLAYER_MUTEX
@@ -400,8 +480,7 @@ extern int32_t osMutexTryLock(osMutex *pMutex);
  *  @return             always OSLAYER_OK
  ******************************************************************************/
 extern int32_t osMutexDestroy(osMutex *pMutex);
-#endif /* OSLAYER_MUTEX */
-
+#endif
 
 
 #ifdef OSLAYER_SEMAPHORE
@@ -412,13 +491,14 @@ extern int32_t osMutexDestroy(osMutex *pMutex);
  *  @brief  Init a semaphore with init count.
  *
  *  @param  pSem           Reference of the semaphore object
+ *  @param  init_count     Semaphore object count
  *
  *  @return                Status of operation
  *  @retval OSLAYER_OK     Semaphore successfully created
  *  @retval OSLAYER_ERROR  Semaphore is not created
  *
  ******************************************************************************/
-extern int32_t osSemaphoreInit(osSemaphore *pSem, int32_t init_count);
+extern int32_t osSemaphoreInit(osSemaphore * pSem, int32_t init_count);
 
 /******************************************************************************
  *  osSemaphoreTimedWait()
@@ -516,27 +596,10 @@ extern int32_t osSemaphorePost(osSemaphore *pSem);
  *  @return             always OSLAYER_OK
  ******************************************************************************/
 extern int32_t osSemaphoreDestroy(osSemaphore *pSem);
-#endif /* OSLAYER_SEMAPHORE */
+#endif
 
-#ifdef OSLAYER_QUEUE_GENERIC
-/*****************************************************************************/
-/** @brief  Queue object (generic Version) of OS Abstraction Layer */
-typedef struct {
-	void		*p_next;
-	int32_t		ItemSize;
-	int32_t		ItemNum;
-	int32_t		ItemCount;
-	char		*pItemBuffer;
-	char		*pItemBufferEnd;
-	char		*pItemBufferRead;
-	char		*pItemBufferWrite;
-	osSemaphore	ItemsFreeSema;
-	osSemaphore	ItemsUsedSema;
-	osMutex AccessMutex;
-} osQueue;
-#endif /*OSLAYER_QUEUE_GENERIC*/
+
 #ifdef OSLAYER_QUEUE
-
 /******************************************************************************
  *  osQueueInit()
  *****************************************************************************/
@@ -557,6 +620,8 @@ typedef struct {
  *
  ******************************************************************************/
 extern int32_t osQueueInit(osQueue *pQueue, int32_t ItemNum, int32_t ItemSize);
+
+
 
 /******************************************************************************
  *  osQueueEmpty()
@@ -622,6 +687,8 @@ extern int32_t osQueueRead(osQueue *pQueue, void *pvItem);
  *
  *  @param  pvItem                    Reference to item to read from queue.
  *
+ *  @param  msec                      Value of Waiting Time.
+ *
  *  @return                           Status of operation.
  *  @retval OSLAYER_OK                Reading from queue succeeded.
  *  @retval OSLAYER_ERROR             Tried to read from a not initialized queue.
@@ -653,7 +720,6 @@ extern int32_t osQueueTimedRead(osQueue *pQueue, void *pvItem, uint32_t msec);
  *
  ******************************************************************************/
 extern int32_t osQueueTryRead(osQueue *pQueue, void *pvItem);
-
 
 /******************************************************************************
  *  osQueueTryReadInISR()
@@ -778,7 +844,8 @@ extern int32_t osQueueTryWrite(osQueue *pQueue, void *pvItem);
  *  @return             always OSLAYER_OK
  ******************************************************************************/
 extern int32_t osQueueDestroy(osQueue *pQueue);
-#endif /* OSLAYER_QUEUE */
+#endif
+
 
 #ifdef OSLAYER_ATOMIC
 /******************************************************************************
@@ -854,7 +921,7 @@ extern uint32_t osAtomicIncrement(uint32_t *pVar);
 extern uint32_t osAtomicDecrement(uint32_t *pVar);
 
 /******************************************************************************
- *   osAtomicSetBit()
+ *  osAtomicSetBit()
  *****************************************************************************/
 /**
  *  @brief  Set a bit position atomically.
@@ -878,12 +945,14 @@ extern int32_t osAtomicSetBit(uint32_t *pVar, uint32_t bitpos);
  *  Set variable to value. The operation is atomic (includes IRQ safety).
  *
  *  @param  pVar           32-bit unsigned variable to be modified
+ *
  *  @param  value          Value to be set
  *
  *  @return                always OSLAYER_OK
  ******************************************************************************/
 extern int32_t osAtomicSet(uint32_t *pVar, uint32_t value);
-#endif /* OSLAYER_ATOMIC */
+#endif
+
 
 #ifdef OSLAYER_THREAD
 /******************************************************************************
@@ -945,7 +1014,8 @@ extern int32_t osThreadWait(osThread *pThread);
  *  @return               always OSLAYER_OK
  ******************************************************************************/
 extern int32_t osThreadClose(osThread *pThread);
-#endif /* OSLAYER_THREAD */
+#endif
+
 
 #ifdef OSLAYER_MISC
 /******************************************************************************
@@ -1021,6 +1091,7 @@ extern void *osMalloc(uint32_t size);
  ******************************************************************************/
 extern int32_t osFree(void *p);
 
+
 #ifdef OSLAYER_KERNEL
 /******************************************************************************
  *  osSpinLockInit()
@@ -1032,7 +1103,7 @@ extern int32_t osFree(void *p);
  *
  *  @return                  always OSLAYER_OK
  ******************************************************************************/
-extern int32_t osSpinLockInit(osSpinLock *p_spin_lock);
+extern int32_t osSpinLockInit(osSpinLock * p_spin_lock);
 
 /******************************************************************************
  *  osSpinLockAcquire()

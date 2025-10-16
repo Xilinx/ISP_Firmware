@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 VeriSilicon Holdings Co., Ltd. ("VeriSilicon")
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,16 +22,19 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
+
 #ifndef LINUX_COMPAT_H_
 #define LINUX_COMPAT_H_
 
 #ifdef __cplusplus
 #include <cstdio>
 #include <cstdlib>
+
 #else
 #include <stdio.h>
 #include <stdlib.h>
 #endif
 
 #endif
+

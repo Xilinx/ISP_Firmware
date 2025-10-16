@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 VeriSilicon Holdings Co., Ltd. ("VeriSilicon")
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,7 +22,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
+
 #ifndef BUILTINS_H_
 #define BUILTINS_H_
 
@@ -31,14 +32,17 @@
 #if defined(__GNUC__)
 
 #include <stddef.h>
+
 void *__builtin_memset(void *s, int32_t c, size_t n);
 #define MEMSET(TARGET, C, LEN)		__builtin_memset(TARGET, C, LEN)
+
 void *__builtin_memcpy(void *s1, const void *s2, size_t n);
 #define MEMCPY(DST, SRC, LEN)		__builtin_memcpy(DST, SRC, LEN)
 
 #else
 
 #include <string.h>
+
 #define MEMSET(TARGET, C, LEN)		memset(TARGET, C, LEN)
 #define MEMCPY(DST, SRC, LEN)		memcpy(DST, SRC, LEN)
 

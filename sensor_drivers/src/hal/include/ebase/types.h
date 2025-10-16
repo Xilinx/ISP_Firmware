@@ -2,7 +2,8 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 VeriSilicon Holdings Co., Ltd. ("VeriSilicon")*
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
@@ -21,7 +22,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
+
 #ifndef TYPES_H_
 #define TYPES_H_
 
@@ -45,6 +47,8 @@
 	#define INLINE		(static inline)
     #endif
 #endif
+
+#include <stddef.h>
 
 #if defined(__cplusplus) || ((__STDC_VERSION__ >= 199901L))
     #include <stdint.h>
@@ -92,12 +96,13 @@ typedef enum {
 	DUMMY_BOOL = 0xDEADFEED
 } bool_t;
 
+
 #define UNUSED_PARAM(unref_param)			((void) (unref_param))
 #define CAST_POINTER_TO_UINT32(pointer)			((uint32_t) (pointer))
 #define CAST_POINTER_TO_INT32(pointer)			((int32_t) (pointer))
 #define CAST_UINT32_TO_POINTER(pointerType, value)	((pointerType)(value))
 #define CAST_INT32_TO_POINTER(value)			((int32_t *)(value))
-#define N_ELEMENTS(s)					(sizeof(s) / sizeof ((s)[0]))
+#define N_ELEMENTS(s)					(sizeof(s) / sizeof((s)[0]))
 #define ABS(a)						((a) > 0 ? (a) : -(a))
 
 #endif

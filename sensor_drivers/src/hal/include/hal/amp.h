@@ -23,37 +23,14 @@
  * DEALINGS IN THE SOFTWARE.
  *
  ******************************************************************************/
-#ifndef __MISC_H__
-#define __MISC_H__
 
-#ifndef __FLT_EPSILON__
-#define __FLT_EPSILON__		(0.000000119209289550781250000000)
-#endif
+ #ifndef _AMP_H_
+#define _AMP_H_
 
-#ifndef FLT_EPSILON
-#define FLT_EPSILON		__FLT_EPSILON__
-#endif
+void amp_core_data_init(void);
+void get_fmcinit_lock(void);
+void release_fmcinit_lock(void);
 
-#ifndef FLT_MAX
-#define FLT_MAX			((float)3.40282346638528860e+38)
-#endif
-
-#ifndef MIN
-#define MIN(a, b)		(((a) < (b)) ? (a) : (b))
-#endif
-
-#ifndef MAX
-#define MAX(a, b)		(((a) > (b)) ? (a) : (b))
-#endif
-
-#ifndef ABS
-#define ABS(a)			(((a) < 0) ? -(a) : (a))
-#endif
-
-#ifndef SIGN
-#define SIGN(a)			(((a) < 0) ? -1 : ((a) > 0) ? 1 : 0)
-#endif
-
-#define ARRAY_SIZE(arr)		(sizeof(arr) / sizeof((arr)[0]))
+#define AMP_SHARED_VAR_MEM_REG_SIZE 2048
 
 #endif

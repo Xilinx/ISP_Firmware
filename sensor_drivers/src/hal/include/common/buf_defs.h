@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 VeriSilicon Holdings Co., Ltd. ("VeriSilicon")
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,19 +22,20 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
+
 #ifndef __CAMERA_DEVICE_BUF_DEFS_H__
 #define __CAMERA_DEVICE_BUF_DEFS_H__
 
 #include <ebase/types.h>
 
-#define UNIQUE_ENUM_NAME(u)			assert_static__##u
+#define UNIQUE_ENUM_NAME(u)			assert_static__ ##u
 #define GET_ENUM_NAME(x)			UNIQUE_ENUM_NAME(x)
-#define DCT_ASSERT_STATIC(e)			enum { GET_ENUM_NAME(__LINE__) = 1/(e) }
+#define DCT_ASSERT_STATIC(e)			enum {  GET_ENUM_NAME(__LINE__) = 1/(e) }
 #define BUFF_POOL_MAX_INPUT_BUF_NUMBER		(8)
 #define BUFF_POOL_MAX_OUTPUT_BUF_NUMBER		(16)
-#define PIC_BUFFER_ALIGN			(0x400)
-#define PIC_WIDTH_ALIGN				(16)
+#define PIC_BUFFER_ALIGN			(0x400U)
+#define PIC_WIDTH_ALIGN				(16U)
 #define ALIGN_16BYTES(width)			(((width) + (0xFU)) & (~(0xFU)))
 #define PIC_BUFFER_MEM_SIZE_MAX			(512 * 1024 * 1024)
 #define PIC_BUFFER_NUM_INPUT			(1)
@@ -75,12 +76,12 @@ DCT_ASSERT_STATIC(((PIC_BUFFER_NUM_INPUT * PIC_BUFFER_SIZE_INPUT) + (PIC_BUFFER_
 #define PIC_BUFFER_SIZE_PP_PATH_RAW_SENSOR	(6 * 1024 * 1024)
 #define PIC_BUFFER_NUM_MAIN_SENSOR_IMGSTAB	(10)
 #define PIC_BUFFER_SIZE_MAIN_SENSOR_IMGSTAB	(6 * 1024 * 1024)
-#define PIC_BUFFER_SIZE_MAIN_SENSOR_IMGSTAB	(6 * 1024 * 1024)
 #define PIC_BUFFER_NUM_SELF_SENSOR_IMGSTAB	(10)
 #define PIC_BUFFER_SIZE_SELF_SENSOR_IMGSTAB	(6 * 1024 * 1024)
 
 DCT_ASSERT_STATIC(((PIC_BUFFER_NUM_MAIN_SENSOR*PIC_BUFFER_SIZE_MAIN_SENSOR) +
 	(PIC_BUFFER_NUM_SELF1_SENSOR*PIC_BUFFER_SIZE_SELF1_SENSOR)) < PIC_BUFFER_MEM_SIZE_MAX);
+
 #else
 #define PIC_BUFFER_NUM_MAIN_SENSOR		(6)
 #define PIC_BUFFER_SIZE_MAIN_SENSOR		(64 * 1024 * 1024)
@@ -110,13 +111,17 @@ DCT_ASSERT_STATIC(((PIC_BUFFER_NUM_MAIN_SENSOR*PIC_BUFFER_SIZE_MAIN_SENSOR) +
 #endif
 
 #define MEDIA_BUF_ALIGN(buf, align)	(((buf)+((align)-1U)) & ~((align)-1U))
-#define PIC_EXP_NUM_MAX			(4)
+#define PIC_EXP_NUM_MAX			(4U)
 #define METADATA_MAX_NUM		(3)
+#define META_CCM_MATRIX_NUM		(9U)
+#define META_CCM_OFFSET_NUM		(3U)
 
 typedef void *HalHandle_t;
 typedef void *BufMgmtHandle_t;
 
 /*****************************************************************************
+ *          BUFF_MODE
+ *
  * @brief   Enumeration type to specify the swap control.
  *
  * @note    This enumeration type is used to specify the swap control.
@@ -127,9 +132,17 @@ typedef enum {
 	BUFF_MODE_USRPTR		= 1,
 	BUFF_MODE_RESMEM		= 2,
 	BUFF_MODE_MAX,
-	DUMMY_BUFF_MODE			= 0xdeadfeed
+	DUMMY_BUFF			= 0xdeadfeed
 } BUFF_MODE;
 
+/*****************************************************************************
+ *          PicBufMiDataSwap_t
+ *
+ * @brief   Enumeration type to specify the swap control.
+ *
+ * @note    This enumeration type is used to specify the swap control.
+ *
+ *****************************************************************************/
 typedef enum {
 	PIC_BUF_MI_SWAP_INVALID		= -1,
 	PIC_BUF_MI_NO_SWAP		= 0,
@@ -138,8 +151,9 @@ typedef enum {
 	PIC_BUF_MI_SWAP_DOUBLE_WORDS	= 4,
 	PIC_BUF_MI_SWAP_FOUR_WORDS	= 8,
 	PIC_BUF_MI_SWAP_MAX,
-	DUMMY_PIC_BUF_MI_SWAP		= 0xdeadfeed
+	DUMMY_PIC_BUF_MI		= 0xdeadfeed
 } PicBufMiDataSwap_t;
+
 
 /*****************************************************************************
  *          PicBufType_t
@@ -176,24 +190,30 @@ typedef enum {
 	DUMMY_PIC_BUF_TYPE		= 0xdeadfeed
 } PicBufType_t;
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
+ *          PicBufRdceType_t
+ *
  * @brief   RDCE bit depth enum.
  *
  * @note    This is a enum of RDCE bit depth.
  *
  *****************************************************************************/
 typedef enum {
-	PIC_BUF_RDCE_BIT_DEPTH_INVALID	= -1,
+	PIC_BUF_RDCE_BIT_DEPTH_INVALID		= -1,
 	PIC_BUF_RDCE_BIT_DEPTH_RAW8,
 	PIC_BUF_RDCE_BIT_DEPTH_RAW10,
 	PIC_BUF_RDCE_BIT_DEPTH_RAW12,
 	PIC_BUF_RDCE_BIT_DEPTH_RAW14,
 	PIC_BUF_RDCE_BIT_DEPTH_RAW16,
 	PIC_BUF_RDCE_BIT_DEPTH_MAX,
-	DUMMY_PIC_BUF_RDCE_BIT_DEPTH	= 0xdeadfeed
+	DUMMY_PIC_BUF_RDCE_BIT			= 0xdeadfeed
 } PicBufRdceType_t;
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
+ *          PicBufRdceBayerPat_t
+ *
  * @brief   RDCE bayer pattern enum.
  *
  * @note    This is a enum of RDCE bayer pattern.
@@ -209,7 +229,8 @@ typedef enum {
 	DUMMY_PIC_BUF_RDCE_BPT		= 0xdeadfeed
 } PicBufRdceBayerPat_t;
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
  *          PicBufLayout_t
  *
  * @brief   The layout of the image data a picture buffer holds.
@@ -227,10 +248,11 @@ typedef enum {
 	PIC_BUF_LAYOUT_SEMIPLANAR	= 0x20,
 	PIC_BUF_LAYOUT_PLANAR		= 0x30,
 	PIC_BUF_LAYOUT_META_DATA	= 0x40,
-	DUMMY_PIC_BUF_LAYOUTT		= 0xdeadfeed
+	DUMMY_PIC_BUF_LAYOUT		= 0xdeadfeed
 } PicBufLayout_t;
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
  *          PixelDataAlignMode_t
  *
  * @brief   The align mode of the image data a picture buffer holds.
@@ -241,13 +263,20 @@ typedef enum {
 	PIC_BUF_DATA_ALIGN_MODE_INVALID		= -1,
 	PIC_BUF_DATA_UNALIGN_MODE		= 0,
 	PIC_BUF_DATA_ALIGN_128BIT_MODE		= 1,
-	PIC_BUF_DATA_ALIGN_DOUBLE_WORD		= 1,
-	PIC_BUF_DATA_ALIGN_WORD			= 2,
 	PIC_BUF_DATA_ALIGN_16BIT_MODE		= 2,
 	PIC_BUF_DATA_ALIGN_MODE_MAX,
 	DUMMY_PIC_BUF_DATA_ALIGN		= 0xdeadfeed
 } PicBufAlign_t;
 
+/*****************************************************************************/
+/**
+ *          PicBufYUVBIT_t
+ *
+ * @brief   Enumeration type to specify YUV bit depth
+ *
+ * @note    This enumeration defines the bit depth for YUV data formats
+ *
+ *****************************************************************************/
 typedef enum {
 	PIC_BUF_DATA_YUV_BIT_MAX_INVALID	= -1,
 	PIC_BUF_DATA_YUV_8_BIT			= 0,
@@ -257,7 +286,10 @@ typedef enum {
 	DUMMY_PIC_BUF_DATA_YUV			= 0xdeadfeed
 } PicBufYUVBIT_t;
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
+ *          PicBufYuvOrder_t
+ *
  * @brief   Enumeration type to specify the order of YUV or RGB channel,
  *          Right now only surpport RGB888 format
  *
@@ -274,7 +306,10 @@ typedef enum {
 	DUMMY_PIC_BUF_CHANNEL_ORDER		= 0xdeadfeed
 } PicBufYuvOrder_t;
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
+ *          PicBufLossMode_t
+ *
  * @brief   Picture buffer compress lossless/lossy  mode
  *
  *****************************************************************************/
@@ -285,6 +320,48 @@ typedef enum {
 	PIC_BUF_LOSS_MODE_MAX,
 	DUMMY_PIC_BUF_LOSS_MODE			= 0xdeadfeed
 } PicBufLossMode_t;
+
+/*****************************************************************************/
+/**
+ *          MetadatExposureFrameIndex_t
+ *
+ * @brief   Enumeration type to specify metadata exposure frame index
+ *
+ * @note    This enumeration defines different exposure frame types for metadata
+ *
+ *****************************************************************************/
+typedef enum {
+	META_EXPOSURE_LINEAR_FRAME		= 0,
+	META_EXPOSURE_LONG_FRAME		= 0,
+	META_EXPOSURE_SHORT_FRAME,
+	META_EXPOSURE_VERY_SHORT_FRAME,
+	META_EXPOSURE_EXTRA_SHORT_FRAME,
+	META_EXPOSURE_FIFTH_SHORT_FRAME,
+	META_EXPOSURE_COMBINED_FRAME,
+	META_EXPOSURE_FRAME_MAX,
+	DUMMY_META_EXPOSURE			= 0xdeadfeed
+} MetadatExposureFrameIndex_t;
+
+/*****************************************************************************/
+/**
+ *          MetadataLuxIndexSensorMode_t
+ *
+ * @brief   Enumeration type to specify metadata sensor mode
+ *
+ * @note    This enumeration defines different sensor operating modes for metadata
+ *
+ *****************************************************************************/
+typedef enum {
+	META_SENSOR_MODE_LINEAR			= 0,
+	META_SENSOR_MODE_NATIVE_2DOL,
+	META_SENSOR_MODE_NATIVE_3DOL,
+	META_SENSOR_MODE_NATIVE_4DOL,
+	META_SENSOR_MODE_STITCHING_2DOL,
+	META_SENSOR_MODE_STITCHING_3DOL,
+	META_SENSOR_MODE_STITCHING_4DOL,
+	META_SENSOR_MODE_MAX,
+	DUMMY_META_SENSOR_MODE			= 0xdeadfeed
+} MetadataLuxIndexSensorMode_t;
 
 /*****************************************************************************
  * @brief   Union type to specify the raw and yuv swap control.
@@ -318,9 +395,23 @@ typedef struct {
 	uint8_t		bitWidth;
 	uint8_t		*bufferInstance;
 	uint32_t	buff_address;
-	PicBufMiSwap_t swap;
+	PicBufMiSwap_t	swap;
 } BufIdentity;
 
+
+/*******************************************************************************
+ * @brief Common SCMI buffer type
+ *
+ * This structure defines a SCMI buffer. In addition to an address pointer to
+ * the actual buffer, this structure also contains the size of the buffer and
+ * an optional (may be null) pointer to some buffer meta data. This meta data
+ * is defined seperately for each specific buffer type. The buffer_flags
+ * variable contains more information about the buffer in the form of
+ * (up to 32) bit flags.
+ * The bit flags and their meaning are defined by each SCMI system separately.
+ * For a list of buffer bit flags, see the respective system's documentation.
+ *
+ ******************************************************************************/
 typedef struct {
 	void		*p_next;
 	void		*p_address;
@@ -332,6 +423,11 @@ typedef struct {
 	void		*p_meta_data;
 } ScmiBuffer;
 
+/******************************************************************************
+ *
+ * @brief The MediaBufferPool holds elements from type MediaBuffer_t.
+ *
+ ******************************************************************************/
 typedef struct {
 	uint32_t	baseAddress;
 	uint32_t	baseSize;
@@ -342,13 +438,16 @@ typedef struct {
 	uint8_t		index;
 	BUFF_MODE	bufMode;
 	void		*pIplAddress;
-#ifdef WITH_FLEXA
-	int		fd;
-	void		*mobj;
-#endif
 	ScmiBuffer	buf;
 } MediaBuffer_t;
 
+/*****************************************************************************/
+/**
+ *          PicBufPlane_t
+ *
+ * @brief   Common information about a color component plane within an image buffer.
+ *
+ *****************************************************************************/
 typedef struct {
 	uint8_t		*pData;
 	uint32_t	BaseAddress;
@@ -360,13 +459,81 @@ typedef struct {
 } PicBufPlane_t;
 
 typedef struct {
-	uint64_t	frameCount;
-	uint64_t	timestamp_sof;
-	uint64_t	timestamp_eof;
-	float		sensorGain[PIC_EXP_NUM_MAX];
-	float		expoInfo[PIC_EXP_NUM_MAX];
+	float	redChannel;
+	float	grChannel;
+	float	gbChannel;
+	float	blueChannel;
+} MetadataRawChannelFloat_t;
+
+/*****************************************************************************/
+/**
+ * @brief   Cam Engine integer range information structure.
+ *
+ *****************************************************************************/
+typedef struct {
+	uint32_t	max;
+	uint32_t	min;
+	uint32_t	step;
+} MetadataIntegerRange_t;
+
+typedef struct {
+	float	max;
+	float	min;
+	float	step;
+} MetadataFloatRange_t;
+
+/******************************************************************************/
+/**
+ * @brief   Cam Engine ccm manual configuration structure.
+ *
+ *****************************************************************************/
+typedef struct {
+	float		ccmMatrix[META_CCM_MATRIX_NUM];
+	float		ccmOffset[META_CCM_OFFSET_NUM];
+} MetadataCcmConfig_t;
+
+/*****************************************************************************/
+/**
+ *          PicBufMetadataInfo_t
+ *
+ * @brief  image all metadata info.
+ *
+ *****************************************************************************/
+typedef struct {
+	uint32_t			frameCount;
+	uint64_t			timestamp_sof;
+	uint64_t			timestamp_eof;
+	float				sensorGain[PIC_EXP_NUM_MAX];
+	float				expoInfo[PIC_EXP_NUM_MAX];
+	MetadataCcmConfig_t		ccmConfig;
+	MetadataRawChannelFloat_t	sensorWbgain[META_EXPOSURE_FRAME_MAX];
+	MetadataRawChannelFloat_t	ispWbGain;
+	MetadataRawChannelFloat_t	ispDgain;
+	uint32_t			integrationTime[META_EXPOSURE_FRAME_MAX];
+	MetadataIntegerRange_t		integrationTimeRange[META_EXPOSURE_FRAME_MAX];
+	float				analogGain[META_EXPOSURE_FRAME_MAX];
+	MetadataFloatRange_t		analogGainRange[META_EXPOSURE_FRAME_MAX];
+	float				digitalGain[META_EXPOSURE_FRAME_MAX];
+	MetadataFloatRange_t		digitalGainRange[META_EXPOSURE_FRAME_MAX];
+	uint8_t				exposureNum;
+	uint32_t			bitWidth;
+	uint32_t			width;
+	uint32_t			height;
+	uint8_t				bayerPattern;
+	MetadataLuxIndexSensorMode_t	sensorMode;
+	float				hdrRatio;
+	float				totalGain;
+	float				luxIndex;
+	float				edrValue;
 } PicBufMetadataInfo_t;
 
+/*****************************************************************************/
+/**
+ *          MetadataBufInfo_t
+ *
+ * @brief  metadata windows buffer info.
+ *
+ *****************************************************************************/
 typedef struct {
 	uint8_t		winNum;
 	uint8_t		*pBuffer[METADATA_MAX_NUM];
@@ -374,6 +541,13 @@ typedef struct {
 	uint32_t	bufferSize[METADATA_MAX_NUM];
 } MetadataBufInfo_t;
 
+/*****************************************************************************/
+/**
+ *          RDC compress information
+ *
+ * @brief  compress information for buffer decompress.
+ *
+ *****************************************************************************/
 typedef struct {
 	bool_t			compressed;
 	PicBufLossMode_t	lossMode;
@@ -384,23 +558,30 @@ typedef struct {
 	uint32_t		crcValue;
 } PicBufCmpInfo_t;
 
-typedef struct PicBufMetaData_s {
-	PicBufType_t				Type;
-	PicBufLayout_t				Layout;
-	uint32_t				Align;
-	int64_t					TimeStampUs;
-	struct PicBufMetaData_s			*pNext3D;
-	PicBufCmpInfo_t				compressInfo;
-	PicBufMetadataInfo_t			metaInfo;
-	PicBufYuvOrder_t			yuvOrder;
-	PicBufMiSwap_t				swap;
+/*****************************************************************************/
+/**
+ *          PicBufMetaData_t
+ *
+ * @brief   All the meta data one needs to know about an image buffer.
+ *
+ *****************************************************************************/
+typedef struct {
+	PicBufType_t		Type;
+	PicBufLayout_t		Layout;
+	uint32_t		Align;
+	int64_t			TimeStampUs;
+	struct PicBufMetaData_s	*pNext3D;
+	PicBufCmpInfo_t		compressInfo;
+	uint32_t		crcValue;
+	PicBufMetadataInfo_t	metaInfo;
+	PicBufYuvOrder_t	yuvOrder;
+	PicBufMiSwap_t		swap;
 	union Data_u {
 		struct data_s {
-			uint8_t			*pData;
-			uint32_t		BaseAddress;
-			uint32_t		DataSize;
+			uint8_t		*pData;
+			uint32_t	BaseAddress;
+			uint32_t	DataSize;
 		} data;
-
 		struct data_meta {
 			uint8_t			*pData;
 			uint32_t		BaseAddress;
@@ -408,23 +589,19 @@ typedef struct PicBufMetaData_s {
 			PicBufPlane_t		plane[METADATA_MAX_NUM];
 			MetadataBufInfo_t	metaBufInfo;
 		} meta;
-
-		PicBufPlane_t raw;
-
+		PicBufPlane_t		raw;
 		struct jpeg_s {
-			uint8_t			*pHeader;
-			uint32_t		HeaderSize;
-			uint8_t			*pData;
-			uint32_t		BaseAddress;
-			uint32_t		DataSize;
+			uint8_t		*pHeader;
+			uint32_t	HeaderSize;
+			uint8_t		*pData;
+			uint32_t	BaseAddress;
+			uint32_t	DataSize;
 		} jpeg;
-
 		union YCbCr_u {
-			PicBufPlane_t combined;
+			PicBufPlane_t	combined;
 			struct semiplanar_s {
 				PicBufPlane_t	Y;
 				PicBufPlane_t	CbCr;
-				uint8_t		bitWidth;
 			} semiplanar;
 			struct planar_YUV_s {
 				PicBufPlane_t	Y;
@@ -432,9 +609,8 @@ typedef struct PicBufMetaData_s {
 				PicBufPlane_t	Cr;
 			} planar;
 		} YCbCr;
-
 		union RGB_u {
-			PicBufPlane_t combined;
+			PicBufPlane_t		combined;
 			struct planar_RGB_s {
 				PicBufPlane_t	R;
 				PicBufPlane_t	G;

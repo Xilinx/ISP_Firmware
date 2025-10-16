@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 VeriSilicon Holdings Co., Ltd. ("VeriSilicon")
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,7 +22,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
+
 #ifndef TRACE_H_
 #define TRACE_H_
 
@@ -38,6 +39,17 @@ extern "C"
 #undef ERROR
 #endif
 
+/*****************************************************************************/
+/**
+ *          TraceLevel_e
+ *
+ * @brief   Trace level enumeration for controlling trace output verbosity
+ *
+ * @note    These constants define the available trace levels. Multiple levels
+ *          can be combined using bitwise OR operations. MAX_LEVEL represents
+ *          all levels enabled.
+ *
+ *****************************************************************************/
 enum {
 	TRACE_OFF		= 0x00,
 	INFO			= 0x01,
@@ -47,6 +59,16 @@ enum {
 	MAX_LEVEL		= (0x01U | 0x02U | 0x04U | 0x08U)
 };
 
+/*****************************************************************************/
+/**
+ *          Tracer
+ *
+ * @brief   Structure representing a tracer instance with output configuration
+ *
+ * @note    This structure contains all the information needed to manage
+ *          a tracer including output file, prefix, level, and state.
+ *
+ *****************************************************************************/
 typedef struct {
 	FILE			*fp;
 	char_t			*prefix;
@@ -67,157 +89,332 @@ void flushTracer(const Tracer *);
 void trace(Tracer *, const CHAR *, ...);
 Tracer *getTracerList(void);
 
+/*****************************************************************************/
+/**
+ *          TRACER_DATA
+ *
+ * @brief   Macro to define tracer data storage location based on configuration
+ *
+ * @note    When USE_SDRAM_FOR_TRACE is defined, tracer data is stored in
+ *          SDRAM using DRAM_DATA attribute. Otherwise, data is stored in
+ *          default memory sections.
+ *
+ *****************************************************************************/
 #if !defined(USE_SDRAM_FOR_TRACE)
 #define TRACER_DATA
 #else
 #define TRACER_DATA		DRAM_DATA
 #endif
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
+ *          CREATE_TRACER
  *
- *          This macro creates a Tracer. Every Tracer has its own output like
- *          stdout or a file and a trace level associated. A tracer may be
- *          enabled and disabled. If the global trace level is lower than the
- *          Tracers level, than output send to an enabled tracer is output to
- *          its file or stdout. If eg the global trace level is INFO and the
- *          Tracer has the level WARNING, its output is active. If the global
- *          trace level were ERROR instead, output of the tracer were
- *          suppressed.
+ * @brief   Macro to create and initialize a new tracer instance
  *
- *          \warning THIS MACRO MUST BE USED IN GLOBAL SCOPE.
+ * @param   name         Name identifier for the tracer
+ * @param   arg_prefix   String prefix prepended to all tracer output
+ * @param   arg_level    Initial trace level (INFO, WARNING, ERROR, DEBUG)
+ * @param   arg_enabled  Initial enabled state (0=disabled, 1=enabled)
  *
+ * @note    This macro creates a tracer with its own output destination and
+ *          trace level. A tracer may be enabled/disabled independently.
+ *          Output is generated only if both the tracer is enabled AND the
+ *          global trace level permits the tracer's level.
  *
- *  @param    name          Name of the tracer.
- *  @param    arg_prefix    All output of this tracer is preceeded by
- *                          <arg_prefix>.
- *  @param    arg_level     Initial trace level.
- *  @param    arg_enabled   Decide wether the tracer starts in enabled state.
- *
- *  @return   No return value.
+ * @warning THIS MACRO MUST BE USED IN GLOBAL SCOPE
  *
  *****************************************************************************/
-#define CREATE_TRACER(name, arg_prefix, arg_level, arg_enabled)		\
-	CHAR tracerName##name[] TRACER_DATA = #name; \
-	CHAR tracerPrefix##name[] TRACER_DATA = arg_prefix; \
-	Tracer instance__##name TRACER_DATA =	\
-	{					\
-		0,				\
-		&tracerPrefix##name[0],		\
-		arg_level,			\
-		arg_enabled,			\
-		0,				\
-		&tracerName##name[0],		\
-		NULL				\
-	};					\
-	Tracer *name = &instance__##name
+#define CREATE_TRACER(name, arg_prefix, arg_level, arg_enabled)			\
+			CHAR tracerName##name[] TRACER_DATA = #name;		\
+			CHAR tracerPrefix##name[] TRACER_DATA = arg_prefix;	\
+			Tracer instance__##name TRACER_DATA =			\
+			{					\
+				0,				\
+				&tracerPrefix##name[0],		\
+				arg_level,			\
+				arg_enabled,			\
+				0,				\
+				&tracerName##name[0],		\
+				NULL				\
+			};					\
+			Tracer *name = &instance__##name
 
-    /*****************************************************************************
-     *
-     *              If tracer was created in another compile unit this macro
-     *              makes the named tracer available in the current unit.
-     *
-     *  @param      ...     First parameter is name of tracer.Use variable argument
-     *                      list like printf.
-     *  @return     No return value.
-     *
-     *****************************************************************************/
+/*****************************************************************************/
+/**
+ *          USE_TRACER
+ *
+ * @brief   Macro to declare an external tracer created in another compilation unit
+ *
+ * @param   name    Name of the tracer to import
+ *
+ * @note    Use this macro to access a tracer that was created with
+ *          CREATE_TRACER in a different source file.
+ *
+ *****************************************************************************/
 #define USE_TRACER(name)	(extern Tracer *name)
 
-    /*****************************************************************************
-     *
-     *              Send output to a tracer.
-     *
-     *  @param      ...     First parameter is name of tracer.Use variable argument
-     *                      list like printf.
-     *  @return             No return value.
-     *
-     *****************************************************************************/
+/*****************************************************************************/
+/**
+ *          TRACE
+ *
+ * @brief   Macro to send formatted output to a specified tracer
+ *
+ * @param   ...    Variable argument list: first parameter is tracer name,
+ *                 followed by printf-style format string and arguments
+ *
+ * @note    Output is generated only if the tracer is enabled and the
+ *          global trace level permits the tracer's configured level.
+ *
+ *****************************************************************************/
 #define TRACE(...)		trace(__VA_ARGS__)
 
-    /*****************************************************************************
-     *
-     *              Send output to a tracer, If DEBUG_LEVEL if high enough
-     *
-     *  @param      ...     First parameter is the required DEBUG_LEVEL to get the
-     *                      output, second parameter is name of tracer. Use variable argument
-     *                      list like printf.
-     *  @return             No return value.
-     *
-     *****************************************************************************/
+/*****************************************************************************/
+/**
+ *          DL_TRACE
+ *
+ * @brief   Macro for conditional trace output based on debug level
+ *
+ * @param   level    Minimum DEBUG_LEVEL required for output
+ * @param   ...      Variable argument list: tracer name followed by
+ *                   printf-style format string and arguments
+ *
+ * @note    Output is generated only if the compiled DEBUG_LEVEL is equal
+ *          to or greater than the specified level parameter.
+ *          If DEBUG_LEVEL is not defined, this macro becomes a no-op.
+ *
+ *****************************************************************************/
 #if defined(DEBUG_LEVEL)
-#define DL_TRACE(level, ...)		(if (DEBUG_LEVEL >= level) { trace(__VA_ARGS__); })
+#define DL_TRACE(level, ...)		do { if (level <= DEBUG_LEVEL) { trace(__VA_ARGS__); }	\
+					} while (0)
 #else
 #define DL_TRACE(level, ...)		((void)0)
 #endif
 
-    /*****************************************************************************
-     *
-     *              Enable a tracer.
-     *
-     *  @param      T   name of tracer.
-     *  @return     No return value.
-     *
-     *****************************************************************************/
+/*****************************************************************************/
+/**
+ *          ENABLE_TRACER
+ *
+ * @brief   Macro to enable output for a specified tracer
+ *
+ * @param   T    Name of the tracer to enable
+ *
+ * @note    Enabling a tracer allows it to generate output when TRACE
+ *          is called, subject to the global trace level settings.
+ *
+ *****************************************************************************/
 #define ENABLE_TRACER(T)		(enableTracer(T))
 
-    /*****************************************************************************
-     *
-     *              Disable a tracer.
-     *
-     *  @param      T   name of tracer.
-     *  @return     No return value.
-     *
-     *****************************************************************************/
+/*****************************************************************************/
+/**
+ *          DISABLE_TRACER
+ *
+ * @brief   Macro to disable output for a specified tracer
+ *
+ * @param   T    Name of the tracer to disable
+ *
+ * @note    Disabling a tracer prevents it from generating any output
+ *          when TRACE is called, regardless of global trace level.
+ *
+ *****************************************************************************/
 #define DISABLE_TRACER(T)		(disableTracer(T))
 
-    /*****************************************************************************
-     *
-     *              Set the global trace level.
-     *
-     *  @param      L   Trace level.
-     *  @return     No return value.
-     *
-     *****************************************************************************/
+/*****************************************************************************/
+/**
+ *          SET_TRACE_LEVEL
+ *
+ * @brief   Macro to set the global trace level threshold
+ *
+ * @param   L    Trace level (INFO, WARNING, ERROR, DEBUG, or OFF)
+ *
+ * @note    Only tracers with levels at or above this threshold will
+ *          generate output. Lower priority messages will be filtered out.
+ *
+ *****************************************************************************/
 #define SET_TRACE_LEVEL(L)		(setTraceLevel(L))
 
-    /*****************************************************************************
-     *
-     *              Redirect a tracer to a file.
-     *
-     *  @param      T   name of tracer.
-     *  @param      F   A valid FILE*.
-     *
-     *  @return     No return value.
-     *
-     *****************************************************************************/
+/*****************************************************************************/
+/**
+ *          SET_TRACER_FILE
+ *
+ * @brief   Macro to redirect tracer output to a specific file
+ *
+ * @param   T    Name of the tracer to redirect
+ * @param   F    File pointer (FILE*) for output destination
+ *
+ * @note    Redirects all output from the specified tracer to the given
+ *          file. Use stdout/stderr for console output, or a file opened
+ *          with fopen() for file output.
+ *
+ *****************************************************************************/
 #define SET_TRACER_FILE(T, F)		(setTracerFile(T, F))
 
-    /*****************************************************************************
-     *
-     *              Flush a tracer.
-     *
-     *  @param      T   name of tracer.
-     *
-     *  @return     No return value.
-     *
-     *****************************************************************************/
+/*****************************************************************************/
+/**
+ *          FLUSH_TRACER
+ *
+ * @brief   Macro to flush pending output for a specified tracer
+ *
+ * @param   T    Name of the tracer to flush
+ *
+ * @note    Forces any buffered output from the tracer to be written
+ *          immediately to its output destination. Useful for ensuring
+ *          critical messages are not lost if the program terminates.
+ *
+ *****************************************************************************/
 #define FLUSH_TRACER(T)			(flushTracer(T))
 
+/*****************************************************************************/
+/**
+ *          GET_TRACE_LEVEL
+ *
+ * @brief   Macro to retrieve the current global trace level
+ *
+ * @return  Current trace level setting (INFO, WARNING, ERROR, DEBUG, or OFF)
+ *
+ * @note    Returns the threshold level that determines which tracer
+ *          output will be displayed. Can be used for conditional logic.
+ *
+ *****************************************************************************/
 #define GET_TRACE_LEVEL()		(getTraceLevel())
+
+/*****************************************************************************/
+/**
+ *          GET_TRACER_LIST
+ *
+ * @brief   Macro to retrieve a pointer to the global tracer list
+ *
+ * @return  Pointer to the linked list of all registered tracers
+ *
+ * @note    Returns a pointer to the internal tracer list structure.
+ *          Can be used to iterate through all tracers for management
+ *          or debugging purposes.
+ *
+ *****************************************************************************/
 #define GET_TRACER_LIST()		(getTracerList())
+
+/*****************************************************************************/
+/**
+ *          IF_TRACE_ON
+ *
+ * @brief   Conditional compilation macro for trace-enabled code
+ *
+ * @param   x    Code block to include when tracing is enabled
+ *
+ * @note    When TRACE_ON is defined, the code in parameter x is compiled.
+ *          When tracing is disabled, the code is completely removed.
+ *          Use this to avoid overhead of trace-related computations
+ *          in release builds.
+ *
+ *****************************************************************************/
 #define IF_TRACE_ON(x)			x
 #else
+    /*****************************************************************************
+     *
+     *          CREATE_TRACER
+     *
+     * @brief   Dummy tracer creation macro when tracing is disabled.
+     *
+     *****************************************************************************/
 #define CREATE_TRACER(name, arg_prefix, arg_level, arg_enabled)		extern int32_t name
+
+    /*****************************************************************************
+     *
+     *          USE_TRACER
+     *
+     * @brief   Dummy tracer usage macro when tracing is disabled.
+     *
+     *****************************************************************************/
 #define USE_TRACER(name)		(extern int32_t use##name)
+
+    /*****************************************************************************
+     *
+     *          TRACE
+     *
+     * @brief   Dummy trace macro when tracing is disabled.
+     *
+     *****************************************************************************/
 #define TRACE(...)			((void)0)
+
+    /*****************************************************************************
+     *
+     *          DL_TRACE
+     *
+     * @brief   Dummy debug level trace macro when tracing is disabled.
+     *
+     *****************************************************************************/
 #define DL_TRACE(level, ...)		((void)0)
+
+    /*****************************************************************************
+     *
+     *          ENABLE_TRACER
+     *
+     * @brief   Dummy tracer enable macro when tracing is disabled.
+     *
+     *****************************************************************************/
 #define ENABLE_TRACER(T)		((void)0)
+
+    /*****************************************************************************
+     *
+     *          DISABLE_TRACER
+     *
+     * @brief   Dummy tracer disable macro when tracing is disabled.
+     *
+     *****************************************************************************/
 #define DISABLE_TRACER(T)		((void)0)
+
+    /*****************************************************************************
+     *
+     *          SET_TRACE_LEVEL
+     *
+     * @brief   Dummy trace level set macro when tracing is disabled.
+     *
+     *****************************************************************************/
 #define SET_TRACE_LEVEL(L)		((void)0)
+
+    /*****************************************************************************
+     *
+     *          SET_TRACER_FILE
+     *
+     * @brief   Dummy tracer file set macro when tracing is disabled.
+     *
+     *****************************************************************************/
 #define SET_TRACER_FILE(T, F)		((void)0)
+
+    /*****************************************************************************
+     *
+     *          FLUSH_TRACER
+     *
+     * @brief   Dummy tracer flush macro when tracing is disabled.
+     *
+     *****************************************************************************/
 #define FLUSH_TRACER(T)			((void)0)
+
+    /*****************************************************************************
+     *
+     *          GET_TRACE_LEVEL
+     *
+     * @brief   Dummy trace level get macro when tracing is disabled.
+     *
+     *****************************************************************************/
 #define GET_TRACE_LEVEL()		((void)0)
+
+    /*****************************************************************************
+     *
+     *          GET_TRACER_LIST
+     *
+     * @brief   Dummy tracer list get macro when tracing is disabled.
+     *
+     *****************************************************************************/
 #define GET_TRACER_LIST()		((void)0)
+
+    /*****************************************************************************
+     *
+     *          IF_TRACE_ON
+     *
+     * @brief   Dummy conditional compilation macro when tracing is disabled.
+     *
+     *****************************************************************************/
 #define IF_TRACE_ON(x)
 #endif
 

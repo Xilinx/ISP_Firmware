@@ -1,28 +1,29 @@
 /****************************************************************************
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
- * DEALINGS IN THE SOFTWARE.
- *
- ****************************************************************************/
+  *
+  * The MIT License (MIT)
+  *
+  * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a
+  * copy of this software and associated documentation files (the "Software"),
+  * to deal in the Software without restriction, including without limitation
+  * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+  * and/or sell copies of the Software, and to permit persons to whom the
+  * Software is furnished to do so, subject to the following conditions:
+  *
+  * The above copyright notice and this permission notice shall be included in
+  * all copies or substantial portions of the Software.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+  * DEALINGS IN THE SOFTWARE.
+  *
+  ******************************************************************************/
+
 #ifndef __Ox05b1s_PRIV_H__
 #define __Ox05b1s_PRIV_H__
 
@@ -33,13 +34,11 @@
 #include <isi/isi_vvsensor.h>
 #include <isi/isi_priv.h>
 
-#define OX05B1S_TABLE_END	(0xffff)
-#define OX05B1S_TABLE_WAIT	(0xfffe)
-#define OX05B1S_TABLE_WAIT_MS	(210)
-#define DSER_ADDR		(0x68)
-#define SER_ADDR		(0x62)
-
-extern int g_Sensor_frame_count;
+#define OX05B1S_TABLE_END		(0xffff)
+#define OX05B1S_TABLE_WAIT		(0xfffe)
+#define OX05B1S_TABLE_WAIT_MS		(210)
+#define DSER_ADDR			(0x68)
+#define SER_ADDR			(0x62)
 
 #ifdef __cplusplus
 extern "C"
@@ -47,72 +46,73 @@ extern "C"
 #endif
 
 typedef struct {
-	IsiSensorContext_t	isiCtx;
-	IsiSensorMode_t		sensorMode;
+	IsiSensorContext_t     isiCtx;
+	IsiSensorMode_t        sensorMode;
 
-	uint32_t		maxFps;
-	uint32_t		minFps;
-	uint32_t		currFps;
+	uint32_t               maxFps;
+	uint32_t               minFps;
+	uint32_t               currFps;
 
-	bool_t			configured;
-	bool_t			streaming;
-	bool_t			testPattern;
-	bool_t			isAfpsRun;
+	bool_t                 configured;
+	bool_t                 streaming;
+	bool_t                 testPattern;
+	bool_t                 isAfpsRun;
 
-	float			oneLineExpTime;
-	uint16_t		maxIntegrationLine;
-	uint16_t		minIntegrationLine;
+	float                  oneLineExpTime;
+	uint16_t               maxIntegrationLine;
+	uint16_t               minIntegrationLine;
+	uint16_t               frameLengthLines;
+	uint16_t               curFrameLengthLines;
 
-	uint16_t		frameLengthLines;
-	uint16_t		curFrameLengthLines;
+	float                  aecMinGain;
+	float                  aecMaxGain;
+	float                  aecMinIntegrationTime;
+	float                  aecMaxIntegrationTime;
+	float                  aecIntegrationTimeIncrement;
+	float                  aecGainIncrement;
+	float                  aecCurGain;
+	float                  aecCurIntegrationTime;
+	float                  curAgain;
+	float                  curDgain;
 
-	float			aecMinGain;
-	float			aecMaxGain;
-	float			aecMinIntegrationTime;
-	float			aecMaxIntegrationTime;
+	bool                   groupHold;
 
-	float			aecIntegrationTimeIncrement;
-	float			aecGainIncrement;
+	IsiGainInfo_t          aGain;
+	IsiGainInfo_t          dGain;
+	IsiSensorWb_t          sensorWb;
 
-	float			aecCurGain;
-	float			aecCurIntegrationTime;
-	float			curAgain;
-	float			curDgain;
-
-	bool			groupHold;
-
-	IsiGainInfo_t		aGain;
-	IsiGainInfo_t		dGain;
-
-	IsiSensorWb_t		sensorWb;
-
-	uint32_t		i2cId;
-	uint32_t		sensorDevId;
-	IsiIrLightExp_t		irLightExp;
-	IsiIrLightInfo_t	irLightInfo;
-
+	uint32_t               i2cId;
+	uint32_t               sensorDevId;
+	IsiIrLightExp_t        irLightExp;
+	IsiIrLightInfo_t       irLightInfo;
 } Ox05b1s_Context_t;
 
-static RESULT Ox05b1s_IsiCreateIss(IsiSensorInstanceConfig_t *ConfigPtr,
-					IsiSensorHandle_t *HandlePtr);
+static RESULT Ox05b1s_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
+				IsiSensorHandle_t *pHandle);
 static RESULT Ox05b1s_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode);
 static RESULT Ox05b1s_IsiCloseIss(IsiSensorHandle_t handle);
 static RESULT Ox05b1s_IsiReleaseIss(IsiSensorHandle_t handle);
-static RESULT Ox05b1s_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *CapsPtr);
+static RESULT Ox05b1s_IsiGetCapsIss(IsiSensorHandle_t handle,
+				IsiCaps_t *pCaps);
 static RESULT Ox05b1s_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t on);
-static RESULT Ox05b1s_IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *ValuePtr);
+static RESULT Ox05b1s_IsiGetRevisionIss(IsiSensorHandle_t handle,
+					uint32_t *pValue);
 static RESULT Ox05b1s_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
-					IsiAeBaseInfo_t *AeBaseInfoPtr);
-static RESULT Ox05b1s_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *SensorAGainPtr);
-static RESULT Ox05b1s_IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *SensorDGainPtr);
-static RESULT Ox05b1s_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *SensorAGainPtr);
-static RESULT Ox05b1s_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *SensorDGainPtr);
+					IsiAeBaseInfo_t *pAeBaseInfo);
+static RESULT Ox05b1s_IsiGetAGainIss(IsiSensorHandle_t handle,
+				IsiSensorGain_t *pSensorAGain);
+static RESULT Ox05b1s_IsiGetDGainIss(IsiSensorHandle_t handle,
+				IsiSensorGain_t *pSensorDGain);
+static RESULT Ox05b1s_IsiSetAGainIss(IsiSensorHandle_t handle,
+				IsiSensorGain_t *pSensorAGain);
+static RESULT Ox05b1s_IsiSetDGainIss(IsiSensorHandle_t handle,
+				IsiSensorGain_t *pSensorDGain);
 static RESULT Ox05b1s_IsiGetIntTimeIss(IsiSensorHandle_t handle,
-					IsiSensorIntTime_t *SensorIntTimePtr);
+					IsiSensorIntTime_t *pSensorIntTime);
 static RESULT Ox05b1s_IsiSetIntTimeIss(IsiSensorHandle_t handle,
-					IsiSensorIntTime_t *SensorIntTimePtr);
+					IsiSensorIntTime_t *pSensorIntTime);
 
-static uint16_t Ox05b1s_mipi4lane_linear_init[][2] = {
+static uint16_t Ox05b1s_mipi4lane_2592_1944_linear_init[][2] = {
 	{0x3000, 0x01},
 	{OX05B1S_TABLE_WAIT, OX05B1S_TABLE_WAIT_MS},
 	{0x3002, 0x01},
@@ -120,9 +120,9 @@ static uint16_t Ox05b1s_mipi4lane_linear_init[][2] = {
 	{0x0107, 0x01},
 	{0x0104, 0x00},
 	{0x0301, 0x1a},
-	{0x0305, 0xf0},
+	{0x0305, 0x00},
 	{0x0306, 0x04},
-	{0x0304, 0x00},
+	{0x0304, 0x01},
 	{0x0307, 0x01},
 	{0x0321, 0x03},
 	{0x0324, 0x01},
@@ -131,7 +131,7 @@ static uint16_t Ox05b1s_mipi4lane_linear_init[][2] = {
 	{0x0344, 0x01},
 	{0x0345, 0xb0},
 	{0x0347, 0x07},
-	{0x034a, 0x04},
+	{0x034a, 0x07},
 	{0x034b, 0x06},
 	{0x0360, 0x80},
 	{0x040b, 0x5c},
@@ -448,6 +448,14 @@ static uint16_t Ox05b1s_mipi4lane_linear_init[][2] = {
 	{0x386a, 0x01},
 	{0x386b, 0x01},
 	{0x386c, 0x46},
+	{0x386d, 0x07},
+	{0x386e, 0xd2},
+	{0x380c, 0x02},
+	{0x380d, 0xf0},
+	{0x380e, 0x08},
+	{0x380f, 0x50},
+	{0x382c, 0x0c},
+	{0x382d, 0x15},
 	{0x386d, 0x07},
 	{0x386e, 0xd2},
 	{0x3871, 0x01},
@@ -1069,7 +1077,7 @@ static uint16_t Ox05b1s_mipi4lane_linear_init[][2] = {
 	{0x4710, 0x00},
 	{0x4802, 0x00},
 	{0x481b, 0x3c},
-	{0x4837, 0x28},
+	{0x4837, 0x1f},
 	{0x4860, 0x00},
 	{0x4883, 0x00},
 	{0x4884, 0x09},
@@ -1181,12 +1189,12 @@ static uint16_t Ox05b1s_mipi4lane_linear_init[][2] = {
 	{OX05B1S_TABLE_END, 0x00}
 };
 
-static uint16_t Ox05b1s_mipi4lane_ABmode_init[][2] = {
+static uint16_t Ox05b1s_mipi4lane_2592_1944_linear_ABmode_init[][2] = {
 	{0x0107, 0x01},
 	{0x0104, 0x00},
 	{0x0301, 0x1a},
 	{0x0304, 0x01},
-	{0x0305, 0xe0},
+	{0x0305, 0x00},
 	{0x0306, 0x04},
 	{0x0307, 0x01},
 	{0x0321, 0x03},
@@ -1196,6 +1204,7 @@ static uint16_t Ox05b1s_mipi4lane_ABmode_init[][2] = {
 	{0x0344, 0x01},
 	{0x0345, 0xb0},
 	{0x0347, 0x07},
+	{0x034a, 0x07},
 	{0x034b, 0x06},
 	{0x0360, 0x80},
 	{0x040b, 0x5c},
@@ -1304,8 +1313,7 @@ static uint16_t Ox05b1s_mipi4lane_ABmode_init[][2] = {
 	{0x3633, 0x88},
 	{0x3634, 0x86},
 	{0x3636, 0x80},
-	{0x3638, 0x3b},
-	{0x363a, 0x00},
+	{0x3638, 0x5b},
 	{0x363b, 0x22},
 	{0x363c, 0x07},
 	{0x363d, 0x11},
@@ -1345,7 +1353,7 @@ static uint16_t Ox05b1s_mipi4lane_ABmode_init[][2] = {
 	{0x36a2, 0x19},
 	{0x36a3, 0x05},
 	{0x36a4, 0x07},
-	{0x36a5, 0x29},
+	{0x36a5, 0x27},
 	{0x36a6, 0x00},
 	{0x36a7, 0x80},
 	{0x36e3, 0x09},
@@ -1424,7 +1432,6 @@ static uint16_t Ox05b1s_mipi4lane_ABmode_init[][2] = {
 	{0x377a, 0x00},
 	{0x377d, 0x14},
 	{0x377e, 0x0c},
-	{0x379c, 0x25},
 	{0x379f, 0x00},
 	{0x37a3, 0x40},
 	{0x37a4, 0x03},
@@ -2227,45 +2234,38 @@ static uint16_t Ox05b1s_mipi4lane_ABmode_init[][2] = {
 	{0x6027, 0x00},
 	{0x6028, 0x01},
 	{0x6029, 0x00},
-	{0x431f, 0x0a},
-	{0x4320, 0x20},
-	{0x3501, 0x08},
+	{0x3501, 0x05},
 	{0x3502, 0x32},
-	{0x0301, 0x1a},
-	{0x0303, 0x04},
-	{0x0304, 0x00},
-	{0x0305, 0xf0},
-	{0x0306, 0x04},
-	{0x0307, 0x01},
-	{0x0308, 0x13},
-	{0x0323, 0x04},
-	{0x0324, 0x01},
-	{0x0325, 0x80},
-	{0x0326, 0x57},
-	{0x0329, 0x01},
-	{0x032a, 0x03},
-	{0x032b, 0x06},
-	{0x032c, 0x01},
-	{0x032d, 0x01},
-	{0x032e, 0x00},
-	{0x0343, 0x04},
-	{0x0344, 0x01},
-	{0x0345, 0xb0},
-	{0x0346, 0x58},
-	{0x034a, 0x04},
-	{0x034b, 0x06},
-	{0x3010, 0x41},
-	{0x0360, 0x80},
-	{0x4837, 0x28},
-	{0x380c, 0x14},
-	{0x380d, 0x40},
-	{0x380e, 0x0a},
-	{0x380f, 0xd9},
+	{0x4837, 0x1f},
+	{0x380c, 0x02},
+	{0x380d, 0xf0},
+	{0x380e, 0x08},
+	{0x380f, 0x50},
 	{0x382c, 0x0c},
 	{0x382d, 0x15},
 	{0x386d, 0x07},
 	{0x386e, 0xd2},
+	{0x3208, 0x00},
+	{0x431c, 0x00},
+	{0x4813, 0x00},
+	{0x3501, 0x08},
+	{0x3502, 0x32},
+	{0x3508, 0x03},
+	{0x3509, 0x00},
 	{0x3b20, 0x00},
+	{0x3208, 0x10},
+	{0x3208, 0x01},
+	{0x431c, 0x09},
+	{0x4813, 0x01},
+	{0x3501, 0x00},
+	{0x3502, 0x40},
+	{0x3508, 0x01},
+	{0x3509, 0x00},
+	{0x3b20, 0xff},
+	{0x3b1e, 0x00},
+	{0x3b27, 0x00},
+	{0x3b28, 0x40},
+	{0x3208, 0x11},
 	{0x320a, 0x01},
 	{0x320b, 0x01},
 	{0x320c, 0x00},
@@ -2273,57 +2273,13 @@ static uint16_t Ox05b1s_mipi4lane_ABmode_init[][2] = {
 	{0x320e, 0x01},
 	{0x320f, 0x01},
 	{0x3211, 0xf1},
-	{0x3212, 0x12},
-	{0x3501, 0x00},
-	{0x3502, 0x30},
-	{0x3200, 0x00},
-	{0x3201, 0x10},
-	{0x3208, 0x00},
-	{0x431c, 0x00},
-	{0x4813, 0x01},
-	{0x3b20, 0x00},
-	{0x3a9f, 0x08},
-	{0x3aa0, 0x00},
-	{0x3aa1, 0x00},
-	{0x3b21, 0x00},
-	{0x3b22, 0x00},
-	{0x3b23, 0x00},
-	{0x3b24, 0x00},
-	{0x3b25, 0x00},
-	{0x3b26, 0x00},
-	{0x3b27, 0x00},
-	{0x3b28, 0x00},
-	{0x3b2f, 0x4a},
-	{0x3b2d, 0x01},
-	{0x3b2e, 0x78},
-	{0x3208, 0x10},
-
-	{0x3208, 0x01},
-	{0x431c, 0x09},
-	{0x4813, 0x04},
-	{0x3b20, 0xFF},
-	{0x3a9f, 0x08},
-	{0x3aa0, 0x00},
-	{0x3aa1, 0x00},
-	{0x3b21, 0x00},
-	{0x3b22, 0x00},
-	{0x3b23, 0x00},
-	{0x3b24, 0x00},
-	{0x3b25, 0x00},
-	{0x3b26, 0x00},
-	{0x3b27, 0x01},
-	{0x3b28, 0x32},
-	{0x3b2f, 0x4a},
-	{0x3b2d, 0x01},
-	{0x3b2e, 0x78},
-	{0x3208, 0x11},
 	{0x3208, 0xa0},
-	{0x3208, 0xa1},
-	{OX05B1S_TABLE_END, 0x00}
+	{0x3212, 0x1c},
 };
 
-static uint16_t Ox05b1s_mipi4lane_ABmode_IRFRAME_init[][2] = {
-	{OX05B1S_TABLE_END, 0x00},
+static uint16_t Ox05b1s_mipi4lane_2592_1944_linear_ABmode_IRframe_init[][2] = {
+
+	{OX05B1S_TABLE_END, 0},
 };
 
 #ifdef __cplusplus

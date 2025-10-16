@@ -15,8 +15,10 @@ set(USER_COMPILE_DEFINITIONS
 "FMC_PS_IIC=1"
 "ISP_PRESI=1"
 #"I2C_SLOW_MODE=1"
+#"AB_MODE=1"
+#"LEGACY_MODE=1"
 "I2C_FAST_MODE=1"
-"FRAME_RATE_DEBUG=1"
+#"FRAME_RATE_DEBUG=1"
 #"SENSOR_10FPS_OLD=1"
 #"SENSOR_10FPS_NEW=1"
 "SENSOR_30FPS=1"
@@ -37,19 +39,23 @@ set(USER_UNDEFINED_SYMBOLS
 
 set(USER_INCLUDE_DIRECTORIES
 "${CMAKE_SOURCE_DIR}/hal/include"
+"${CMAKE_SOURCE_DIR}/hal/include/hal"
 "${CMAKE_SOURCE_DIR}/usr_sensor/include"
 "../../platform/cortexr52_6/freertos_cortexr52_6/bsp/include"
 )
 
 set(USER_COMPILE_SOURCES
-"usr_sensor/source/sensor_drv/virtual_sensor.c"
-"usr_sensor/source/sensor_drv/sensor_drv.c"
-"usr_sensor/source/sensor_drv/ox08b40.c"
-"usr_sensor/source/sensor_drv/ox05b1s.c"
-"usr_sensor/source/sensor_drv/ox03f10.c"
-"usr_sensor/source/Multi_sensor_framework/ms_fw.c"
-"usr_sensor/source/fmc/max9296.c"
 "usr_sensor/source/fmc/max9295.c"
+"usr_sensor/source/fmc/max9296.c"
+"usr_sensor/source/Multi_sensor_framework/ms_fw.c"
+"usr_sensor/source/sensor_drv/imx623.c"
+"usr_sensor/source/sensor_drv/imx728.c"
+"usr_sensor/source/sensor_drv/ox03f10.c"
+"usr_sensor/source/sensor_drv/ox05b1s.c"
+"usr_sensor/source/sensor_drv/ox08b40.c"
+"usr_sensor/source/sensor_drv/sensor_drv.c"
+"usr_sensor/source/sensor_drv/sensor_emu.c"
+"usr_sensor/source/sensor_drv/virtual_sensor.c"
 )
 
 set(USER_HEADER_SOURCES

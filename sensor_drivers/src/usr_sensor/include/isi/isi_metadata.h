@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 VeriSilicon Holdings Co., Ltd. ("VeriSilicon")
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,7 +22,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
+
 #ifndef __ISI_METADATA_H__
 #define __ISI_METADATA_H__
 
@@ -59,7 +60,7 @@ typedef struct {
 typedef struct {
 	IsiMetadataAttr_t	validMask;
 	uint32_t		regNum;
-	IsiSensorReg_t		*RegPtr;
+	IsiSensorReg_t		*pReg;
 	uint8_t			expFrmNum;
 	IsiSensorIntTime_t	expTime;
 	IsiSensorGain_t		aGain;
@@ -74,6 +75,7 @@ typedef struct {
 	uint32_t		frmCount;
 	IsiMetadataParserInfo_t	data;
 } IsiSensorMetadata_t;
+
 
 #ifdef __cplusplus
 }

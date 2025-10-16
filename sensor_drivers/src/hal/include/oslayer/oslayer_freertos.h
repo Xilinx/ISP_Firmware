@@ -22,7 +22,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
+
 #ifdef FREERTOS
 
 #include <stdlib.h>
@@ -41,13 +42,24 @@ extern "C"
 #define UCOSII_STACK_SIZE	(1024)
 #define OSLAYER_ASSERT		(DCT_ASSERT)
 
+
 typedef int32_t (*osThreadFunc)(void *);
 typedef int32_t (*osIsrFunc)(void *);
 typedef int32_t (*osDpcFunc)(void *);
 
+
+
 #ifdef OSLAYER_EVENT
 /*****************************************************************************/
-/*  @brief  Event object (Linux Version) of OS Abstraction Layer */
+/**
+ *          osEvent
+ *
+ * @brief   Event object (FreeRTOS Version) of OS Abstraction Layer
+ *
+ * @note    This structure encapsulates FreeRTOS event group functionality
+ *          for cross-platform event synchronization in the OS abstraction layer.
+ *
+ *****************************************************************************/
 typedef struct _osEvent {
 	EventGroupHandle_t	event_flags;
 	int32_t			automatic;
@@ -57,18 +69,36 @@ typedef struct _osEvent {
 } osEvent;
 #endif
 
+
 #ifdef OSLAYER_MUTEX
 /*****************************************************************************/
-/*  @brief  Mutex object (Linux Version) of OS Abstraction Layer */
+/**
+ *          osMutex
+ *
+ * @brief   Mutex object (FreeRTOS Version) of OS Abstraction Layer
+ *
+ * @note    This structure encapsulates FreeRTOS semaphore functionality
+ *          to provide mutex synchronization primitives for the OS abstraction layer.
+ *
+ *****************************************************************************/
 typedef struct {
 	SemaphoreHandle_t	mutex;
 	char			*name_ptr;
 } osMutex;
 #endif
 
+
 #ifdef OSLAYER_SEMAPHORE
 /*****************************************************************************/
-/*  @brief  Semaphore object (Linux Version) of OS Abstraction Layer */
+/**
+ *          osSemaphore
+ *
+ * @brief   Semaphore object (FreeRTOS Version) of OS Abstraction Layer
+ *
+ * @note    This structure encapsulates FreeRTOS semaphore functionality
+ *          for counting semaphore operations in the OS abstraction layer.
+ *
+ *****************************************************************************/
 typedef struct {
 	SemaphoreHandle_t	sem;
 	char			*name_ptr;
@@ -76,6 +106,16 @@ typedef struct {
 #endif
 
 #ifdef OSLAYER_QUEUE
+/*****************************************************************************/
+/**
+ *          osQueue
+ *
+ * @brief   Queue object (FreeRTOS Version) of OS Abstraction Layer
+ *
+ * @note    This structure encapsulates FreeRTOS queue functionality
+ *          for inter-task communication in the OS abstraction layer.
+ *
+ *****************************************************************************/
 typedef struct {
 	xQueueHandle		qHandle;
 	UBaseType_t		qlen;
@@ -83,9 +123,20 @@ typedef struct {
 } osQueue;
 #endif
 
+
+
+
 #ifdef OSLAYER_THREAD
 /*****************************************************************************/
-/*  @brief  Thread object (Linux Version) of OS Abstraction Layer */
+/**
+ *          osThread
+ *
+ * @brief   Thread object (FreeRTOS Version) of OS Abstraction Layer
+ *
+ * @note    This structure encapsulates FreeRTOS task functionality
+ *          for thread management in the OS abstraction layer.
+ *
+ *****************************************************************************/
 typedef struct {
 	char			*pcName;
 	configSTACK_DEPTH_TYPE	usStackDepth;
@@ -96,8 +147,15 @@ typedef struct {
 
 #ifdef OSLAYER_MISC
 /*****************************************************************************/
-/*  @brief  Spin Lock object (Linux Kernel Version only) of OS Abstraction */
-/*          Layer */
+/**
+ *          osSpinLock
+ *
+ * @brief   Spin Lock object (FreeRTOS Version) of OS Abstraction Layer
+ *
+ * @note    This structure provides low-level spinlock functionality
+ *          for atomic operations and hardware-level synchronization.
+ *
+ *****************************************************************************/
 typedef struct {
 	UINTPTR			Xil_Spinlock_Addr_tr;
 	UINTPTR			Xil_Spinlock_Flag_Addr_tr;
@@ -105,6 +163,16 @@ typedef struct {
 	u32			initstatus;
 } osSpinLock;
 
+/*****************************************************************************/
+/**
+ *          spinlock_sharedmem_t
+ *
+ * @brief   Spinlock shared memory configuration structure
+ *
+ * @note    This structure defines memory regions and configuration
+ *          parameters for spinlock shared memory operations.
+ *
+ *****************************************************************************/
 typedef struct {
 	UINTPTR			start_addr;
 	UINTPTR			end_addr;

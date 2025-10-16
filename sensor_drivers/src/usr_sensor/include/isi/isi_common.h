@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 VeriSilicon Holdings Co., Ltd. ("VeriSilicon")
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,9 +22,11 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
+
 #ifndef __ISI_COMMON_H__
 #define __ISI_COMMON_H__
+
 
 #ifdef __cplusplus
 extern "C"
@@ -72,11 +74,12 @@ extern "C"
 #define ISI_MOTOR_STEP		(0x00000002)
 #define ISI_FPS_QUANTIZE	(1000)
 
+
 /*****************************************************************************/
 /**
- * IsiSensorInputFormat_t
+ *          IsiSensorInputFormat_t
  *
- * @brief mode of awb control to handle whitebalance during integration of AR082x
+ * @brief   mode of awb control to handle whitebalance during integration of AR082x
  */
 /*****************************************************************************/
 typedef enum {
@@ -99,11 +102,12 @@ typedef enum {
 	DUMMY_ISI_FORMAT		= 0xdeadfeed
 } IsiSensorInputFormat_t;
 
+
 /*****************************************************************************/
 /**
- * IsiSensorAwbMode_t
+ *          IsiSensorAwbMode_t
  *
- * @brief mode of awb control to handle whitebalance during integration of AR082x
+ * @brief   mode of awb control to handle whitebalance during integration of AR082x
  */
 /*****************************************************************************/
 typedef enum {
@@ -112,11 +116,12 @@ typedef enum {
 	DUMMY_ISI_002			= 0xdeadfeed
 } IsiSensorAwbMode_t;
 
+
 /*****************************************************************************/
 /**
- * IsiColorComponent_t
+ *          IsiColorComponent_t
  *
- * @brief color components
+ * @brief   color components
  */
 /*****************************************************************************/
 typedef enum {
@@ -128,11 +133,12 @@ typedef enum {
 	DUMMY_ISI_003			= 0xdeadfeed
 } IsiColorComponent_t;
 
+
 /*****************************************************************************/
 /**
- * IsiBayerPattern_t
+ *          IsiBayerPattern_t
  *
- * @brief Bayer pattern of sensor
+ * @brief   Bayer pattern of sensor
  */
 /*****************************************************************************/
 typedef enum {
@@ -162,11 +168,12 @@ typedef enum {
 	DUMMY_ISI_004			= 0xdeadfeed
 } IsiBayerPattern_t;
 
+
 /*****************************************************************************/
 /**
- * IsiSyncSignalPolarity_t
+ *          IsiSyncSignalPolarity_t
  *
- * @brief sensor dvp output H/V sync polarity
+ * @brief   sensor dvp output H/V sync polarity
  */
 /*****************************************************************************/
 typedef enum {
@@ -177,9 +184,9 @@ typedef enum {
 
 /*****************************************************************************/
 /**
- * IsiSyncSignalPolarity_t
+ *          IsiSampleEdgePolarity_t
  *
- * @brief sensor output sample edge polarity
+ * @brief   sensor output sample edge polarity
  */
 /*****************************************************************************/
 typedef enum {
@@ -190,9 +197,9 @@ typedef enum {
 
 /*****************************************************************************/
 /**
- * IsiSensorCCIRequence_t
+ *          IsiSensorCCIRSequence_t
  *
- * @brief sensor output ccir sequence.
+ * @brief   sensor output ccir sequence.
  */
 /*****************************************************************************/
 typedef enum {
@@ -203,11 +210,12 @@ typedef enum {
 	DUMMY_ISI_007			= 0xdeadfeed
 } IsiSensorCCIRSequence_t;
 
+
 /*****************************************************************************/
 /**
- * IsiI2cBitWidth_t
+ *          IsiI2cBitWidth_t
  *
- * @brief sensor I2C width information
+ * @brief   sensor I2C width information
  */
 /*****************************************************************************/
 typedef enum {
@@ -253,8 +261,8 @@ typedef struct {
 	uint16_t	regVal;
 } IsiSensorReg_t;
 
-typedef struct IsiSensorBuffer_s {
-	uint8_t		*dataPtr;
+typedef struct {
+	uint8_t		*pdata;
 	uint32_t	dataSize;
 } IsiSensorBuffer_t;
 

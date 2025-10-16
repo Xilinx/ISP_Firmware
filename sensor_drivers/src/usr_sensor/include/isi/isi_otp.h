@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 VeriSilicon Holdings Co., Ltd. ("VeriSilicon")
+ * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,10 +22,10 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ ******************************************************************************/
+
 #ifndef __ISI_OTP_H__
 #define __ISI_OTP_H__
-
 #include <ebase/types.h>
 #include <isi/isi_common.h>
 
@@ -37,6 +37,13 @@ extern "C"
 {
 #endif
 
+/*****************************************************************************/
+/**
+ *          IsiColorTemperature_t
+ *
+ * @brief   Color temperature values for OTP calibration data.
+ */
+/*****************************************************************************/
 typedef enum {
 	ISI_COLOR_TEMPERATURE_3100K	= 0,
 	ISI_COLOR_TEMPERATURE_4000K	= 1,
@@ -71,41 +78,41 @@ typedef struct {
 } IsiOTPLightSource_t;
 
 typedef struct {
-	uint16_t		minFocal;
-	uint16_t		maxFocal;
+	uint16_t	minFocal;
+	uint16_t	maxFocal;
 } IsiOTPCdaf_t;
 
 typedef struct {
-	int			pdFocal[PDAF_OTP_FOCAL_SIZE];
+	int	pdFocal[PDAF_OTP_FOCAL_SIZE];
 } IsiOTPPdaf_t;
 
 typedef struct {
-	uint32_t		otpVersion;
-	bool			otpFocusEnable;
-	IsiOTPCdaf_t		cdafOtp;
-	IsiOTPPdaf_t		pdafOtp;
+	uint32_t	otpVersion;
+	bool		otpFocusEnable;
+	IsiOTPCdaf_t	cdafOtp;
+	IsiOTPPdaf_t	pdafOtp;
 } IsiOTPAFData_t;
 
 typedef struct {
-	uint16_t		hwVersion;
-	uint16_t		eepromRevision;
-	uint16_t		sensorRevision;
-	uint16_t		tlensRevision;
-	uint16_t		ircfRevision;
-	uint16_t		lensRevision;
-	uint16_t		caRevision;
-	uint16_t		moduleInteID;
-	uint16_t		factoryID;
-	uint16_t		mirrorFlip;
-	uint16_t		tlensSlaveID;
-	uint16_t		eepromSlaveID;
-	uint16_t		sensorSlaveID;
-	uint8_t			sensorID[11];
-	uint16_t		manuDateYear;
-	uint16_t		manuDateMonth;
-	uint16_t		manuDateDay;
-	uint8_t			barcodeModuleSN[12];
-	uint16_t		mapTotalSize;
+	uint16_t	hwVersion;
+	uint16_t	eepromRevision;
+	uint16_t	sensorRevision;
+	uint16_t	tlensRevision;
+	uint16_t	ircfRevision;
+	uint16_t	lensRevision;
+	uint16_t	caRevision;
+	uint16_t	moduleInteID;
+	uint16_t	factoryID;
+	uint16_t	mirrorFlip;
+	uint16_t	tlensSlaveID;
+	uint16_t	eepromSlaveID;
+	uint16_t	sensorSlaveID;
+	uint8_t		sensorID[11];
+	uint16_t	manuDateYear;
+	uint16_t	manuDateMonth;
+	uint16_t	manuDateDay;
+	uint8_t		barcodeModuleSN[12];
+	uint16_t	mapTotalSize;
 } IsiOTPModuleInformation_t;
 
 typedef struct {
@@ -118,10 +125,10 @@ typedef struct {
 	uint8_t				awbNum;
 	uint8_t				goldenAwbNum;
 	uint8_t				lightSourceNum;
-	IsiOTPLSC_t			*LscDataPtr;
-	IsiOTPAWB_t			*AwbDataPtr;
-	IsiOTPAWB_t			*GoldenAwbDataPtr;
-	IsiOTPLightSource_t		*LightSourceDataPtr;
+	IsiOTPLSC_t			*pLscData;
+	IsiOTPAWB_t			*pAwbData;
+	IsiOTPAWB_t			*pGoldenAwbData;
+	IsiOTPLightSource_t		*pLightSourceData;
 	IsiOTPAFData_t			focus;
 } IsiOTP_t;
 
