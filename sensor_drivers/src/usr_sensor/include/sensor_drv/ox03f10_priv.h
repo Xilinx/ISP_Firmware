@@ -23,11 +23,10 @@
  * DEALINGS IN THE SOFTWARE.
  *
  ****************************************************************************/
+
 #ifndef __Ox03f10_PRIV_H__
 #define __Ox03f10_PRIV_H__
 
-#include <ebase/types.h>
-#include <common/return_codes.h>
 #include <hal/hal_i2c.h>
 #include <isi/isi_common.h>
 #include <isi/isi_vvsensor.h>
@@ -35,19 +34,9 @@
 
 #define OX03F10_TABLE_END	(0xffff)
 #define OX03F10_TABLE_WAIT	(0xfffe)
-#define OX03F10_TABLE_WAIT_MS	(210)
+#define OX03F10_TABLE_WAIT_MS	(100)
 
-#define DSER_ADDR		(0x68)
-#define SER_ADDR		(0x62)
-
-#define MIPI_2_BASE_ADDR	(0x81000000)
-#define MIPI_6_BASE_ADDR	(0x81060000)
-#define MIPI_ENABLE		(0x5)
-#define MIPI_DISABLE		(0x0)
-#define SENSOR_ID_2		(2)
-#define SENSOR_ID_6		(6)
-
-extern int g_Sensor_frame_count;
+#define OVX3F_LCG_VS_EXP_RATIO	(240.964)
 
 #ifdef __cplusplus
 extern "C"
@@ -66,16 +55,19 @@ typedef struct {
 	bool_t			streaming;
 	bool_t			testPattern;
 
-	bool_t			isAfpsRun;
-
 	float			oneLineExpTime;
-
 	uint16_t		maxDCGIntegrationLine;
 	uint16_t		minDCGIntegrationLine;
 	uint16_t		maxSPDIntegrationLine;
 	uint16_t		minSPDIntegrationLine;
 	uint16_t		maxVSIntegrationLine;
 	uint16_t		minVSIntegrationLine;
+
+	IsiGainInfo_t		aGainHCG;
+	IsiGainInfo_t		aGainLCG;
+	IsiGainInfo_t		aGainSPD;
+	IsiGainInfo_t		aGainVS;
+	IsiGainInfo_t		dGain;
 
 	uint16_t		frameLengthLines;
 	uint16_t		curFrameLengthLines;
@@ -88,46 +80,48 @@ typedef struct {
 	float			aecIntegrationTimeIncrement;
 	float			aecGainIncrement;
 
-	IsiSensorGain_t		curGain;
-	IsiSensorGain_t		curAgain;
 	IsiSensorGain_t		curDgain;
-	IsiSensorIntTime_t	curIntTime;
-
-	bool_t			groupHold;
-	uint32_t		oldGain;
-	uint32_t		oldIntegrationTime;
-
-	IsiGainInfo_t		aGain;
-	IsiGainInfo_t		aVSGain;
-	IsiGainInfo_t		dGain;
-	IsiGainInfo_t		dVSGain;
+	IsiSensorGain_t		curAgain;
+	IsiSensorGain_t		aecCurGain;
+	IsiSensorIntTime_t	aecCurIntTime;
 
 	IsiSensorBlc_t		sensorBlc;
 	IsiSensorWb_t		sensorWb;
 
 	uint32_t		i2cId;
 	uint32_t		sensorDevId;
+	uint32_t		instanceId;
 } Ox03f10_Context_t;
 
+#ifdef ENABLE_I2C_GROUPING
+static RESULT Ox03f10_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
+		const uint16_t addr, uint8_t *value, uint8_t datacount);
+#endif
 static RESULT Ox03f10_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
-					IsiSensorHandle_t *pHandle);
+		IsiSensorHandle_t *pHandle);
 static RESULT Ox03f10_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode);
 static RESULT Ox03f10_IsiCloseIss(IsiSensorHandle_t handle);
 static RESULT Ox03f10_IsiReleaseIss(IsiSensorHandle_t handle);
-static RESULT Ox03f10_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps);
-static RESULT Ox03f10_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t on);
-static RESULT Ox03f10_IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *pValue);
+static RESULT Ox03f10_IsiGetCapsIss(IsiSensorHandle_t handle,
+		IsiCaps_t *pCaps);
+static RESULT Ox03f10_IsiSetStreamingIss(IsiSensorHandle_t handle,
+		bool_t on);
+static RESULT Ox03f10_IsiGetRevisionIss(IsiSensorHandle_t handle,
+		uint32_t *pValue);
 static RESULT Ox03f10_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
-					IsiAeBaseInfo_t *pAeBaseInfo);
-static RESULT Ox03f10_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
-static RESULT Ox03f10_IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain);
-static RESULT Ox03f10_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
-static RESULT Ox03f10_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain);
+		IsiAeBaseInfo_t *pAeBaseInfo);
+static RESULT Ox03f10_IsiGetAGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorAGain);
+static RESULT Ox03f10_IsiGetDGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorDGain);
+static RESULT Ox03f10_IsiSetAGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorAGain);
+static RESULT Ox03f10_IsiSetDGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorDGain);
 static RESULT Ox03f10_IsiGetIntTimeIss(IsiSensorHandle_t handle,
-					IsiSensorIntTime_t *pSensorIntTime);
+		IsiSensorIntTime_t *pSensorIntTime);
 static RESULT Ox03f10_IsiSetIntTimeIss(IsiSensorHandle_t handle,
-					IsiSensorIntTime_t *pSensorIntTime);
-static RESULT Ox03f10_SetIntTime(IsiSensorHandle_t handle, float newIntegrationTime);
+		const IsiSensorIntTime_t *pSensorIntTime);
 
 static uint16_t Ox03f10_mipi4lane_1080p_native4dol_init[][2] = {
 	{0x0103, 0x01},
@@ -283,7 +277,6 @@ static uint16_t Ox03f10_mipi4lane_1080p_native4dol_init[][2] = {
 	{0x3502, 0x08},
 	{0x3506, 0x30},
 	{0x3586, 0x50},
-	{0x3588, 0x02},
 	{0x3589, 0x00},
 	{0x3541, 0x03},
 	{0x3542, 0xE8},
@@ -1752,64 +1745,46 @@ static uint16_t Ox03f10_mipi4lane_1080p_native4dol_init[][2] = {
 	{0x0405, 0x54},
 	{0x0406, 0x30},
 	{0x0407, 0x08},
-
-#if (SENSOR_10FPS_OLD)
 	{0x380c, 0x06},
 	{0x380d, 0x4e},
 	{0x384c, 0x02},
 	{0x384d, 0x1a},
 	{0x388c, 0x02},
 	{0x388d, 0x1a},
-	{0x380e, 0x09},
-	{0x380f, 0x90},
-#endif
-
-#if (SENSOR_10FPS_NEW)
-	{0x380c, 0x10},
-	{0x380d, 0x80},
-	{0x384c, 0x08},
-	{0x384d, 0x1a},
-	{0x388c, 0x08},
-	{0x388d, 0x1a},
 	{0x380e, 0x03},
 	{0x380f, 0x30},
-#endif
-
-#if (SENSOR_30FPS)
-	{0x380c, 0x06},
-	{0x380d, 0x60},
-	{0x384c, 0x02},
-	{0x384d, 0x1a},
-	{0x388c, 0x02},
-	{0x388d, 0x1a},
-	{0x380e, 0x03},
-	{0x380f, 0x30},
-#endif
-
-#if (SENSOR_20FPS)
-	{0x380c, 0x10},
-	{0x380d, 0x00},
-	{0x384c, 0x02},
-	{0x384d, 0x1a},
-	{0x388c, 0x02},
-	{0x388d, 0x1a},
-	{0x380e, 0x03},
-	{0x380f, 0x30},
-#endif
 	{OX03F10_TABLE_WAIT, OX03F10_TABLE_WAIT_MS},
 	{0x3501, 0x01},
 	{0x3502, 0x00},
 	{0x3506, 0x30},
-	{0x3541, 0x00},
+	{0x3541, 0x04},
 	{0x3542, 0x40},
 	{0x3546, 0x10},
 	{0x35c1, 0x00},
 	{0x35c2, 0x02},
-	{0x3508, 0x02},
+	{0x3508, 0x01},
 	{0x3509, 0x00},
+	{0x3588, 0x01},
+	{0x3589, 0x00},
+	{0x3548, 0x04},
+	{0x3549, 0x00},
+	{0x35c8, 0x01},
+	{0x35c9, 0x00},
+	{0x350a, 0x01},
+	{0x350b, 0x00},
+	{0x350c, 0x00},
+	{0x358a, 0x01},
+	{0x358b, 0x00},
+	{0x358c, 0x00},
+	{0x354a, 0x01},
+	{0x354b, 0x00},
+	{0x354c, 0x00},
+	{0x35ca, 0x01},
+	{0x35cb, 0x00},
+	{0x35cc, 0x00},
 	{0x35c6, 0x90},
 	{0x3586, 0x50},
-	{0x5003, 0x3a},
+	{0x5003, 0xba},
 	{0x4603, 0x13},
 	{0x4610, 0x00},
 	{0x4611, 0x30},

@@ -1,4 +1,4 @@
-/****************************************************************************
+/******************************************************************************
  *
  * The MIT License (MIT)
  *
@@ -22,7 +22,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ******************************************************************************/
+ *****************************************************************************/
 #ifndef __MISC_H__
 #define __MISC_H__
 
@@ -36,6 +36,10 @@
 
 #ifndef FLT_MAX
 #define FLT_MAX			((float)3.40282346638528860e+38)
+#endif
+
+#ifndef SEC_TO_MICROSEC
+#define SEC_TO_MICROSEC			(1000000)
 #endif
 
 #ifndef MIN

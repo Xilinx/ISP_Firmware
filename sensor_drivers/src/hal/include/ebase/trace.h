@@ -56,6 +56,7 @@ enum {
 	WARNING			= 0x02,
 	ERROR			= 0x04,
 	DEBUG			= 0x08,
+	ALWAYS			= 0x10,
 	MAX_LEVEL		= (0x01U | 0x02U | 0x04U | 0x08U)
 };
 
@@ -86,7 +87,7 @@ void enableTracer(Tracer *);
 void disableTracer(Tracer *);
 void setTracerFile(Tracer *, FILE *);
 void flushTracer(const Tracer *);
-void trace(Tracer *, const CHAR *, ...);
+void trace(uint8_t, Tracer *, const CHAR *, ...);
 Tracer *getTracerList(void);
 
 /*****************************************************************************/
@@ -167,7 +168,11 @@ Tracer *getTracerList(void);
  *          global trace level permits the tracer's configured level.
  *
  *****************************************************************************/
-#define TRACE(...)		trace(__VA_ARGS__)
+#define USE_XIL_PRINTF			(0)
+#define USE_VPRINTF			(1)
+
+#define TRACE(...)		        trace(USE_XIL_PRINTF, __VA_ARGS__)
+#define TRACE_FLOAT(...)		trace(USE_VPRINTF, __VA_ARGS__)
 
 /*****************************************************************************/
 /**
@@ -185,10 +190,15 @@ Tracer *getTracerList(void);
  *
  *****************************************************************************/
 #if defined(DEBUG_LEVEL)
-#define DL_TRACE(level, ...)		do { if (level <= DEBUG_LEVEL) { trace(__VA_ARGS__); }	\
+#define DL_TRACE(level, ...)		do { if (level <= DEBUG_LEVEL) \
+						trace(USE_XILPRINTF, __VA_ARGS__); \
+					} while (0)
+#define DL_TRACE_FLOAT(level, ...)	do { if (level <= DEBUG_LEVEL) \
+						trace(USE_VPRINTF, __VA_ARGS__); \
 					} while (0)
 #else
 #define DL_TRACE(level, ...)		((void)0)
+#define DL_TRACE_FLOAT(level, ...)	((void)0)
 #endif
 
 /*****************************************************************************/
@@ -318,103 +328,103 @@ Tracer *getTracerList(void);
      *****************************************************************************/
 #define CREATE_TRACER(name, arg_prefix, arg_level, arg_enabled)		extern int32_t name
 
-    /*****************************************************************************
-     *
-     *          USE_TRACER
-     *
-     * @brief   Dummy tracer usage macro when tracing is disabled.
-     *
-     *****************************************************************************/
+/*****************************************************************************
+ *
+ *          USE_TRACER
+ *
+ * @brief   Dummy tracer usage macro when tracing is disabled.
+ *
+ *****************************************************************************/
 #define USE_TRACER(name)		(extern int32_t use##name)
 
-    /*****************************************************************************
-     *
-     *          TRACE
-     *
-     * @brief   Dummy trace macro when tracing is disabled.
-     *
-     *****************************************************************************/
+/*****************************************************************************
+ *
+ *          TRACE
+ *
+ * @brief   Dummy trace macro when tracing is disabled.
+ *
+ *****************************************************************************/
 #define TRACE(...)			((void)0)
 
-    /*****************************************************************************
-     *
-     *          DL_TRACE
-     *
-     * @brief   Dummy debug level trace macro when tracing is disabled.
-     *
-     *****************************************************************************/
+/*****************************************************************************
+ *
+ *          DL_TRACE
+ *
+ * @brief   Dummy debug level trace macro when tracing is disabled.
+ *
+ *****************************************************************************/
 #define DL_TRACE(level, ...)		((void)0)
 
-    /*****************************************************************************
-     *
-     *          ENABLE_TRACER
-     *
-     * @brief   Dummy tracer enable macro when tracing is disabled.
-     *
-     *****************************************************************************/
+/*****************************************************************************
+ *
+ *          ENABLE_TRACER
+ *
+ * @brief   Dummy tracer enable macro when tracing is disabled.
+ *
+ *****************************************************************************/
 #define ENABLE_TRACER(T)		((void)0)
 
-    /*****************************************************************************
-     *
-     *          DISABLE_TRACER
-     *
-     * @brief   Dummy tracer disable macro when tracing is disabled.
-     *
-     *****************************************************************************/
+/*****************************************************************************
+ *
+ *          DISABLE_TRACER
+ *
+ * @brief   Dummy tracer disable macro when tracing is disabled.
+ *
+ *****************************************************************************/
 #define DISABLE_TRACER(T)		((void)0)
 
-    /*****************************************************************************
-     *
-     *          SET_TRACE_LEVEL
-     *
-     * @brief   Dummy trace level set macro when tracing is disabled.
-     *
-     *****************************************************************************/
+/*****************************************************************************
+ *
+ *          SET_TRACE_LEVEL
+ *
+ * @brief   Dummy trace level set macro when tracing is disabled.
+ *
+ *****************************************************************************/
 #define SET_TRACE_LEVEL(L)		((void)0)
 
-    /*****************************************************************************
-     *
-     *          SET_TRACER_FILE
-     *
-     * @brief   Dummy tracer file set macro when tracing is disabled.
-     *
-     *****************************************************************************/
+/*****************************************************************************
+ *
+ *          SET_TRACER_FILE
+ *
+ * @brief   Dummy tracer file set macro when tracing is disabled.
+ *
+ *****************************************************************************/
 #define SET_TRACER_FILE(T, F)		((void)0)
 
-    /*****************************************************************************
-     *
-     *          FLUSH_TRACER
-     *
-     * @brief   Dummy tracer flush macro when tracing is disabled.
-     *
-     *****************************************************************************/
+/*****************************************************************************
+ *
+ *          FLUSH_TRACER
+ *
+ * @brief   Dummy tracer flush macro when tracing is disabled.
+ *
+ *****************************************************************************/
 #define FLUSH_TRACER(T)			((void)0)
 
-    /*****************************************************************************
-     *
-     *          GET_TRACE_LEVEL
-     *
-     * @brief   Dummy trace level get macro when tracing is disabled.
-     *
-     *****************************************************************************/
+/*****************************************************************************
+ *
+ *          GET_TRACE_LEVEL
+ *
+ * @brief   Dummy trace level get macro when tracing is disabled.
+ *
+ *****************************************************************************/
 #define GET_TRACE_LEVEL()		((void)0)
 
-    /*****************************************************************************
-     *
-     *          GET_TRACER_LIST
-     *
-     * @brief   Dummy tracer list get macro when tracing is disabled.
-     *
-     *****************************************************************************/
+/*****************************************************************************
+ *
+ *          GET_TRACER_LIST
+ *
+ * @brief   Dummy tracer list get macro when tracing is disabled.
+ *
+ *****************************************************************************/
 #define GET_TRACER_LIST()		((void)0)
 
-    /*****************************************************************************
-     *
-     *          IF_TRACE_ON
-     *
-     * @brief   Dummy conditional compilation macro when tracing is disabled.
-     *
-     *****************************************************************************/
+/*****************************************************************************
+ *
+ *          IF_TRACE_ON
+ *
+ * @brief   Dummy conditional compilation macro when tracing is disabled.
+ *
+ *****************************************************************************/
 #define IF_TRACE_ON(x)
 #endif
 

@@ -24,71 +24,17 @@
  *
  ****************************************************************************/
 
-#include  <ebase/trace.h>
-#include  <ebase/builtins.h>
-#include  <common/misc.h>
-#include  <isi/isi_fmc.h>
+#include <isi/isi_fmc.h>
 #include "isi/isi.h"
 #include "isi/isi_iss.h"
-#include "isi/isi_priv.h"
 #include "sensor_drv/ox08b40_priv.h"
 
-#define X8B_DEBUG_LOG 0
+// #define OX08B40_WITH_VTS	(1)
+#define OX08B40_WITH_HTS	(1)
+
 CREATE_TRACER(Ox08b40_INFO, "Ox08b40: ", INFO,    1);
 CREATE_TRACER(Ox08b40_WARN, "Ox08b40: ", WARNING, 1);
 CREATE_TRACER(Ox08b40_ERROR, "Ox08b40: ", ERROR,   1);
-CREATE_TRACER(Ox08b40_DEBUG,     "Ox08b40: ", INFO, X8B_DEBUG_LOG);
-
-extern int g_Sensor_frame_count;
-
-#define X8B_MIN_AGAIN_STEP			(1.0f/16.0f)
-#define X8B_MIN_DGAIN_STEP			(1.0f/1024.0f)
-#define X8B_MIN_WBGAIN_STEP			(1.0f/1024.0f)
-
-#define X8B_EXP_INDEX_HCG			(0)
-#define X8B_EXP_INDEX_LCG			(1)
-#define X8B_EXP_INDEX_SPD			(2)
-#define X8B_EXP_INDEX_VS			(3)
-
-#define X8B_NATIVE_RATIO_HCG_LCG		(0)
-#define X8B_NATIVE_RATIO_LCG_SPD		(1)
-#define X8B_NATIVE_RATIO_SPD_VS			(2)
-
-#define X8B_DCG_CONVERSION_RATIO		(3.3f)
-#define X8B_DCG_SPD_SENSITIVITY_RATIO		(10)
-
-#define MODE0_ONE_LINE_DCG_EXPTIME		(0.0000448)
-#define MODE0_ONE_LINE_SPD_EXPTIME		(0.0000216)
-#define MODE0_ONE_LINE_VS_EXPTIME		(0.0000214)
-#define MODE0_FRAME_LENGTH_LINES		(0x466)
-#define MODE0_MIN_DCG_INTEGRATION_LINE		(2)
-#define MODE0_MIN_SPD_INTEGRATION_LINE		(2)
-#define MODE0_MAX_VS_INTEGRATION_LINE		(35)
-#define MODE0_MIN_VS_INTEGRATION_LINE		(0)
-#define MODE0_AGAIN_MIN				(1.0)
-#define MODE0_AGAIN_MAX				(15.5)
-#define MODE0_DGAIN_MIN				(1.0)
-#define MODE0_DGAIN_MAX				(15.99)
-
-#define MODE1_ONE_LINE_DCG_EXPTIME		(0.00009664)
-#define MODE1_ONE_LINE_SPD_EXPTIME		(0.00004592)
-#define MODE1_ONE_LINE_VS_EXPTIME		(0.00004856)
-#define MODE1_FRAME_LENGTH_LINES		(0x46a)
-#define MODE1_MIN_DCG_INTEGRATION_LINE		(2)
-#define MODE1_MIN_SPD_INTEGRATION_LINE		(2)
-#define MODE1_MAX_VS_INTEGRATION_LINE		(35)
-#define MODE1_MIN_VS_INTEGRATION_LINE		(0)
-#define MODE1_AGAIN_MIN				(1.0)
-#define MODE1_AGAIN_MAX				(15.5)
-#define MODE1_DGAIN_MIN				(1.0)
-#define MODE1_DGAIN_MAX				(15.99)
-
-#define MIN_FPS					(1 * ISI_FPS_QUANTIZE)
-
-#define DEFAULT_HTS				(0x95D)
-#define DEFAULT_DCG				(0x4C3)
-#define DEFAULT_SPD				(0x250)
-#define DEFAULT_VS				(0x24A)
 
 /*****************************************************************************
  *Sensor Info
@@ -148,7 +94,8 @@ IsiSensorMode_t pox08b40_mode_info[] = {
 	},
 };
 
-int ox08b40_mode_num = (int)(sizeof(pox08b40_mode_info) / sizeof(IsiSensorMode_t));
+int ox08b40_mode_num =
+	(int)(sizeof(pox08b40_mode_info) / sizeof(IsiSensorMode_t));
 
 /*****************************************************************************
  *          Ox08b40_IsiReadRegIss
@@ -166,8 +113,8 @@ int ox08b40_mode_num = (int)(sizeof(pox08b40_mode_info) / sizeof(IsiSensorMode_t
  * @retval  RET_NOTSUPP
  *
  *****************************************************************************/
-static RESULT Ox08b40_IsiReadRegIss(IsiSensorHandle_t handle, const uint16_t addr,
-				uint16_t *pValue)
+static RESULT Ox08b40_IsiReadRegIss(IsiSensorHandle_t handle,
+					const uint16_t addr, uint16_t *pValue)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -175,18 +122,45 @@ static RESULT Ox08b40_IsiReadRegIss(IsiSensorHandle_t handle, const uint16_t add
 
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
+	if (pOx08b40Ctx == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid sensor handle (NULL pointer detected)\n",
+			__func__);
 		return RET_NULL_POINTER;
-	u8 slave_addr = (g_fmc_single.sensor_array[pOx08b40Ctx->sensorDevId]->sensor_alias_addr)
-				>> 1;
+	}
 
-	result = g_fmc_single.accessiic_array[pOx08b40Ctx->sensorDevId]->readIIC(pOx08b40Ctx->i2cId,
-								slave_addr, addr, 0x2, pValue, 1);
+	if (pValue == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid value (NULL pointer detected)\n",
+			__func__);
+		return RET_NULL_POINTER;
+	}
+
+	memset(pValue, 0, sizeof(uint16_t));
+	IsiFmc_t *active_fmc = get_active_fmc();
+
+	if (!active_fmc) {
+		TRACE(Ox08b40_ERROR, "%s: No FMC selected\r\n", __func__);
+		return RET_INVALID_PARM;
+	}
+
+	u8 slave_addr =
+		(active_fmc->sensor_array[pOx08b40Ctx->sensorDevId]
+		 ->sensor_alias_addr) >> 1;
+
+	u8 read_val = 0;
+
+	result = active_fmc->accessiic_array
+		[pOx08b40Ctx->sensorDevId]->readIIC(
+		pOx08b40Ctx->i2cId, slave_addr,
+		addr, 0x2, &read_val, 1);
 
 	if (result != RET_SUCCESS) {
-		TRACE(Ox08b40_ERROR, "%s: hal read sensor register error!\n", __func__);
+		TRACE(Ox08b40_ERROR, "%s: I2C read failed at addr 0x%04x (err=%d)\n",
+				__func__, addr, result);
 		return RET_FAILURE;
 	}
+	*pValue = (uint16_t)read_val;
 
 	TRACE(Ox08b40_INFO, "%s (exit) result = %d\n", __func__, result);
 	return result;
@@ -208,8 +182,9 @@ static RESULT Ox08b40_IsiReadRegIss(IsiSensorHandle_t handle, const uint16_t add
  * @retval  RET_NOTSUPP
  *
  *****************************************************************************/
-static RESULT Ox08b40_IsiWriteRegIss(IsiSensorHandle_t handle, const uint16_t addr,
-				const uint16_t value)
+static RESULT Ox08b40_IsiWriteRegIss(IsiSensorHandle_t handle,
+					 const uint16_t addr,
+					 const uint16_t value)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -217,17 +192,35 @@ static RESULT Ox08b40_IsiWriteRegIss(IsiSensorHandle_t handle, const uint16_t ad
 
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
+	if (pOx08b40Ctx == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid sensor handle (NULL pointer detected)\n",
+			__func__);
 		return RET_NULL_POINTER;
+	}
 
-	u8 slave_addr = (g_fmc_single.sensor_array[pOx08b40Ctx->sensorDevId]->sensor_alias_addr)
-				>> 1;
+	IsiFmc_t *active_fmc = get_active_fmc();
 
-	result = g_fmc_single.accessiic_array[pOx08b40Ctx->sensorDevId]->writeIIC(pOx08b40Ctx->i2cId,
-							slave_addr, addr, 0x2, value, 1);
+	if (!active_fmc) {
+		TRACE(Ox08b40_ERROR, "%s: No FMC selected\r\n", __func__);
+		return RET_INVALID_PARM;
+	}
+
+	u8 slave_addr =
+		(active_fmc->sensor_array[pOx08b40Ctx->sensorDevId]
+		 ->sensor_alias_addr) >> 1;
+
+	u8 wr_data[2];
+
+	wr_data[0] = (u8)value;
+	result = active_fmc->accessiic_array
+		[pOx08b40Ctx->sensorDevId]->writeIIC(
+		pOx08b40Ctx->i2cId, slave_addr,
+		addr, 0x2, wr_data, 1);
 
 	if (result != RET_SUCCESS) {
-		TRACE(Ox08b40_ERROR, "%s: hal write sensor register error!\n", __func__);
+		TRACE(Ox08b40_ERROR, "%s: I2C write failed at addr 0x%04x (err=%d)\n",
+				__func__, addr, result);
 		return RET_FAILURE;
 	}
 
@@ -247,15 +240,18 @@ static RESULT Ox08b40_IsiWriteRegIss(IsiSensorHandle_t handle, const uint16_t ad
  * @retval  RET_WRONG_HANDLE
  *
  *****************************************************************************/
-static RESULT Ox08b40_IsiGetModeIss(IsiSensorHandle_t handle, IsiSensorMode_t *pMode)
+static RESULT Ox08b40_IsiGetModeIss(IsiSensorHandle_t handle,
+				    IsiSensorMode_t *pMode)
 {
 	TRACE(Ox08b40_INFO, "%s (enter)\n", __func__);
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
+	if (pOx08b40Ctx == NULL || pMode == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid sensor handle or mode pointer detected\n",
+			__func__);
 		return RET_WRONG_HANDLE;
-	if (pMode == NULL)
-		return RET_WRONG_HANDLE;
+	}
 
 	memcpy(pMode, &(pOx08b40Ctx->sensorMode), sizeof(pOx08b40Ctx->sensorMode));
 
@@ -277,20 +273,26 @@ static RESULT Ox08b40_IsiGetModeIss(IsiSensorHandle_t handle, IsiSensorMode_t *p
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static  RESULT Ox08b40_IsiEnumModeIss(IsiSensorHandle_t handle, IsiSensorEnumMode_t *pEnumMode)
+static  RESULT Ox08b40_IsiEnumModeIss(IsiSensorHandle_t handle,
+				      IsiSensorEnumMode_t *pEnumMode)
 {
 	TRACE(Ox08b40_INFO, "%s (enter)\n", __func__);
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
+	if (pOx08b40Ctx == NULL || pEnumMode == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid sensor handle or enum mode pointer detected\n",
+			__func__);
 		return RET_NULL_POINTER;
+	}
 
 	if (pEnumMode->index >= (ARRAY_SIZE(pox08b40_mode_info)))
 		return RET_OUTOFRANGE;
 
 	for (uint32_t i = 0; i < (ARRAY_SIZE(pox08b40_mode_info)); i++) {
 		if (pox08b40_mode_info[i].index == pEnumMode->index) {
-			memcpy(&pEnumMode->mode, &pox08b40_mode_info[i], sizeof(IsiSensorMode_t));
+			memcpy(&pEnumMode->mode, &pox08b40_mode_info[i],
+					sizeof(IsiSensorMode_t));
 			TRACE(Ox08b40_INFO, "%s (exit)\n", __func__);
 			return RET_SUCCESS;
 		}
@@ -320,11 +322,12 @@ static RESULT Ox08b40_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps)
 
 	TRACE(Ox08b40_INFO, "%s (enter)\n", __func__);
 
-	if (pOx08b40Ctx == NULL)
-		return RET_WRONG_HANDLE;
-
-	if (pCaps == NULL)
+	if (pOx08b40Ctx == NULL || pCaps == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid sensor handle or caps pointer detected\n",
+			__func__);
 		return RET_NULL_POINTER;
+	}
 
 	pCaps->bitWidth          = pOx08b40Ctx->sensorMode.bitWidth;
 	pCaps->mode              = ISI_MODE_BAYER;
@@ -358,14 +361,23 @@ static RESULT Ox08b40_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps)
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static RESULT Ox08b40_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig, IsiSensorHandle_t *pHandle)
+static RESULT Ox08b40_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
+				   IsiSensorHandle_t *pHandle)
 {
 	RESULT result = RET_SUCCESS;
 	uint32_t desId = 0, pipeId = 0;
 
 	TRACE(Ox08b40_INFO, "%s (enter)\n", __func__);
 
-	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) osMalloc(sizeof(Ox08b40_Context_t));
+	if (pHandle == NULL || pConfig == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid pointer for sensor handle or config detected\n",
+			__func__);
+		return RET_NULL_POINTER;
+	}
+
+	Ox08b40_Context_t *pOx08b40Ctx =
+		(Ox08b40_Context_t *) osMalloc(sizeof(Ox08b40_Context_t));
 
 	if (!pOx08b40Ctx) {
 		TRACE(Ox08b40_ERROR, "%s: Can't allocate ox08b40 context\n", __func__);
@@ -383,24 +395,62 @@ static RESULT Ox08b40_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig, IsiSensor
 	pOx08b40Ctx->testPattern		= BOOL_FALSE;
 	pOx08b40Ctx->isAfpsRun			= BOOL_FALSE;
 	pOx08b40Ctx->sensorMode.index		= 0;
-	pOx08b40Ctx->i2cId			= 0;
-	pOx08b40Ctx->sensorDevId		= pConfig->cameraDevId;
+	pOx08b40Ctx->sensorDevId		= pConfig->halDevID;
 
-	uint8_t busId = (uint8_t)pOx08b40Ctx->i2cId;
 
 	pipeId = pOx08b40Ctx->sensorDevId;
 
 	*pHandle = (IsiSensorHandle_t) pOx08b40Ctx;
 
 	if (pipeId >= IN_PIPE_LAST) {
-		TRACE(Ox08b40_ERROR, "%s: sensor device ID %d is mot support!\n", __func__, pipeId);
+		TRACE(Ox08b40_ERROR,
+				"%s: sensor device ID %d is not supported!\n",
+				__func__, pipeId);
+		osFree(pOx08b40Ctx);
+		*pHandle = NULL;
 		return RET_UNSUPPORT_ID;
 	}
 	desId = MAPPING_INPIPE_TO_DES_ID(pipeId);
 
-	init_iic_access(pOx08b40Ctx->i2cId, pipeId);
-	init_des(desId);
-	init_sensor(pipeId, desId);
+	pOx08b40Ctx->i2cId = GetI2cBusIdForDes(desId);
+	uint8_t busId = (uint8_t)pOx08b40Ctx->i2cId;
+
+	/* Validate I2C bus ID */
+	if (busId == INVALID_I2C_BUS_ID) {
+		TRACE(Ox08b40_ERROR,
+		      "%s: Invalid I2C bus ID for desId %d\n",
+		      __func__, desId);
+		osFree(pOx08b40Ctx);
+		return RET_FAILURE;
+	}
+
+	TRACE(Ox08b40_INFO,
+	      "%s: desId: %d, pipeId: %d, i2cBusId:%d\r\n",
+	      __func__, desId, pipeId, busId);
+
+	result = init_iic_access(busId, pipeId);
+	if (result != RET_SUCCESS) {
+		TRACE(Ox08b40_ERROR,
+		      "%s: init_iic_access failed for pipe %d (err=%d)\n",
+		      __func__, pipeId, result);
+		osFree(pOx08b40Ctx);
+		return result;
+	}
+	result = init_des(desId);
+	if (result != RET_SUCCESS) {
+		TRACE(Ox08b40_ERROR, "%s: init_des failed for desId %d (err=%d)\n",
+				__func__, desId, result);
+		osFree(pOx08b40Ctx);
+		return result;
+	}
+	result = init_sensor(pipeId, desId, SENSOR_OX8B40_ADDRESS);
+	if (result != RET_SUCCESS) {
+		TRACE(Ox08b40_ERROR,
+				"%s: init_sensor failed for pipe %d (err=%d)\n",
+				__func__, pipeId, result);
+		osFree(pOx08b40Ctx);
+		return result;
+	}
 
 	TRACE(Ox08b40_INFO, "%s (exit)\n", __func__);
 	return result;
@@ -424,6 +474,13 @@ static RESULT Ox08b40_AecSetModeParameters(IsiSensorHandle_t handle)
 	RESULT result = RET_SUCCESS;
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
+	if (pOx08b40Ctx == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid sensor handle (NULL pointer detected)\n",
+			__func__);
+		return RET_NULL_POINTER;
+	}
+
 	TRACE(Ox08b40_INFO, "%s: (enter)\n", __func__);
 	uint32_t dgain = 0;
 	uint16_t value = 0, exp_line = 0, again = 0;
@@ -442,7 +499,8 @@ static RESULT Ox08b40_AecSetModeParameters(IsiSensorHandle_t handle)
 	result |=  Ox08b40_IsiReadRegIss(handle, 0x3509, &value);
 	again |=  (value & 0xf0) >> 4;
 
-	pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_HCG] = (float32_t)again * X8B_MIN_AGAIN_STEP;
+	pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_HCG] =
+		(float32_t)again * X8B_MIN_AGAIN_STEP;
 
 	value = 0;
 	result |= Ox08b40_IsiReadRegIss(handle, 0x350a, &value);
@@ -451,7 +509,8 @@ static RESULT Ox08b40_AecSetModeParameters(IsiSensorHandle_t handle)
 	dgain = dgain | ((value & 0xff) << 2);
 	result |= Ox08b40_IsiReadRegIss(handle, 0x350c, &value);
 	dgain = dgain | ((value & 0xc0) >> 6);
-	pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_HCG] = (float32_t)dgain * X8B_MIN_DGAIN_STEP;
+	pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_HCG] =
+		(float32_t)dgain * X8B_MIN_DGAIN_STEP;
 	pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_HCG] =
 					pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_HCG] *
 					pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_HCG];
@@ -550,11 +609,13 @@ static RESULT Ox08b40_AecSetModeParameters(IsiSensorHandle_t handle)
 						pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_VS] *
 						pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_VS];
 
-		pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_HCG_LCG] = X8B_DCG_CONVERSION_RATIO *
-						pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_HCG] /
-						pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_LCG];
+		pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_HCG_LCG] =
+			X8B_DCG_CONVERSION_RATIO *
+			pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_HCG] /
+			pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_LCG];
 
-		pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_LCG_SPD] = X8B_DCG_SPD_SENSITIVITY_RATIO *
+		pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_LCG_SPD] =
+			X8B_DCG_SPD_SENSITIVITY_RATIO *
 			pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_LCG] *
 			pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_LCG] /
 			(pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_SPD] *
@@ -567,8 +628,9 @@ static RESULT Ox08b40_AecSetModeParameters(IsiSensorHandle_t handle)
 			 pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_VS]);
 
 	} else {
-		TRACE(Ox08b40_ERROR, "%s: X8B not support sensor mode %d !!\n", __func__,
-			pOx08b40Ctx->sensorMode.hdrMode);
+		TRACE(Ox08b40_ERROR,
+				"%s: X8B not support sensor mode %d !!\n", __func__,
+				pOx08b40Ctx->sensorMode.hdrMode);
 		return RET_NOTSUPP;
 	}
 
@@ -582,20 +644,22 @@ static RESULT Ox08b40_AecSetModeParameters(IsiSensorHandle_t handle)
 	pOx08b40Ctx->aecMinGain = pOx08b40Ctx->aGain.min * pOx08b40Ctx->dGain.min;
 	pOx08b40Ctx->aecGainIncrement = X8B_MIN_DGAIN_STEP;
 
-#if X8B_DEBUG_LOG
 	for (int i = 0; i < X8B_EXP_INDEX_VS+1; i++) {
-		printf("%s: currInt[%d] = %f, currAgain[%d] = %f, currDgain[%d] = %f,
-				currTotalGain[%d] = %f\n", __func__, i,
+		TRACE(Ox08b40_INFO,
+				"%s: currInt[%d]=%f, currAgain[%d]=%f, currDgain[%d]=%f,"
+				"currTotalGain[%d]=%f\n", __func__, i,
 				pOx08b40Ctx->curIntTime.intTime[i],
 				i, pOx08b40Ctx->curAgain.gain[i],
 				i, pOx08b40Ctx->curDgain.gain[i],
 				i, pOx08b40Ctx->curGain.gain[i]);
 	}
-	printf("%s: AEC Range: expTime[%f, %f, step(%f)], gain[%f, %f, step(%f)]\n", __func__,
-			pOx08b40Ctx->aecMinIntegrationTime, pOx08b40Ctx->aecMaxIntegrationTime,
+	TRACE(Ox08b40_INFO,
+			"%s: AEC Range:expTime[%f, %f, step(%f)], gain[%f, %f, step(%f)]\n",
+			__func__, pOx08b40Ctx->aecMinIntegrationTime,
+			pOx08b40Ctx->aecMaxIntegrationTime,
 			pOx08b40Ctx->aecIntegrationTimeIncrement, pOx08b40Ctx->aecMinGain,
 			pOx08b40Ctx->aecMaxGain, pOx08b40Ctx->aecGainIncrement);
-#endif
+
 
 	TRACE(Ox08b40_INFO, "%s: result %d (exit)\n", __func__, result);
 	return result;
@@ -623,8 +687,12 @@ static RESULT Ox08b40_InitialModeParameters(IsiSensorHandle_t handle)
 	uint32_t b_gain, gb_gain, gr_gain, r_gain;
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
+	if (pOx08b40Ctx == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid sensor handle (NULL pointer detected)\n",
+			__func__);
 		return RET_WRONG_HANDLE;
+	}
 
 	result = Ox08b40_IsiReadRegIss(handle, 0x5280, &value);
 	b_gain = (value & 0x7f) << 8;
@@ -651,6 +719,9 @@ static RESULT Ox08b40_InitialModeParameters(IsiSensorHandle_t handle)
 
 	if (pOx08b40Ctx->sensorMode.hdrMode == ISI_SENSOR_MODE_LINEAR) {
 	} else if (pOx08b40Ctx->sensorMode.hdrMode == ISI_SENSOR_MODE_HDR_NATIVE) {
+		/* Read HDR channels 2-4 WB gains into the same locals.
+		 * Only channel 1 values (stored above) are used; channels 2-4
+		 * are read solely to verify I2C accessibility via result |=. */
 		result |=  Ox08b40_IsiReadRegIss(handle, 0x5480, &value);
 		b_gain = (value & 0x7f) << 8;
 		result |=  Ox08b40_IsiReadRegIss(handle, 0x5481, &value);
@@ -702,8 +773,9 @@ static RESULT Ox08b40_InitialModeParameters(IsiSensorHandle_t handle)
 		result |=  Ox08b40_IsiReadRegIss(handle, 0x5887, &value);
 		r_gain |=  (value & 0xff);
 	} else {
-		TRACE(Ox08b40_ERROR, "%s: X8B not support sensor mode %d !!\n", __func__,
-		      pOx08b40Ctx->sensorMode.hdrMode);
+		TRACE(Ox08b40_ERROR,
+				"%s: X8B not support sensor mode %d !!\n", __func__,
+				pOx08b40Ctx->sensorMode.hdrMode);
 		return RET_NOTSUPP;
 	}
 
@@ -732,8 +804,9 @@ static RESULT Ox08b40_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 	TRACE(Ox08b40_INFO, "%s (enter)\n", __func__);
 
 	if (!pOx08b40Ctx) {
-		TRACE(Ox08b40_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
-			__func__);
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle (NULL pointer detected)\n",
+				__func__);
 		return RET_WRONG_HANDLE;
 	}
 
@@ -743,56 +816,81 @@ static RESULT Ox08b40_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 	pOx08b40Ctx->sensorMode.index   = mode;
 	IsiSensorMode_t *SensorDefaultMode = NULL;
 
-	for (int i = 0; i < sizeof(pox08b40_mode_info) / sizeof(IsiSensorMode_t); i++) {
-		if (pox08b40_mode_info[i].index == pOx08b40Ctx->sensorMode.index) {
-			SensorDefaultMode = &(pox08b40_mode_info[i]);
+	for (unsigned int mode_idx = 0;
+			mode_idx < sizeof(pox08b40_mode_info) / sizeof(IsiSensorMode_t);
+			mode_idx++) {
+		if (pox08b40_mode_info[mode_idx].index ==
+				pOx08b40Ctx->sensorMode.index) {
+			SensorDefaultMode = &(pox08b40_mode_info[mode_idx]);
 			break;
 		}
 	}
 
 	if (SensorDefaultMode != NULL) {
-		int Status = XST_SUCCESS;
-
-
 		switch (SensorDefaultMode->index) {
 		case 0:
-			for (int i = 0; i < ARRAY_SIZE(Ox08b40_mipi4lane_8M_native4dol_init); i++) {
-				if (Ox08b40_mipi4lane_8M_native4dol_init[i][0] == TABLE_WAIT) {
-					osSleep(Ox08b40_mipi4lane_8M_native4dol_init[i][1]);
-				} else if (Ox08b40_mipi4lane_8M_native4dol_init[i][0] ==
+			for (unsigned int reg_idx = 0;
+					reg_idx <
+					ARRAY_SIZE(Ox08b40_mipi4lane_8M_native4dol_init);
+					reg_idx++) {
+				if (Ox08b40_mipi4lane_8M_native4dol_init[reg_idx][0] ==
+						TABLE_WAIT) {
+					osSleep(Ox08b40_mipi4lane_8M_native4dol_init
+							[reg_idx][1]);
+				}
+				if (Ox08b40_mipi4lane_8M_native4dol_init[reg_idx][0] ==
 						TABLE_END) {
 					break;
-				} else {
-					Ox08b40_IsiWriteRegIss(handle,
-						Ox08b40_mipi4lane_8M_native4dol_init[i][0],
-						Ox08b40_mipi4lane_8M_native4dol_init[i][1]);
 				}
+			result = Ox08b40_IsiWriteRegIss(handle,
+					Ox08b40_mipi4lane_8M_native4dol_init[reg_idx][0],
+					Ox08b40_mipi4lane_8M_native4dol_init[reg_idx][1]);
+			if (result != RET_SUCCESS) {
+				TRACE(Ox08b40_ERROR,
+				      "%s: Init failed at reg 0x%04x (err=%d)\n",
+				      __func__,
+				      Ox08b40_mipi4lane_8M_native4dol_init[reg_idx][0],
+				      result);
+				return result;
 			}
-			break;
+		}
+		break;
 		case 1:
-			for (int i = 0; i <
-				ARRAY_SIZE(Ox08b40_mipi4lane_binning1080p_native4dol_init); i++) {
-				if (Ox08b40_mipi4lane_binning1080p_native4dol_init[i][0] ==
-					TABLE_WAIT) {
-					osSleep(Ox08b40_mipi4lane_binning1080p_native4dol_init[i][1]);
-				} else if (Ox08b40_mipi4lane_binning1080p_native4dol_init[i][0]
-						== TABLE_END) {
-					break;
-				} else {
-					Ox08b40_IsiWriteRegIss(handle,
-					Ox08b40_mipi4lane_binning1080p_native4dol_init[i][0],
-					Ox08b40_mipi4lane_binning1080p_native4dol_init[i][1]);
-				}
+		for (unsigned int reg_idx = 0;
+				reg_idx <
+				ARRAY_SIZE(Ox08b40_mipi4lane_binning1080p_native4dol_init);
+				reg_idx++) {
+			if (Ox08b40_mipi4lane_binning1080p_native4dol_init
+					[reg_idx][0] == TABLE_WAIT) {
+				osSleep(Ox08b40_mipi4lane_binning1080p_native4dol_init
+						[reg_idx][1]);
 			}
-			break;
+			if (Ox08b40_mipi4lane_binning1080p_native4dol_init
+					[reg_idx][0] == TABLE_END) {
+				break;
+			}
+			result = Ox08b40_IsiWriteRegIss(handle,
+					Ox08b40_mipi4lane_binning1080p_native4dol_init[reg_idx][0],
+					Ox08b40_mipi4lane_binning1080p_native4dol_init[reg_idx][1]);
+			if (result != RET_SUCCESS) {
+				TRACE(Ox08b40_ERROR,
+				      "%s: Init failed at reg 0x%04x (err=%d)\n",
+				      __func__,
+				      Ox08b40_mipi4lane_binning1080p_native4dol_init[reg_idx][0],
+				      result);
+				return result;
+			}
+		}
+		break;
 		default:
-			TRACE(Ox08b40_INFO, "%s:not support sensor mode %d\n",
-			      __func__, pOx08b40Ctx->sensorMode.index);
-			osFree(pOx08b40Ctx);
-			return RET_NOTSUPP;
+		TRACE(Ox08b40_INFO, "%s:not support sensor mode %d\n",
+				__func__, pOx08b40Ctx->sensorMode.index);
+		osFree(pOx08b40Ctx);
+		return RET_NOTSUPP;
 		}
 
-		memcpy(&(pOx08b40Ctx->sensorMode), SensorDefaultMode, sizeof(IsiSensorMode_t));
+		memcpy(&(pOx08b40Ctx->sensorMode), SensorDefaultMode,
+				sizeof(IsiSensorMode_t));
 	} else {
 		TRACE(Ox08b40_ERROR, "%s: Invalid SensorDefaultMode\n", __func__);
 		return RET_NULL_POINTER;
@@ -805,9 +903,11 @@ static RESULT Ox08b40_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 		pOx08b40Ctx->oneLineVSExpTime		= MODE0_ONE_LINE_VS_EXPTIME;
 		pOx08b40Ctx->frameLengthLines		= MODE0_FRAME_LENGTH_LINES;
 		pOx08b40Ctx->curFrameLengthLines	= pOx08b40Ctx->frameLengthLines;
-		pOx08b40Ctx->maxDCGIntegrationLine	= pOx08b40Ctx->frameLengthLines - 13 - 1;
+		pOx08b40Ctx->maxDCGIntegrationLine	=
+			pOx08b40Ctx->frameLengthLines - 13 - 1;
 		pOx08b40Ctx->minDCGIntegrationLine	= MODE0_MIN_DCG_INTEGRATION_LINE;
-		pOx08b40Ctx->maxSPDIntegrationLine	= pOx08b40Ctx->frameLengthLines - 13;
+		pOx08b40Ctx->maxSPDIntegrationLine	=
+			pOx08b40Ctx->frameLengthLines - 13;
 		pOx08b40Ctx->minSPDIntegrationLine	= MODE0_MIN_SPD_INTEGRATION_LINE;
 		pOx08b40Ctx->maxVSIntegrationLine	= MODE0_MAX_VS_INTEGRATION_LINE;
 		pOx08b40Ctx->minVSIntegrationLine	= MODE0_MIN_VS_INTEGRATION_LINE;
@@ -825,9 +925,11 @@ static RESULT Ox08b40_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 		pOx08b40Ctx->oneLineVSExpTime		= MODE1_ONE_LINE_VS_EXPTIME;
 		pOx08b40Ctx->frameLengthLines		= MODE1_FRAME_LENGTH_LINES;
 		pOx08b40Ctx->curFrameLengthLines	= pOx08b40Ctx->frameLengthLines;
-		pOx08b40Ctx->maxDCGIntegrationLine	= pOx08b40Ctx->frameLengthLines - 13 - 1;
+		pOx08b40Ctx->maxDCGIntegrationLine	=
+			pOx08b40Ctx->frameLengthLines - 13 - 1;
 		pOx08b40Ctx->minDCGIntegrationLine	= MODE1_MIN_DCG_INTEGRATION_LINE;
-		pOx08b40Ctx->maxSPDIntegrationLine	= pOx08b40Ctx->frameLengthLines - 13;
+		pOx08b40Ctx->maxSPDIntegrationLine	=
+			pOx08b40Ctx->frameLengthLines - 13;
 		pOx08b40Ctx->minSPDIntegrationLine	= MODE1_MIN_SPD_INTEGRATION_LINE;
 		pOx08b40Ctx->maxVSIntegrationLine	= MODE1_MAX_VS_INTEGRATION_LINE;
 		pOx08b40Ctx->minVSIntegrationLine	= MODE1_MIN_VS_INTEGRATION_LINE;
@@ -849,17 +951,18 @@ static RESULT Ox08b40_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 	pOx08b40Ctx->minFps  = MIN_FPS;
 	pOx08b40Ctx->currFps = pOx08b40Ctx->maxFps;
 
-	TRACE(Ox08b40_DEBUG, "%s: Ox08b40 System-Reset executed\n", __func__);
-	osSleep(100);
+	TRACE(Ox08b40_INFO, "%s: Ox08b40 System-Reset executed\n", __func__);
 
 	result = Ox08b40_AecSetModeParameters(handle);
 	if (result != RET_SUCCESS) {
-		TRACE(Ox08b40_ERROR, "%s: Ox08b40_AecSetModeParameters failed.\n", __func__);
+		TRACE(Ox08b40_ERROR, "%s: Ox08b40_AecSetModeParameters failed. (err=%d)\n",
+				__func__, result);
 		return result;
 	}
 	result = Ox08b40_InitialModeParameters(handle);
 	if (result != RET_SUCCESS) {
-		TRACE(Ox08b40_ERROR, "%s: Ox08b40_InitialModeParameters failed!\n", __func__);
+		TRACE(Ox08b40_ERROR, "%s: Ox08b40_InitialModeParameters failed! (err=%d)\n",
+				__func__, result);
 		return result;
 	}
 	pOx08b40Ctx->configured = BOOL_TRUE;
@@ -868,7 +971,6 @@ static RESULT Ox08b40_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 	TRACE(Ox08b40_INFO, "%s: (exit)\n", __func__);
 	return 0;
 }
-
 /*****************************************************************************
  *          Ox08b40_IsiCloseIss
  *
@@ -888,8 +990,12 @@ static RESULT Ox08b40_IsiCloseIss(IsiSensorHandle_t handle)
 
 	TRACE(Ox08b40_INFO, "%s (enter)\n", __func__);
 
-	if (pOx08b40Ctx == NULL)
-		return RET_WRONG_HANDLE;
+	if (pOx08b40Ctx == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid sensor handle (NULL pointer detected)\n",
+			__func__);
+		return RET_NULL_POINTER;
+	}
 
 	(void)Ox08b40_IsiSetStreamingIss(pOx08b40Ctx, BOOL_FALSE);
 
@@ -944,18 +1050,22 @@ static RESULT Ox08b40_IsiCheckConnectionIss(IsiSensorHandle_t handle)
 	RESULT result = RET_SUCCESS;
 
 	uint32_t sensor_id = 0;
-	uint32_t correct_id = 0x580841;
+	uint32_t correct_id = OX08B40_SENSOR_ID;
 
 	TRACE(Ox08b40_INFO, "%s (enter)\n", __func__);
 
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
+	if (pOx08b40Ctx == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid sensor handle (NULL pointer detected)\n",
+			__func__);
 		return RET_NULL_POINTER;
+	}
 
 	result = Ox08b40_IsiGetRevisionIss(handle, &sensor_id);
 	if (result != RET_SUCCESS) {
-		TRACE(Ox08b40_ERROR, "%s: Read Sensor ID Error!\n", __func__);
+		TRACE(Ox08b40_ERROR, "%s: Read Sensor ID Error! (err=%d)\n", __func__, result);
 		return RET_FAILURE;
 	}
 	if (correct_id != sensor_id) {
@@ -985,7 +1095,8 @@ static RESULT Ox08b40_IsiCheckConnectionIss(IsiSensorHandle_t handle)
  * @retval  RET_NOTSUPP
  *
  *****************************************************************************/
-static RESULT Ox08b40_IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *pValue)
+static RESULT Ox08b40_IsiGetRevisionIss(IsiSensorHandle_t handle,
+					 uint32_t *pValue)
 {
 	RESULT result = RET_SUCCESS;
 	uint16_t reg_val;
@@ -995,8 +1106,12 @@ static RESULT Ox08b40_IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *pVal
 
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
+	if (pOx08b40Ctx == NULL || pValue == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid sensor handle or NULL pointer detected\n",
+			__func__);
 		return RET_NULL_POINTER;
+	}
 
 	reg_val   = 0;
 	result    = Ox08b40_IsiReadRegIss(handle, 0x300a, &reg_val);
@@ -1038,19 +1153,31 @@ static RESULT Ox08b40_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t on)
 
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
+	if (pOx08b40Ctx == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid sensor handle (NULL pointer detected)\n",
+			__func__);
 		return RET_NULL_POINTER;
+	}
 
 	if (pOx08b40Ctx->configured != BOOL_TRUE)
 		return RET_WRONG_STATE;
 
 	result = Ox08b40_IsiWriteRegIss(handle, 0x0100, on);
 	if (result != RET_SUCCESS) {
-		TRACE(Ox08b40_ERROR, "%s: set sensor streaming error!\n", __func__);
+		TRACE(Ox08b40_ERROR, "%s: set sensor streaming error! (err=%d)\n", __func__, result);
 		return RET_FAILURE;
 	}
 
 	pOx08b40Ctx->streaming = on;
+
+	TRACE(Ox08b40_INFO,
+		 "%s: streaming=%s mode=%d res=%dx%d fps=%d\n",
+	      __func__, on ? "ON" : "OFF",
+		  pOx08b40Ctx->sensorMode.index,
+		  pOx08b40Ctx->sensorMode.size.width,
+		  pOx08b40Ctx->sensorMode.size.height,
+		  pOx08b40Ctx->currFps / ISI_FPS_QUANTIZE);
 
 	TRACE(Ox08b40_INFO, "%s (exit)\n", __func__);
 	return result;
@@ -1071,21 +1198,18 @@ static RESULT Ox08b40_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t on)
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static RESULT Ox08b40_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle, IsiAeBaseInfo_t *pAeBaseInfo)
+static RESULT Ox08b40_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
+					   IsiAeBaseInfo_t *pAeBaseInfo)
 {
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 	RESULT result = RET_SUCCESS;
 
 	TRACE(Ox08b40_INFO, "%s: (enter)\n", __func__);
 
-	if (pOx08b40Ctx == NULL) {
-		TRACE(Ox08b40_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
-			__func__);
-		return RET_WRONG_HANDLE;
-	}
-
-	if (pAeBaseInfo == NULL) {
-		TRACE(Ox08b40_ERROR, "%s: NULL pointer received!!\n");
+	if (pOx08b40Ctx == NULL || pAeBaseInfo == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
 		return RET_NULL_POINTER;
 	}
 
@@ -1141,26 +1265,27 @@ static RESULT Ox08b40_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle, IsiAeBaseIn
 		return RET_NOTSUPP;
 	}
 
-#if X8B_DEBUG_LOG
-	printf("%s: current exptime[0] = %f, exptime[1] = %f, exptime[2] = %f, exptime[3] = %f\n",
-	       __func__,
+	TRACE(Ox08b40_INFO,
+			"%s: current exptime[0]=%f, exptime[1]=%f,"
+			"exptime[2]=%f, exptime[3]=%f\n", __func__,
 			pAeBaseInfo->curIntTime.intTime[X8B_EXP_INDEX_HCG],
 			pAeBaseInfo->curIntTime.intTime[X8B_EXP_INDEX_LCG],
 			pAeBaseInfo->curIntTime.intTime[X8B_EXP_INDEX_SPD],
 			pAeBaseInfo->curIntTime.intTime[X8B_EXP_INDEX_VS]);
 
-	printf("%s: current curGain[0] = %f, curGain[1] = %f, curGain[2] = %f, curGain[3] = %f\n",
-	       __func__,
+	TRACE(Ox08b40_INFO,
+			"%s: current curGain[0]=%f, curGain[1]=%f,"
+			"curGain[2]=%f, curGain[3]=%f\n", __func__,
 			pAeBaseInfo->curGain.gain[X8B_EXP_INDEX_HCG],
 			pAeBaseInfo->curGain.gain[X8B_EXP_INDEX_LCG],
 			pAeBaseInfo->curGain.gain[X8B_EXP_INDEX_SPD],
 			pAeBaseInfo->curGain.gain[X8B_EXP_INDEX_VS]);
 
-	printf("%s: current ratio[0] = %f, ratio[1] = %f, ratio[2] = %f\n", __func__,
-			pAeBaseInfo->nativeHdrRatio[X8B_NATIVE_RATIO_HCG_LCG],
+	TRACE(Ox08b40_INFO,
+			"%s: current ratio[0]=%f, ratio[1]=%f, ratio[2]=%f\n",
+			__func__, pAeBaseInfo->nativeHdrRatio[X8B_NATIVE_RATIO_HCG_LCG],
 			pAeBaseInfo->nativeHdrRatio[X8B_NATIVE_RATIO_LCG_SPD],
 			pAeBaseInfo->nativeHdrRatio[X8B_NATIVE_RATIO_SPD_VS]);
-#endif
 
 	TRACE(Ox08b40_INFO, "%s: (enter)\n", __func__);
 	return result;
@@ -1180,7 +1305,8 @@ static RESULT Ox08b40_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle, IsiAeBaseIn
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT Ox08b40_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain)
+RESULT Ox08b40_IsiSetAGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorAGain)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -1190,17 +1316,25 @@ RESULT Ox08b40_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensor
 
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
+	if (pOx08b40Ctx == NULL || pSensorAGain == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid sensor handle or NULL pointer detected\n",
+			__func__);
 		return RET_NULL_POINTER;
+	}
 
-		realHCGAgain = pSensorAGain->gain[ISI_LINEAR_PARAS];
-	realHCGAgain = MAX(pOx08b40Ctx->aGain.min, MIN(realHCGAgain, pOx08b40Ctx->aGain.max));
+	realHCGAgain = pSensorAGain->gain[ISI_LINEAR_PARAS];
+	realHCGAgain = MAX(pOx08b40Ctx->aGain.min,
+			MIN(realHCGAgain, pOx08b40Ctx->aGain.max));
 	againHCG = (uint16_t)(realHCGAgain * (1/X8B_MIN_AGAIN_STEP) + 0.5);
-	pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_HCG] = (float32_t)(againHCG * X8B_MIN_AGAIN_STEP);
+	pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_HCG] =
+		(float32_t)(againHCG * X8B_MIN_AGAIN_STEP);
 
 	if (pOx08b40Ctx->sensorMode.hdrMode == ISI_SENSOR_MODE_LINEAR) {
-		result = Ox08b40_IsiWriteRegIss(handle, 0x3508, (againHCG & 0xf0) >> 4);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x3509, (againHCG & 0x0f) << 4);
+		result =
+			Ox08b40_IsiWriteRegIss(handle, 0x3508, (againHCG & 0xf0) >> 4);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x3509, (againHCG & 0x0f) << 4);
 	} else if (pOx08b40Ctx->sensorMode.hdrMode == ISI_SENSOR_MODE_HDR_NATIVE) {
 		againLCG = againHCG;
 		againSPD = againHCG;
@@ -1213,28 +1347,37 @@ RESULT Ox08b40_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensor
 		pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_LCG] =
 				(float32_t)(againLCG * X8B_MIN_AGAIN_STEP);
 
-		result = Ox08b40_IsiWriteRegIss(handle, 0x3508, (againHCG & 0xf0) >> 4);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x3509, (againHCG & 0x0f) << 4);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x3588, (againLCG & 0xf0) >> 4);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x3589, (againLCG & 0x0f) << 4);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x3548, (againSPD & 0xf0) >> 4);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x3549, (againSPD & 0x0f) << 4);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x35c8, (againVS & 0xf0) >> 4);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x35c9, (againVS & 0x0f) << 4);
+		result =
+			Ox08b40_IsiWriteRegIss(handle, 0x3508, (againHCG & 0xf0) >> 4);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x3509, (againHCG & 0x0f) << 4);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x3588, (againLCG & 0xf0) >> 4);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x3589, (againLCG & 0x0f) << 4);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x3548, (againSPD & 0xf0) >> 4);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x3549, (againSPD & 0x0f) << 4);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x35c8, (againVS & 0xf0) >> 4);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x35c9, (againVS & 0x0f) << 4);
 
 	} else {
 		TRACE(Ox08b40_ERROR, "%s:not support this ExpoFrmType.\n", __func__);
 		return RET_NOTSUPP;
 	}
 
-#if X8B_DEBUG_LOG
-	TRACE(Ox08b40_DEBUG, "%s: current curAgain[0] = %f, curAgain[1] = %f, curAgain[2] = %f,
-			curAgain[3] = %f\n", __func__,
+
+	TRACE(Ox08b40_INFO,
+			 "%s: frame=%d aGain=[%.3f,%.3f,%.3f,%.3f]\n",
+			 __func__, g_Sensor_frame_count,
 			pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_HCG],
 			pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_LCG],
 			pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_SPD],
 			pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_VS]);
-#endif
+
 
 	TRACE(Ox08b40_INFO, "%s: result %d (exit)\n", __func__, result);
 	return result;
@@ -1254,7 +1397,8 @@ RESULT Ox08b40_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensor
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT Ox08b40_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain)
+RESULT Ox08b40_IsiSetDGainIss(IsiSensorHandle_t handle,
+			      IsiSensorGain_t *pSensorDGain)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -1265,22 +1409,30 @@ RESULT Ox08b40_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensor
 
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
+	if (pOx08b40Ctx == NULL || pSensorDGain == NULL) {
+		TRACE(Ox08b40_ERROR,
+			"%s: Invalid sensor handle or NULL pointer detected\n",
+			__func__);
 		return RET_NULL_POINTER;
+	}
 
 	if (pSensorDGain->gain[ISI_LINEAR_PARAS] < pOx08b40Ctx->dGain.min) {
-		TRACE(Ox08b40_WARN, "%s: invalid too small dgain parameter!\n", __func__);
+		TRACE(Ox08b40_WARN, "%s: invalid too small dgain parameter!\n",
+				__func__);
 		pSensorDGain->gain[ISI_LINEAR_PARAS] = pOx08b40Ctx->dGain.min;
 	}
 
 	if (pSensorDGain->gain[ISI_LINEAR_PARAS] > pOx08b40Ctx->dGain.max) {
-		TRACE(Ox08b40_WARN, "%s: invalid too big dgain parameter!\n", __func__);
+		TRACE(Ox08b40_WARN, "%s: invalid too big dgain parameter!\n",
+				__func__);
 		pSensorDGain->gain[ISI_LINEAR_PARAS] = pOx08b40Ctx->dGain.max;
 	}
 	realHCGDgain = pSensorDGain->gain[ISI_LINEAR_PARAS];
-	realHCGDgain = MAX(pOx08b40Ctx->dGain.min, MIN(realHCGDgain, pOx08b40Ctx->dGain.max));
+	realHCGDgain = MAX(pOx08b40Ctx->dGain.min,
+			MIN(realHCGDgain, pOx08b40Ctx->dGain.max));
 	dgainHCG = (uint32_t)(realHCGDgain * (1/X8B_MIN_DGAIN_STEP) + 0.5);
-	pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_HCG] = (float32_t)(dgainHCG * X8B_MIN_DGAIN_STEP);
+	pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_HCG] =
+		(float32_t)(dgainHCG * X8B_MIN_DGAIN_STEP);
 
 	pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_HCG] =
 		pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_HCG] *
@@ -1288,9 +1440,12 @@ RESULT Ox08b40_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensor
 
 	if (pOx08b40Ctx->sensorMode.hdrMode == ISI_SENSOR_MODE_LINEAR) {
 
-		result = Ox08b40_IsiWriteRegIss(handle, 0x350a, (dgainHCG >> 10) & 0x0f);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x350b, (dgainHCG >> 2) & 0xff);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x350c, (dgainHCG & 0x3) << 6);
+		result =
+			Ox08b40_IsiWriteRegIss(handle, 0x350a, (dgainHCG >> 10) & 0x0f);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x350b, (dgainHCG >> 2) & 0xff);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x350c, (dgainHCG & 0x3) << 6);
 
 	} else if (pOx08b40Ctx->sensorMode.hdrMode == ISI_SENSOR_MODE_HDR_NATIVE) {
 		dgainLCG = dgainHCG;
@@ -1313,39 +1468,47 @@ RESULT Ox08b40_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensor
 			pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_VS] *
 			pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_VS];
 
-		result = Ox08b40_IsiWriteRegIss(handle, 0x350a, (dgainHCG >> 10) & 0x0f);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x350b, (dgainHCG >> 2) & 0xff);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x350c, (dgainHCG & 0x3) << 6);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x358a, (dgainLCG >> 10) & 0x0f);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x358b, (dgainLCG >> 2) & 0xff);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x358c, (dgainLCG & 0x3) << 6);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x354a, (dgainSPD >> 10) & 0x0f);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x354b, (dgainSPD >> 2) & 0xff);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x354c, (dgainSPD & 0x3) << 6);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x35ca, (dgainVS >> 10) & 0x0f);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x35cb, (dgainVS >> 2) & 0xff);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x35cc, (dgainVS & 0x3) << 6);
+		result =
+			Ox08b40_IsiWriteRegIss(handle, 0x350a, (dgainHCG >> 10) & 0x0f);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x350b, (dgainHCG >> 2) & 0xff);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x350c, (dgainHCG & 0x3) << 6);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x358a, (dgainLCG >> 10) & 0x0f);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x358b, (dgainLCG >> 2) & 0xff);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x358c, (dgainLCG & 0x3) << 6);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x354a, (dgainSPD >> 10) & 0x0f);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x354b, (dgainSPD >> 2) & 0xff);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x354c, (dgainSPD & 0x3) << 6);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x35ca, (dgainVS >> 10) & 0x0f);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x35cb, (dgainVS >> 2) & 0xff);
+		result |=
+			Ox08b40_IsiWriteRegIss(handle, 0x35cc, (dgainVS & 0x3) << 6);
 
 	} else {
 		TRACE(Ox08b40_ERROR, "%s:not support this ExpoFrmType.\n", __func__);
 		return RET_NOTSUPP;
 	}
-#if X8B_DEBUG_LOG
-	TRACE(Ox08b40_DEBUG, "%s: current curDgain[0] = %f, curDgain[1] = %f,
-		curDgain[2] = %f, curDgain[3] = %f\n",
-		__func__, pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_HCG],
-		pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_LCG],
-		pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_SPD],
-		pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_VS]);
-
-	TRACE(Ox08b40_DEBUG,
-		"%s: current curGain[0] = %f, curGain[1] = %f, curGain[2] = %f, curGain[3] = %f\n",
-		__func__, pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_HCG],
-		pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_LCG],
-		pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_SPD],
-		pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_VS]);
-#endif
-
+	TRACE(Ox08b40_INFO,
+	      "%s: frame=%d dGain=[%.3f,%.3f,%.3f,%.3f] "
+	      "totalGain=[%.3f,%.3f,%.3f,%.3f]\n",
+	      __func__, g_Sensor_frame_count,
+	      pOx08b40Ctx->curDgain.gain[0],
+	      pOx08b40Ctx->curDgain.gain[1],
+	      pOx08b40Ctx->curDgain.gain[2],
+	      pOx08b40Ctx->curDgain.gain[3],
+	      pOx08b40Ctx->curGain.gain[0],
+	      pOx08b40Ctx->curGain.gain[1],
+	      pOx08b40Ctx->curGain.gain[2],
+	      pOx08b40Ctx->curGain.gain[3]);
 	TRACE(Ox08b40_INFO, "%s: result %d (exit)\n", __func__, result);
 	return result;
 }
@@ -1364,25 +1527,29 @@ RESULT Ox08b40_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensor
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT Ox08b40_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain)
+RESULT Ox08b40_IsiGetAGainIss(IsiSensorHandle_t handle,
+			      IsiSensorGain_t *pSensorAGain)
 {
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 	RESULT result = RET_SUCCESS;
 
 	TRACE(Ox08b40_INFO, "%s: (enter)\n", __func__);
 
-	if (pOx08b40Ctx == NULL) {
-		TRACE(Ox08b40_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
-			__func__);
-		return RET_WRONG_HANDLE;
+	if (pOx08b40Ctx == NULL || pSensorAGain == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
+		return RET_NULL_POINTER;
 	}
 
-	if (pSensorAGain == NULL)
-		return RET_NULL_POINTER;
-	pSensorAGain->gain[X8B_EXP_INDEX_HCG] = pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_HCG];
-	pSensorAGain->gain[X8B_EXP_INDEX_LCG] = pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_LCG];
-	pSensorAGain->gain[X8B_EXP_INDEX_SPD] = pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_SPD];
-	pSensorAGain->gain[X8B_EXP_INDEX_VS] = pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_VS];
+	pSensorAGain->gain[X8B_EXP_INDEX_HCG] =
+		pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_HCG];
+	pSensorAGain->gain[X8B_EXP_INDEX_LCG] =
+		pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_LCG];
+	pSensorAGain->gain[X8B_EXP_INDEX_SPD] =
+		pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_SPD];
+	pSensorAGain->gain[X8B_EXP_INDEX_VS] =
+		pOx08b40Ctx->curAgain.gain[X8B_EXP_INDEX_VS];
 
 	TRACE(Ox08b40_INFO, "%s: (exit)\n", __func__);
 	return result;
@@ -1402,26 +1569,29 @@ RESULT Ox08b40_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensor
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT Ox08b40_IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain)
+RESULT Ox08b40_IsiGetDGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorDGain)
 {
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 	RESULT result = RET_SUCCESS;
 
 	TRACE(Ox08b40_INFO, "%s: (enter)\n", __func__);
 
-	if (pOx08b40Ctx == NULL) {
-		TRACE(Ox08b40_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
-			__func__);
-		return RET_WRONG_HANDLE;
+	if (pOx08b40Ctx == NULL || pSensorDGain == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
+		return RET_NULL_POINTER;
 	}
 
-	if (pSensorDGain == NULL)
-		return RET_NULL_POINTER;
-
-	pSensorDGain->gain[X8B_EXP_INDEX_HCG] = pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_HCG];
-	pSensorDGain->gain[X8B_EXP_INDEX_LCG] = pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_LCG];
-	pSensorDGain->gain[X8B_EXP_INDEX_SPD] = pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_SPD];
-	pSensorDGain->gain[X8B_EXP_INDEX_VS] = pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_VS];
+	pSensorDGain->gain[X8B_EXP_INDEX_HCG] =
+		pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_HCG];
+	pSensorDGain->gain[X8B_EXP_INDEX_LCG] =
+		pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_LCG];
+	pSensorDGain->gain[X8B_EXP_INDEX_SPD] =
+		pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_SPD];
+	pSensorDGain->gain[X8B_EXP_INDEX_VS] =
+		pOx08b40Ctx->curDgain.gain[X8B_EXP_INDEX_VS];
 
 	TRACE(Ox08b40_INFO, "%s: (exit)\n", __func__);
 	return result;
@@ -1441,7 +1611,8 @@ RESULT Ox08b40_IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensor
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT Ox08b40_IsiSetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pSensorIntTime)
+RESULT Ox08b40_IsiSetIntTimeIss(IsiSensorHandle_t handle,
+				const IsiSensorIntTime_t *pSensorIntTime)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -1449,14 +1620,15 @@ RESULT Ox08b40_IsiSetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pS
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 	uint16_t expDCGLine = 0, expSPDLine = 0, expVSLine = 0;
 
-	if (!pOx08b40Ctx) {
-		TRACE(Ox08b40_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
-			__func__);
-		return RET_WRONG_HANDLE;
+	if (!pOx08b40Ctx || !pSensorIntTime) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
+		return RET_NULL_POINTER;
 	}
 
-		expDCGLine = (uint16_t)(pSensorIntTime->intTime[ISI_LINEAR_PARAS] /
-				pOx08b40Ctx->oneLineDCGExpTime + 0.5);
+	expDCGLine = (uint16_t)(pSensorIntTime->intTime[ISI_LINEAR_PARAS] /
+			pOx08b40Ctx->oneLineDCGExpTime + 0.5);
 	expDCGLine = MIN(pOx08b40Ctx->maxDCGIntegrationLine,
 			 MAX(pOx08b40Ctx->minDCGIntegrationLine, expDCGLine));
 	pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_HCG] =
@@ -1464,13 +1636,15 @@ RESULT Ox08b40_IsiSetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pS
 	pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_LCG] =
 		pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_HCG];
 	pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_HCG_LCG] =
-		X8B_DCG_CONVERSION_RATIO * pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_HCG] /
+		X8B_DCG_CONVERSION_RATIO *
+		pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_HCG] /
 		pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_LCG];
 
 	if (pOx08b40Ctx->sensorMode.hdrMode == ISI_SENSOR_MODE_LINEAR) {
 
-		result =  Ox08b40_IsiWriteRegIss(handle, 0x3501, (expDCGLine >> 8) & 0xff);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x3502, (expDCGLine & 0xff));
+		result =
+			Ox08b40_IsiWriteRegIss(handle, 0x3501, (expDCGLine >> 8) & 0xff);
+		result |= Ox08b40_IsiWriteRegIss(handle, 0x3502, (expDCGLine & 0xff));
 
 	} else if (pOx08b40Ctx->sensorMode.hdrMode == ISI_SENSOR_MODE_HDR_NATIVE) {
 
@@ -1480,7 +1654,8 @@ RESULT Ox08b40_IsiSetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pS
 			pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_LCG] /
 			pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_LCG_SPD] /
 			pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_SPD];
-		expSPDLine = (uint16_t)(pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_SPD] /
+		expSPDLine =
+			(uint16_t)(pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_SPD] /
 					pOx08b40Ctx->oneLineSPDExpTime + 0.5);
 		expSPDLine = MIN(pOx08b40Ctx->maxSPDIntegrationLine,
 				 MAX(pOx08b40Ctx->minSPDIntegrationLine, expSPDLine));
@@ -1494,48 +1669,50 @@ RESULT Ox08b40_IsiSetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pS
 			pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_SPD];
 
 		pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_VS] =
-		pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_SPD] *
-		pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_SPD] /
-		(X8B_DCG_SPD_SENSITIVITY_RATIO *
-		 pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_SPD_VS] *
-		 pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_VS]);
-	expVSLine = (uint16_t)(pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_VS] /
-			       pOx08b40Ctx->oneLineVSExpTime + 0.5);
-	expVSLine = MIN(pOx08b40Ctx->maxVSIntegrationLine,
-			MAX(pOx08b40Ctx->minVSIntegrationLine, expVSLine));
-	pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_VS] =
-		expVSLine * pOx08b40Ctx->oneLineVSExpTime;
-	pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_SPD_VS] =
-		pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_SPD] *
-		pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_SPD] /
-		(X8B_DCG_SPD_SENSITIVITY_RATIO *
-		 pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_VS] *
-		 pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_VS]);
-		result =  Ox08b40_IsiWriteRegIss(handle, 0x3501, (expDCGLine >> 8) & 0xff);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x3502, (expDCGLine & 0xff));
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x3541, (expSPDLine >> 8) & 0xff);
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x3542, (expSPDLine & 0xff));
-		result |=  Ox08b40_IsiWriteRegIss(handle, 0x35c1, (expVSLine >> 8) & 0xff);
+			pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_SPD] *
+			pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_SPD] /
+			(X8B_DCG_SPD_SENSITIVITY_RATIO *
+			 pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_SPD_VS] *
+			 pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_VS]);
+		expVSLine =
+			(uint16_t)(pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_VS] /
+					pOx08b40Ctx->oneLineVSExpTime + 0.5);
+		expVSLine = MIN(pOx08b40Ctx->maxVSIntegrationLine,
+				MAX(pOx08b40Ctx->minVSIntegrationLine, expVSLine));
+		pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_VS] =
+			expVSLine * pOx08b40Ctx->oneLineVSExpTime;
+		pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_SPD_VS] =
+			pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_SPD] *
+			pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_SPD] /
+			(X8B_DCG_SPD_SENSITIVITY_RATIO *
+			 pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_VS] *
+			 pOx08b40Ctx->curGain.gain[X8B_EXP_INDEX_VS]);
+		result =
+		Ox08b40_IsiWriteRegIss(handle, 0x3501, (expDCGLine >> 8) & 0xff);
+		result |=
+		Ox08b40_IsiWriteRegIss(handle, 0x3502, (expDCGLine & 0xff));
+		result |=
+		Ox08b40_IsiWriteRegIss(handle, 0x3541, (expSPDLine >> 8) & 0xff);
+		result |=
+		Ox08b40_IsiWriteRegIss(handle, 0x3542, (expSPDLine & 0xff));
+		result |=
+		Ox08b40_IsiWriteRegIss(handle, 0x35c1, (expVSLine >> 8) & 0xff);
 		result |=  Ox08b40_IsiWriteRegIss(handle, 0x35c2, (expVSLine & 0xff));
 	} else {
 		TRACE(Ox08b40_ERROR, "%s:not support this ExpoFrmType.\n", __func__);
 		return RET_NOTSUPP;
 	}
 
-#if X8B_DEBUG_LOG
-	printf("%s: current exptime[0] = %f, exptime[1] = %f, exptime[2] = %f, exptime[3] = %f\n",
-	       __func__,
-			pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_HCG],
-			pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_LCG],
-			pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_SPD],
-			pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_VS]);
-
-	printf("%s: current ratio[0] = %f, ratio[1] = %f, ratio[2] = %f\n", __func__,
-			pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_HCG_LCG],
-			pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_LCG_SPD],
-			pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_SPD_VS]);
-#endif
-
+	TRACE(Ox08b40_INFO,
+	      "%s: frame=%d intTime=[%.6f,%.6f,%.6f,%.6f] ratio=[%.3f,%.3f,%.3f]\n",
+	      __func__, g_Sensor_frame_count,
+	      pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_HCG],
+	      pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_LCG],
+	      pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_SPD],
+	      pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_VS],
+	      pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_HCG_LCG],
+	      pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_LCG_SPD],
+	      pOx08b40Ctx->hdrRatio[X8B_NATIVE_RATIO_SPD_VS]);
 	TRACE(Ox08b40_INFO, "%s: result %d (exit)\n", __func__, result);
 	return result;
 }
@@ -1554,21 +1731,20 @@ RESULT Ox08b40_IsiSetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pS
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT Ox08b40_IsiGetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pSensorIntTime)
+RESULT Ox08b40_IsiGetIntTimeIss(IsiSensorHandle_t handle,
+				IsiSensorIntTime_t *pSensorIntTime)
 {
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 	RESULT result = RET_SUCCESS;
 
 	TRACE(Ox08b40_INFO, "%s: (enter)\n", __func__);
 
-	if (!pOx08b40Ctx) {
-		TRACE(Ox08b40_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
-			__func__);
-		return RET_WRONG_HANDLE;
-	}
-
-	if (!pSensorIntTime)
+	if (pOx08b40Ctx == NULL || pSensorIntTime == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
 		return RET_NULL_POINTER;
+	}
 
 	pSensorIntTime->intTime[X8B_EXP_INDEX_HCG] =
 						pOx08b40Ctx->curIntTime.intTime[X8B_EXP_INDEX_HCG];
@@ -1589,34 +1765,60 @@ RESULT Ox08b40_IsiGetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pS
  *
  * @param   handle      Sensor instance handle
  *
- * @return  void
+ * @return  Return the result of the function call.
+ * @retval  RET_SUCCESS   Operation completed successfully
+ * @retval  RET_FAILURE   Operation failed
  *
  *****************************************************************************/
-void Ox08b40_sensor_framecount(IsiSensorHandle_t handle)
+int Ox08b40_sensor_framecount(IsiSensorHandle_t handle)
 {
+	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 	u32 frame_counter;
-	u8 read_buf[4];
+	uint16_t read_buf[4];
 	int Status;
 
+	if (pOx08b40Ctx == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle (NULL pointer detected)\n",
+				__func__);
+		return RET_NULL_POINTER;
+	}
+
 	Status = Ox08b40_IsiReadRegIss(handle, 0x4623, &read_buf[0]);
-	if (Status != XST_SUCCESS)
-		DCT_ASSERT(0);
+	if (Status != RET_SUCCESS) {
+		TRACE(Ox08b40_ERROR,
+				"%s:%d Failed to read register (err=%d)\n",
+				__func__, __LINE__, Status);
+		return Status;
+	}
 	Status = Ox08b40_IsiReadRegIss(handle, 0x4622, &read_buf[1]);
-	if (Status != XST_SUCCESS)
-		DCT_ASSERT(0);
+	if (Status != RET_SUCCESS) {
+		TRACE(Ox08b40_ERROR,
+				"%s:%d Failed to read register (err=%d)\n",
+				__func__, __LINE__, Status);
+		return Status;
+	}
 
 	Status = Ox08b40_IsiReadRegIss(handle, 0x4621, &read_buf[2]);
-	if (Status != XST_SUCCESS)
-		DCT_ASSERT(0);
-
+	if (Status != RET_SUCCESS) {
+		TRACE(Ox08b40_ERROR,
+				"%s:%d Failed to read register (err=%d)\n",
+				__func__, __LINE__, Status);
+		return Status;
+	}
 	Status = Ox08b40_IsiReadRegIss(handle, 0x4620, &read_buf[3]);
-	if (Status != XST_SUCCESS)
-		DCT_ASSERT(0);
-	frame_counter = (read_buf[3] << 24) | (read_buf[2] << 16) | (read_buf[1] << 8) |
-				(read_buf[0]);
+	if (Status != RET_SUCCESS) {
+		TRACE(Ox08b40_ERROR,
+				"%s:%d Failed to read register (err=%d)\n",
+				__func__, __LINE__, Status);
+		return Status;
+	}
+	frame_counter = (read_buf[3] << 24) | (read_buf[2] << 16) |
+			(read_buf[1] << 8) | (read_buf[0]);
 
 	g_Sensor_frame_count = frame_counter;
 
+	return Status;
 }
 
 /*****************************************************************************
@@ -1640,10 +1842,11 @@ RESULT Ox08b40_IsiGetFpsIss(IsiSensorHandle_t handle, uint32_t *pFps)
 
 	TRACE(Ox08b40_INFO, "%s: (enter)\n", __func__);
 
-	if (pOx08b40Ctx == NULL) {
-		TRACE(Ox08b40_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
-			__func__);
-		return RET_WRONG_HANDLE;
+	if (pOx08b40Ctx == NULL || pFps == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
+		return RET_NULL_POINTER;
 	}
 
 	Ox08b40_sensor_framecount(handle);
@@ -1671,54 +1874,64 @@ RESULT Ox08b40_IsiGetFpsIss(IsiSensorHandle_t handle, uint32_t *pFps)
 RESULT Ox08b40_IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps)
 {
 	RESULT result = RET_SUCCESS;
-	int32_t NewVts = 0;
 	int32_t NewHts = 0;
 	uint32_t vs_exp = 0;
-	uint8_t value = 0;
+	uint16_t value = 0;
 
 	TRACE(Ox08b40_INFO, "%s: (enter)\n", __func__);
 
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
 	if (pOx08b40Ctx == NULL) {
-		TRACE(Ox08b40_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
-			__func__);
-		return RET_WRONG_HANDLE;
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle (NULL pointer detected)\n",
+				__func__);
+		return RET_NULL_POINTER;
 	}
 
 	if (fps > pOx08b40Ctx->maxFps) {
-		TRACE(Ox08b40_ERROR, "%s: set fps(%d) out of range, correct to %d (%d, %d)\n",
-		      __func__, fps, pOx08b40Ctx->maxFps, pOx08b40Ctx->minFps, pOx08b40Ctx->maxFps);
+		TRACE(Ox08b40_ERROR,
+				"%s: set fps(%d) out of range, correct to %d (%d, %d)\n",
+				__func__, fps, pOx08b40Ctx->maxFps,
+				pOx08b40Ctx->minFps, pOx08b40Ctx->maxFps);
 		fps = pOx08b40Ctx->maxFps;
 	}
 	if (fps < pOx08b40Ctx->minFps) {
-		TRACE(Ox08b40_ERROR, "%s: set fps(%d) out of range, correct to %d (%d, %d)\n",
-		      __func__, fps, pOx08b40Ctx->minFps, pOx08b40Ctx->minFps, pOx08b40Ctx->maxFps);
+		TRACE(Ox08b40_ERROR,
+				"%s: set fps(%d) out of range, correct to %d (%d, %d)\n",
+				__func__, fps, pOx08b40Ctx->minFps,
+				pOx08b40Ctx->minFps, pOx08b40Ctx->maxFps);
 		fps = pOx08b40Ctx->minFps;
 	}
-
-
-	NewHts = ((DEFAULT_HTS * pOx08b40Ctx->sensorMode.fps) / fps) - (DEFAULT_SPD + DEFAULT_VS);
+#ifdef OX08B40_WITH_HTS
+	NewHts = ((DEFAULT_HTS * pOx08b40Ctx->sensorMode.fps) / fps) -
+		(DEFAULT_SPD + DEFAULT_VS);
 
 	result  =  Ox08b40_IsiWriteRegIss(handle, 0x380c, NewHts >> 8);
 	result |=  Ox08b40_IsiWriteRegIss(handle, 0x380d, NewHts & 0xff);
+#endif
 
-#if 0
-	NewVts = pOx08b40Ctx->frameLengthLines*pOx08b40Ctx->sensorMode.fps / fps;
+#ifdef OX08B40_WITH_VTS
+
+	NewVts = pOx08b40Ctx->frameLengthLines *
+		pOx08b40Ctx->sensorMode.fps / fps;
 
 	result  =  Ox08b40_IsiWriteRegIss(handle, 0x380e, NewVts >> 8);
 	result |=  Ox08b40_IsiWriteRegIss(handle, 0x380f, NewVts & 0xff);
 
 	pOx08b40Ctx->curFrameLengthLines  = NewVts;
 #endif
+
 	pOx08b40Ctx->currFps              = fps;
+
 
 	result  =  Ox08b40_IsiReadRegIss(handle, 0x35c1, &value);
 	vs_exp = (value & 0xff) << 8;
 
 	result =  Ox08b40_IsiReadRegIss(handle, 0x35c2, &value);
 	vs_exp |=  (value & 0xff);
-	pOx08b40Ctx->maxDCGIntegrationLine = pOx08b40Ctx->curFrameLengthLines - 13 - vs_exp;
+	pOx08b40Ctx->maxDCGIntegrationLine =
+		pOx08b40Ctx->curFrameLengthLines - 13 - vs_exp;
 	pOx08b40Ctx->maxSPDIntegrationLine = pOx08b40Ctx->curFrameLengthLines - 13;
 	pOx08b40Ctx->aecMaxIntegrationTime = pOx08b40Ctx->maxDCGIntegrationLine *
 		pOx08b40Ctx->oneLineDCGExpTime;
@@ -1741,17 +1954,22 @@ RESULT Ox08b40_IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps)
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT Ox08b40_IsiGetIspStatusIss(IsiSensorHandle_t handle, IsiIspStatus_t *pIspStatus)
+RESULT Ox08b40_IsiGetIspStatusIss(IsiSensorHandle_t handle,
+		IsiIspStatus_t *pIspStatus)
 {
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
-		return RET_WRONG_HANDLE;
+	if (pOx08b40Ctx == NULL || pIspStatus == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
+		return RET_NULL_POINTER;
+	}
 	TRACE(Ox08b40_INFO, "%s: (enter)\n", __func__);
 
 	pIspStatus->useSensorAE  = false;
 	pIspStatus->useSensorBLC = true;
-	pIspStatus->useSensorAWB = true;
+	pIspStatus->useAWBMode = ISI_USE_ISP_WB_GAIN;
 
 	TRACE(Ox08b40_INFO, "%s: (exit)\n", __func__);
 	return RET_SUCCESS;
@@ -1778,8 +1996,12 @@ RESULT Ox08b40_IsiSetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t tpg)
 
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
+	if (pOx08b40Ctx == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
 		return RET_NULL_POINTER;
+	}
 
 	if (pOx08b40Ctx->configured != BOOL_TRUE)
 		return RET_WRONG_STATE;
@@ -1834,8 +2056,12 @@ RESULT Ox08b40_IsiGetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg)
 
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL || pTpg == NULL)
+	if (pOx08b40Ctx == NULL || pTpg == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
 		return RET_NULL_POINTER;
+	}
 
 	if (pOx08b40Ctx->configured != BOOL_TRUE)
 		return RET_WRONG_STATE;
@@ -1846,8 +2072,8 @@ RESULT Ox08b40_IsiGetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg)
 	    !Ox08b40_IsiReadRegIss(handle, 0x5840, &vsValue)) {
 		pTpg->enable = (((hcgValue & 0x01) != 0) && ((lcgValue & 0x01) != 0) &&
 				((spdValue & 0x01) != 0) && ((vsValue & 0x01) != 0)) ? 1 : 0;
-	if (pTpg->enable)
-		pTpg->pattern = (0xff & hcgValue);
+		if (pTpg->enable)
+			pTpg->pattern = (0xff & hcgValue);
 		pOx08b40Ctx->testPattern = pTpg->enable;
 	}
 
@@ -1869,7 +2095,8 @@ RESULT Ox08b40_IsiGetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg)
  * @retval  RET_FAILURE
  *
  *****************************************************************************/
-static RESULT Ox08b40_IsiSetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb)
+static RESULT Ox08b40_IsiSetWBIss(IsiSensorHandle_t handle,
+				  const IsiSensorWb_t *pWb)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -1878,11 +2105,12 @@ static RESULT Ox08b40_IsiSetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb)
 	uint32_t b_gain, gb_gain, gr_gain, r_gain;
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
-		return RET_WRONG_HANDLE;
-
-	if (pWb == NULL)
+	if (pOx08b40Ctx == NULL || pWb == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
 		return RET_NULL_POINTER;
+	}
 
 	b_gain = (uint32_t)(pWb->bGain * (1 / X8B_MIN_WBGAIN_STEP) + 0.5);
 	gb_gain = (uint32_t)(pWb->gbGain * (1 / X8B_MIN_WBGAIN_STEP) + 0.5);
@@ -1957,11 +2185,12 @@ static RESULT Ox08b40_IsiGetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb)
 
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
-		return RET_WRONG_HANDLE;
-
-	if (pWb == NULL)
+	if (pOx08b40Ctx == NULL || pWb == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
 		return RET_NULL_POINTER;
+	}
 
 	pWb->bGain = pOx08b40Ctx->sensorWb.bGain;
 	pWb->gbGain = pOx08b40Ctx->sensorWb.gbGain;
@@ -1986,7 +2215,8 @@ static RESULT Ox08b40_IsiGetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb)
  * @retval  RET_FAILURE
  *
  *****************************************************************************/
-static RESULT Ox08b40_IsiSetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBlc)
+static RESULT Ox08b40_IsiSetBlcIss(IsiSensorHandle_t handle,
+				   const IsiSensorBlc_t *pBlc)
 {
 	RESULT result = RET_SUCCESS;
 	uint16_t blcGain = 0;
@@ -1996,11 +2226,13 @@ static RESULT Ox08b40_IsiSetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBl
 
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
-		return RET_WRONG_HANDLE;
-
-	if (pBlc == NULL)
+	if (pOx08b40Ctx == NULL || pBlc == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
 		return RET_NULL_POINTER;
+	}
+
 	blcGain = pBlc->red;
 	result = Ox08b40_IsiWriteRegIss(handle, 0x4026, (blcGain >> 8) & 0x03);
 	result |=  Ox08b40_IsiWriteRegIss(handle, 0x4027, blcGain & 0xff);
@@ -2031,7 +2263,8 @@ static RESULT Ox08b40_IsiSetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBl
  * @retval  RET_FAILURE
  *
  *****************************************************************************/
-static RESULT Ox08b40_IsiGetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBlc)
+static RESULT Ox08b40_IsiGetBlcIss(IsiSensorHandle_t handle,
+				   IsiSensorBlc_t *pBlc)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -2039,12 +2272,12 @@ static RESULT Ox08b40_IsiGetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBl
 
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
-	if (pOx08b40Ctx == NULL)
-		return RET_WRONG_HANDLE;
-
-	if (pBlc == NULL)
+	if (pOx08b40Ctx == NULL || pBlc == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
 		return RET_NULL_POINTER;
-
+	}
 	*pBlc = pOx08b40Ctx->sensorBlc;
 
 	TRACE(Ox08b40_INFO, "%s: (exit)\n", __func__);
@@ -2068,10 +2301,19 @@ static RESULT Ox08b40_IsiGetExpandCurveIss(IsiSensorHandle_t handle,
 					    IsiSensorCompandCurve_t *pCurve)
 {
 	RESULT result = RET_SUCCESS;
+	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
+
+	if (pOx08b40Ctx == NULL || pCurve == NULL) {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid sensor handle or NULL pointer detected\n",
+				__func__);
+		return RET_NULL_POINTER;
+	}
+
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Ox08b40_IsiGetSensorIss
  *
  * @brief   get sensor api's
@@ -2091,44 +2333,47 @@ RESULT Ox08b40_IsiGetSensorIss(IsiSensor_t *pIsiSensor)
 	TRACE(Ox08b40_INFO, "%s (enter)\n", __func__);
 
 	if (pIsiSensor != NULL) {
-		pIsiSensor->pszName                             = SensorName;
-		pIsiSensor->pIsiCreateIss                       = Ox08b40_IsiCreateIss;
-		pIsiSensor->pIsiOpenIss                         = Ox08b40_IsiOpenIss;
-		pIsiSensor->pIsiCloseIss                        = Ox08b40_IsiCloseIss;
-		pIsiSensor->pIsiReleaseIss                      = Ox08b40_IsiReleaseIss;
-		pIsiSensor->pIsiReadRegIss                      = Ox08b40_IsiReadRegIss;
-		pIsiSensor->pIsiWriteRegIss                     = Ox08b40_IsiWriteRegIss;
-		pIsiSensor->pIsiGetModeIss                      = Ox08b40_IsiGetModeIss;
-		pIsiSensor->pIsiEnumModeIss                     = Ox08b40_IsiEnumModeIss;
-		pIsiSensor->pIsiGetCapsIss                      = Ox08b40_IsiGetCapsIss;
-		pIsiSensor->pIsiCheckConnectionIss              = Ox08b40_IsiCheckConnectionIss;
-		pIsiSensor->pIsiGetRevisionIss                  = Ox08b40_IsiGetRevisionIss;
-		pIsiSensor->pIsiSetStreamingIss                 = Ox08b40_IsiSetStreamingIss;
-		pIsiSensor->pIsiGetAeBaseInfoIss                = Ox08b40_pIsiGetAeBaseInfoIss;
-		pIsiSensor->pIsiGetAGainIss                     = Ox08b40_IsiGetAGainIss;
-		pIsiSensor->pIsiSetAGainIss                     = Ox08b40_IsiSetAGainIss;
-		pIsiSensor->pIsiGetDGainIss                     = Ox08b40_IsiGetDGainIss;
-		pIsiSensor->pIsiSetDGainIss                     = Ox08b40_IsiSetDGainIss;
-		pIsiSensor->pIsiGetIntTimeIss                   = Ox08b40_IsiGetIntTimeIss;
-		pIsiSensor->pIsiSetIntTimeIss                   = Ox08b40_IsiSetIntTimeIss;
-		pIsiSensor->pIsiGetFpsIss                       = Ox08b40_IsiGetFpsIss;
-		pIsiSensor->pIsiSetFpsIss                       = Ox08b40_IsiSetFpsIss;
-		pIsiSensor->pIsiGetIspStatusIss                 = Ox08b40_IsiGetIspStatusIss;
-		pIsiSensor->pIsiSetWBIss                        = Ox08b40_IsiSetWBIss;
-		pIsiSensor->pIsiGetWBIss                        = Ox08b40_IsiGetWBIss;
-		pIsiSensor->pIsiSetBlcIss                       = Ox08b40_IsiSetBlcIss;
-		pIsiSensor->pIsiGetBlcIss                       = Ox08b40_IsiGetBlcIss;
-		pIsiSensor->pIsiSetTpgIss                       = Ox08b40_IsiSetTpgIss;
-		pIsiSensor->pIsiGetTpgIss                       = Ox08b40_IsiGetTpgIss;
-		pIsiSensor->pIsiGetExpandCurveIss               = Ox08b40_IsiGetExpandCurveIss;
-		pIsiSensor->pIsiFocusCreateIss                  = NULL;
-		pIsiSensor->pIsiFocusReleaseIss                 = NULL;
-		pIsiSensor->pIsiFocusGetCalibrateIss            = NULL;
-		pIsiSensor->pIsiFocusSetIss                     = NULL;
-		pIsiSensor->pIsiFocusGetIss                     = NULL;
-		pIsiSensor->pIsiSetIRLightExpIss                = NULL;
-		pIsiSensor->pIsiGetIRLightExpIss                = NULL;
+		pIsiSensor->pszName                  = SensorName;
+		pIsiSensor->pIsiCreateIss            = Ox08b40_IsiCreateIss;
+		pIsiSensor->pIsiOpenIss              = Ox08b40_IsiOpenIss;
+		pIsiSensor->pIsiCloseIss             = Ox08b40_IsiCloseIss;
+		pIsiSensor->pIsiReleaseIss           = Ox08b40_IsiReleaseIss;
+		pIsiSensor->pIsiReadRegIss           = Ox08b40_IsiReadRegIss;
+		pIsiSensor->pIsiWriteRegIss          = Ox08b40_IsiWriteRegIss;
+		pIsiSensor->pIsiGetModeIss           = Ox08b40_IsiGetModeIss;
+		pIsiSensor->pIsiEnumModeIss          = Ox08b40_IsiEnumModeIss;
+		pIsiSensor->pIsiGetCapsIss           = Ox08b40_IsiGetCapsIss;
+		pIsiSensor->pIsiCheckConnectionIss   = Ox08b40_IsiCheckConnectionIss;
+		pIsiSensor->pIsiGetRevisionIss       = Ox08b40_IsiGetRevisionIss;
+		pIsiSensor->pIsiSetStreamingIss      = Ox08b40_IsiSetStreamingIss;
+		pIsiSensor->pIsiGetAeBaseInfoIss     = Ox08b40_pIsiGetAeBaseInfoIss;
+		pIsiSensor->pIsiGetAGainIss          = Ox08b40_IsiGetAGainIss;
+		pIsiSensor->pIsiSetAGainIss          = Ox08b40_IsiSetAGainIss;
+		pIsiSensor->pIsiGetDGainIss          = Ox08b40_IsiGetDGainIss;
+		pIsiSensor->pIsiSetDGainIss          = Ox08b40_IsiSetDGainIss;
+		pIsiSensor->pIsiGetIntTimeIss        = Ox08b40_IsiGetIntTimeIss;
+		pIsiSensor->pIsiSetIntTimeIss        = Ox08b40_IsiSetIntTimeIss;
+		pIsiSensor->pIsiGetFpsIss            = Ox08b40_IsiGetFpsIss;
+		pIsiSensor->pIsiSetFpsIss            = Ox08b40_IsiSetFpsIss;
+		pIsiSensor->pIsiGetIspStatusIss      = Ox08b40_IsiGetIspStatusIss;
+		pIsiSensor->pIsiSetWBIss             = Ox08b40_IsiSetWBIss;
+		pIsiSensor->pIsiGetWBIss             = Ox08b40_IsiGetWBIss;
+		pIsiSensor->pIsiSetBlcIss            = Ox08b40_IsiSetBlcIss;
+		pIsiSensor->pIsiGetBlcIss            = Ox08b40_IsiGetBlcIss;
+		pIsiSensor->pIsiSetTpgIss            = Ox08b40_IsiSetTpgIss;
+		pIsiSensor->pIsiGetTpgIss            = Ox08b40_IsiGetTpgIss;
+		pIsiSensor->pIsiGetExpandCurveIss    = Ox08b40_IsiGetExpandCurveIss;
+		pIsiSensor->pIsiFocusCreateIss       = NULL;
+		pIsiSensor->pIsiFocusReleaseIss      = NULL;
+		pIsiSensor->pIsiFocusGetCalibrateIss = NULL;
+		pIsiSensor->pIsiFocusSetIss          = NULL;
+		pIsiSensor->pIsiFocusGetIss          = NULL;
+		pIsiSensor->pIsiSetIRLightExpIss     = NULL;
+		pIsiSensor->pIsiGetIRLightExpIss     = NULL;
 	} else {
+		TRACE(Ox08b40_ERROR,
+				"%s: Invalid parameter detected (NULL pointer)\n",
+				__func__);
 		result = RET_NULL_POINTER;
 	}
 
@@ -2140,6 +2385,6 @@ RESULT Ox08b40_IsiGetSensorIss(IsiSensor_t *pIsiSensor)
  * each sensor driver need declare this struct for isi load
  ****************************************************************************/
 IsiCamDrvConfig_t Ox08b40_IsiCamDrvConfig = {
-	.cameraDriverID      = 0x580841,
+	.cameraDriverID      = OX08B40_SENSOR_ID,
 	.pIsiGetSensorIss    = Ox08b40_IsiGetSensorIss,
 };

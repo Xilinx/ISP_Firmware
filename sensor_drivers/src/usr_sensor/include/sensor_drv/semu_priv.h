@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT */
 /****************************************************************************
  *
  * The MIT License (MIT)
@@ -26,7 +27,6 @@
 #ifndef __SEMU_PRIV_H__
 #define __SEMU_PRIV_H__
 
-#include <ebase/types.h>
 #include <common/return_codes.h>
 #include "isi/isi_priv.h"
 
@@ -206,7 +206,9 @@ static RESULT Semu_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t on);
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static RESULT Semu_IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *pValue);
+static RESULT Semu_IsiGetRevisionIss(
+	IsiSensorHandle_t handle,
+	uint32_t *pValue);
 
 /*****************************************************************************/
 /**
@@ -241,7 +243,9 @@ static RESULT Semu_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static RESULT Semu_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
+static RESULT Semu_IsiGetAGainIss(
+	IsiSensorHandle_t handle,
+	IsiSensorGain_t *pSensorAGain);
 
 /*****************************************************************************/
 /**
@@ -258,7 +262,9 @@ static RESULT Semu_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSe
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static RESULT Semu_IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain);
+static RESULT Semu_IsiGetDGainIss(
+	IsiSensorHandle_t handle,
+	IsiSensorGain_t *pSensorDGain);
 
 /*****************************************************************************/
 /**
@@ -275,7 +281,9 @@ static RESULT Semu_IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSe
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static RESULT Semu_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
+static RESULT Semu_IsiSetAGainIss(
+	IsiSensorHandle_t handle,
+	IsiSensorGain_t *pSensorAGain);
 
 /*****************************************************************************/
 /**
@@ -292,7 +300,9 @@ static RESULT Semu_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSe
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static RESULT Semu_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain);
+static RESULT Semu_IsiSetDGainIss(
+	IsiSensorHandle_t handle,
+	IsiSensorGain_t *pSensorDGain);
 
 /*****************************************************************************/
 /**
@@ -328,7 +338,7 @@ static RESULT Semu_IsiGetIntTimeIss(IsiSensorHandle_t handle,
  *
  *****************************************************************************/
 static RESULT Semu_IsiSetIntTimeIss(IsiSensorHandle_t handle,
-					IsiSensorIntTime_t *pSensorIntTime);
+					const IsiSensorIntTime_t *pSensorIntTime);
 
 /*****************************************************************************/
 /**
@@ -345,7 +355,9 @@ static RESULT Semu_IsiSetIntTimeIss(IsiSensorHandle_t handle,
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static RESULT Semu_SetIntTime(IsiSensorHandle_t handle, float newIntegrationTime);
+static RESULT Semu_SetIntTime(
+	IsiSensorHandle_t handle,
+	float newIntegrationTime);
 
 /*****************************************************************************/
 /**
@@ -362,7 +374,9 @@ static RESULT Semu_SetIntTime(IsiSensorHandle_t handle, float newIntegrationTime
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static RESULT Semu_AecSetModeParameters(IsiSensorHandle_t handle, Semu_Context_t *pSemuCtx);
+static RESULT Semu_AecSetModeParameters(
+	IsiSensorHandle_t handle,
+	Semu_Context_t *pSemuCtx);
 
 #ifdef __cplusplus
 }

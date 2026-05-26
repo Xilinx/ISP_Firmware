@@ -22,15 +22,15 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ******************************************************************************/
+ *****************************************************************************/
 
- #ifndef _AMP_H_
+#ifndef _AMP_H_
 #define _AMP_H_
 
 void amp_core_data_init(void);
 void get_fmcinit_lock(void);
 void release_fmcinit_lock(void);
 
-#define AMP_SHARED_VAR_MEM_REG_SIZE 2048
+#define AMP_SHARED_VAR_MEM_REG_SIZE	(2048)
 
 #endif

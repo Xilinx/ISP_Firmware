@@ -12,17 +12,13 @@ cmake_minimum_required(VERSION 3.16)
 set(USER_COMPILE_DEFINITIONS
 "FREERTOS=1"
 "ARMR5=1"
-"FMC_PS_IIC=1"
 "ISP_PRESI=1"
 #"I2C_SLOW_MODE=1"
-#"AB_MODE=1"
-#"LEGACY_MODE=1"
 "I2C_FAST_MODE=1"
+#"RGBIR_MODE=1"
 #"FRAME_RATE_DEBUG=1"
-#"SENSOR_10FPS_OLD=1"
-#"SENSOR_10FPS_NEW=1"
-"SENSOR_30FPS=1"
-#"SENSOR_20FPS=1"
+"ENABLE_I2C_GROUPING=1"
+#"ENABLE_I2C_GROUPING_DEBUG=1"
 )
 
 # Undefine any previously specified compiler definitions, either built in or provided with a -D option
@@ -38,16 +34,24 @@ set(USER_UNDEFINED_SYMBOLS
 # Example 3: Adding ${CMAKE_SOURCE_DIR}/data/include to add data/include from this project.
 
 set(USER_INCLUDE_DIRECTORIES
+"${CMAKE_SOURCE_DIR}/hal/include/common"
+"${CMAKE_SOURCE_DIR}/hal/include/ebase"
+"${CMAKE_SOURCE_DIR}/hal/include/mbox"
+"${CMAKE_SOURCE_DIR}/hal/include/oslayer"
 "${CMAKE_SOURCE_DIR}/hal/include"
 "${CMAKE_SOURCE_DIR}/hal/include/hal"
 "${CMAKE_SOURCE_DIR}/usr_sensor/include"
+"${CMAKE_SOURCE_DIR}/usr_sensor/include/fmc"
+"${CMAKE_SOURCE_DIR}/usr_sensor/include/isi"
+"${CMAKE_SOURCE_DIR}/usr_sensor/include/sensor_drv"
 "../../platform/cortexr52_6/freertos_cortexr52_6/bsp/include"
 )
 
 set(USER_COMPILE_SOURCES
+"usr_sensor/source/Multi_sensor_framework/ms_fw.c"
 "usr_sensor/source/fmc/max9295.c"
 "usr_sensor/source/fmc/max9296.c"
-"usr_sensor/source/Multi_sensor_framework/ms_fw.c"
+"usr_sensor/source/fmc/max96716.c"
 "usr_sensor/source/sensor_drv/imx623.c"
 "usr_sensor/source/sensor_drv/imx728.c"
 "usr_sensor/source/sensor_drv/ox03f10.c"
@@ -95,7 +99,7 @@ set(USER_COMPILE_OPTIMIZATION_OTHER_FLAGS "")
 # -----------------------------------------
 
 # Debug level "" [None], "-g1" [Minimum], "g2" [Default], "g3" [Maximim]
-set(USER_COMPILE_DEBUG_LEVEL "-g3")
+set(USER_COMPILE_DEBUG_LEVEL "")
 
 # Other flags releated to debugging
 set(USER_COMPILE_DEBUG_OTHER_FLAGS "")
@@ -115,7 +119,7 @@ set(USER_COMPILE_ANSI "")
 
 # Add any compiler options that are not covered by the above variables, they will be added as extra compiler options
 # To enable profiling -pg [ for gprof ]  or -p [ for prof information ]
-set(USER_COMPILE_OTHER_FLAGS "")
+set(USER_COMPILE_OTHER_FLAGS "-fno-short-enums")
 
 ###   END OF USER SETTINGS SECTION ###
 ###   DO NOT EDIT BEYOND THIS LINE ###

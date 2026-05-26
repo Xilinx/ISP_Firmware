@@ -22,7 +22,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 #ifdef FREERTOS
 
@@ -42,22 +42,18 @@ extern "C"
 #define UCOSII_STACK_SIZE	(1024)
 #define OSLAYER_ASSERT		(DCT_ASSERT)
 
-
 typedef int32_t (*osThreadFunc)(void *);
 typedef int32_t (*osIsrFunc)(void *);
 typedef int32_t (*osDpcFunc)(void *);
 
-
-
 #ifdef OSLAYER_EVENT
-/*****************************************************************************/
-/**
+/*****************************************************************************
  *          osEvent
  *
  * @brief   Event object (FreeRTOS Version) of OS Abstraction Layer
  *
- * @note    This structure encapsulates FreeRTOS event group functionality
- *          for cross-platform event synchronization in the OS abstraction layer.
+ * @note    This structure encapsulates FreeRTOS event group functionality for
+ *          cross-platform event synchronization in the OS abstraction layer.
  *
  *****************************************************************************/
 typedef struct _osEvent {
@@ -65,20 +61,19 @@ typedef struct _osEvent {
 	int32_t			automatic;
 	int32_t			state;
 	int32_t			waitforall;
-	char *name_ptr;
+	char			*name_ptr;
 } osEvent;
 #endif
 
-
 #ifdef OSLAYER_MUTEX
-/*****************************************************************************/
-/**
+/*****************************************************************************
  *          osMutex
  *
  * @brief   Mutex object (FreeRTOS Version) of OS Abstraction Layer
  *
- * @note    This structure encapsulates FreeRTOS semaphore functionality
- *          to provide mutex synchronization primitives for the OS abstraction layer.
+ * @note    This structure encapsulates FreeRTOS semaphore functionality to
+ *          provide mutex synchronization primitives for the OS abstraction
+ *          layer.
  *
  *****************************************************************************/
 typedef struct {
@@ -89,8 +84,7 @@ typedef struct {
 
 
 #ifdef OSLAYER_SEMAPHORE
-/*****************************************************************************/
-/**
+/*****************************************************************************
  *          osSemaphore
  *
  * @brief   Semaphore object (FreeRTOS Version) of OS Abstraction Layer
@@ -106,8 +100,7 @@ typedef struct {
 #endif
 
 #ifdef OSLAYER_QUEUE
-/*****************************************************************************/
-/**
+/*****************************************************************************
  *          osQueue
  *
  * @brief   Queue object (FreeRTOS Version) of OS Abstraction Layer
@@ -123,12 +116,8 @@ typedef struct {
 } osQueue;
 #endif
 
-
-
-
 #ifdef OSLAYER_THREAD
-/*****************************************************************************/
-/**
+/*****************************************************************************
  *          osThread
  *
  * @brief   Thread object (FreeRTOS Version) of OS Abstraction Layer
@@ -146,8 +135,7 @@ typedef struct {
 #endif
 
 #ifdef OSLAYER_MISC
-/*****************************************************************************/
-/**
+/*****************************************************************************
  *          osSpinLock
  *
  * @brief   Spin Lock object (FreeRTOS Version) of OS Abstraction Layer
@@ -163,8 +151,7 @@ typedef struct {
 	u32			initstatus;
 } osSpinLock;
 
-/*****************************************************************************/
-/**
+/*****************************************************************************
  *          spinlock_sharedmem_t
  *
  * @brief   Spinlock shared memory configuration structure
@@ -182,7 +169,9 @@ typedef struct {
 } spinlock_sharedmem_t;
 
 #endif
+
 #ifdef __cplusplus
 }
 #endif
+
 #endif

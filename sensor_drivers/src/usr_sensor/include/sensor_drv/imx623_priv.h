@@ -23,18 +23,15 @@
  * DEALINGS IN THE SOFTWARE.
  *
  ****************************************************************************/
+
 #ifndef __IMX623_PRIV_H__
 #define __IMX623_PRIV_H__
 
-#include <ebase/types.h>
-#include <common/return_codes.h>
 #include <hal/hal_i2c.h>
 #include <isi/isi_common.h>
 #include <isi/isi_vvsensor.h>
 #include <isi/isi_priv.h>
 #include <math.h>
-
-extern int g_Sensor_frame_count;
 
 #define IMX623_TABLE_END		(0xffff)
 #define IMX623_TABLE_WAIT		(0xfffe)
@@ -42,23 +39,32 @@ extern int g_Sensor_frame_count;
 #define IMX623_WAIT_100MS		(100)
 
 #define FMC_CLK_HZ			(24000000)
-#define DSER_ADDR			(0x68)
-#define SER_ADDR			(0x62)
 
-#define SEC_TO_MICROSEC			(1000000)
 #define IMX623_AG_DG_SCALING_FACTOR	(10)
 #define IMX623_WB_SCALING_FACTOR	(256)
 
 #define IMX623_LINEAR_TO_DB(n)		(20 * log10(n))
 
-#define IMX623_SP1_HCG_MIN_AGAIN	(7.94)
-#define IMX623_SP1_HCG_MAX_AGAIN	(31.62)
-#define IMX623_SP1_LCG_MIN_AGAIN	(1.62)
-#define IMX623_SP1_LCG_MAX_AGAIN	(1.99)
-#define IMX623_SP2_H_MIN_AGAIN		(21.63)
-#define IMX623_SP2_H_MAX_AGAIN		(31.62)
-#define IMX623_SP2_L_MIN_AGAIN		(1.62)
-#define IMX623_SP2_L_MAX_AGAIN		(7.16)
+#define IMX623_MAX_WIDTH		(1936)
+#define IMX623_MAX_HEIGHT		(1552)
+
+#define IMX623_MIN_WIDTH		(320)
+#define IMX623_MIN_HEIGHT		(240)
+
+#define IMX623_MIN_EXP_TIME		(0.010f)
+#define IMX623_MAX_EXP_TIME		(0.031f)
+
+#define IMX623_SP1_HCG_MIN_AGAIN	(7.94f)
+#define IMX623_SP1_HCG_MAX_AGAIN	(31.62f)
+#define IMX623_SP1_LCG_MIN_AGAIN	(1.62f)
+#define IMX623_SP1_LCG_MAX_AGAIN	(1.99f)
+#define IMX623_SP2_H_MIN_AGAIN		(21.63f)
+#define IMX623_SP2_H_MAX_AGAIN		(31.62f)
+#define IMX623_SP2_L_MIN_AGAIN		(1.62f)
+#define IMX623_SP2_L_MAX_AGAIN		(7.16f)
+
+#define IMX623_MIN_DGAIN		(1.0f)
+#define IMX623_MAX_DGAIN		(1.0233f)
 
 #define IMX623_REG_REGMAP		(0xFFFF)
 #define IMX623_REG_STATE		(0x6005)
@@ -78,7 +84,9 @@ extern int g_Sensor_frame_count;
 #define IMX623_REG_CHIP_ID1		(0x7E81)
 #define IMX623_REG_CHIP_ID2		(0x7E82)
 #define IMX623_REG_AE_MODE		(0xABC0)
-#define IMX623_REG_AWBMODE		(0xB0F0)
+#define IMX623_REG_AWB_MODE		(0xB0F0)
+#define IMX623_REG_BLS_MODE_SELECT	(0xB488)
+#define IMX623_REG_BLS_CONTROL_SELECT	(0xB489)
 
 #define IMX623_REG_CTRL_POINT_X(i)	(0x9F88 + (i) * 8)
 #define IMX623_REG_CTRL_POINT_Y(i)	(IMX623_REG_CTRL_POINT_X(i) + 4)
@@ -115,62 +123,181 @@ extern int g_Sensor_frame_count;
 #define IMX623_REG_FULLMWBGAIN_B_L	(0x9C2E)
 #define IMX623_REG_FULLMWBGAIN_B_H	(0x9C2F)
 
-#define IMX623_REG_MD_FEBD		(0x0171)
-#define IMX623_REG_MD_REBD		(0x0172)
+/* Composite Region Signal Switching SP1HCG & SP1LCG */
+#define IMX623_REG_SIGNAL_SWITCH_0	(0x1B40)
+/* Composite Region Signal Switching SP2H & SP2L */
+#define IMX623_REG_SIGNAL_SWITCH_1	(0x1B41)
+/* Composite Region Signal Switching SP1LCG & SP2H */
+#define IMX623_REG_SIGNAL_SWITCH_2	(0x1B42)
 
-#define IMX623_REG_ADBIT		(0x8A7A)
-#define IMX623_REG_HDRON		(0x8A7B)
-#define IMX623_REG_HDRON_APL		(0xBF02)
-#define IMX623_REG_OUTMODE		(0x8A7C)
-#define IMX623_REG_OUTMODE_APL		(0xBF03)
-#define IMX623_REG_RAW_OUTMODE		(0x8A84)
-#define IMX623_REG_RAW_OUTMODE_APL	(0xBF65)
-#define IMX623_REG_OUTSEL_1		(0x8A80)
-#define IMX623_REG_OUTSEL_1_APL		(0xBF61)
+// Manual Black Level Correction Registers
+#define IMX623_REG_BLACK_LEVEL_SP1HCG_P0_L	(0xB45E) /* BLC SP1HCG R */
+#define IMX623_REG_BLACK_LEVEL_SP1HCG_P0_H	(0xB45F)
+#define IMX623_REG_BLACK_LEVEL_SP1HCG_P1_L	(0xB460) /* BLC SP1HCG GR */
+#define IMX623_REG_BLACK_LEVEL_SP1HCG_P1_H	(0xB461)
+#define IMX623_REG_BLACK_LEVEL_SP1HCG_P2_L	(0xB462) /* BLC SP1HCG GB */
+#define IMX623_REG_BLACK_LEVEL_SP1HCG_P2_H	(0xB463)
+#define IMX623_REG_BLACK_LEVEL_SP1HCG_P3_L	(0xB464) /* BLC SP1HCG B */
+#define IMX623_REG_BLACK_LEVEL_SP1HCG_P3_H	(0xB465)
 
-#define IMX623_REG_DCROP_DATA_SEL	(0x8ADA)
-#define IMX623_REG_DCROP_ON		(0x8AA8)
-#define IMX623_REG_DCROP_ON_APL		(0xBF04)
-#define IMX623_REG_DCROP_HOFFSET_L	(0x8AAC)
-#define IMX623_REG_DCROP_HOFFSET_H	(0x8AAD)
-#define IMX623_REG_DCROP_VOFFSET_L	(0x8AB0)
-#define IMX623_REG_DCROP_VOFFSET_H	(0x8AB1)
-#define IMX623_REG_DCROP_HSIZE_L	(0x8AAA)
-#define IMX623_REG_DCROP_HSIZE_H	(0x8AAB)
-#define IMX623_REG_DCROP_VSIZE_L	(0x8AAE)
-#define IMX623_REG_DCROP_VSIZE_H	(0x8AAF)
-#define IMX623_REG_DCROP_HOFFSET_L_APL	(0xBF08)
-#define IMX623_REG_DCROP_HOFFSET_H_APL	(0xBF09)
-#define IMX623_REG_DCROP_VOFFSET_L_APL	(0xBF0C)
-#define IMX623_REG_DCROP_VOFFSET_H_APL	(0xBF0D)
-#define IMX623_REG_DCROP_HSIZE_L_APL	(0xBF06)
-#define IMX623_REG_DCROP_HSIZE_H_APL	(0xBF07)
-#define IMX623_REG_DCROP_VSIZE_L_APL	(0xBF0A)
-#define IMX623_REG_DCROP_VSIZE_H_APL	(0xBF0B)
+#define IMX623_REG_BLACK_LEVEL_SP1LCG_P0_L	(0xB466) /* BLC SP1LCG R */
+#define IMX623_REG_BLACK_LEVEL_SP1LCG_P0_H	(0xB467)
+#define IMX623_REG_BLACK_LEVEL_SP1LCG_P1_L	(0xB468) /* BLC SP1LCG GR */
+#define IMX623_REG_BLACK_LEVEL_SP1LCG_P1_H	(0xB469)
+#define IMX623_REG_BLACK_LEVEL_SP1LCG_P2_L	(0xB46A) /* BLC SP1LCG GB */
+#define IMX623_REG_BLACK_LEVEL_SP1LCG_P2_H	(0xB46B)
+#define IMX623_REG_BLACK_LEVEL_SP1LCG_P3_L	(0xB46C) /* BLC SP1LCG B */
+#define IMX623_REG_BLACK_LEVEL_SP1LCG_P3_H	(0xB46D)
 
-#define IMX623_REG_SLEEP		(0x8A18)
-#define IMX623_REG_SLEEP_LOCK		(0xBEF2)
+#define IMX623_REG_BLACK_LEVEL_SP2H_P0_L	(0xB46E) /* BLC SP2H R */
+#define IMX623_REG_BLACK_LEVEL_SP2H_P0_H	(0xB46F)
+#define IMX623_REG_BLACK_LEVEL_SP2H_P1_L	(0xB470) /* BLC SP2H GR */
+#define IMX623_REG_BLACK_LEVEL_SP2H_P1_H	(0xB471)
+#define IMX623_REG_BLACK_LEVEL_SP2H_P2_L	(0xB472) /* BLC SP2H GB */
+#define IMX623_REG_BLACK_LEVEL_SP2H_P2_H	(0xB473)
+#define IMX623_REG_BLACK_LEVEL_SP2H_P3_L	(0xB474) /* BLC SP2H B */
+#define IMX623_REG_BLACK_LEVEL_SP2H_P3_H	(0xB475)
 
-#define IMX623_REG_VMAX_OFFSET_L	(0x8A70)
-#define IMX623_REG_VMAX_OFFSET_M	(0x8A71)
-#define IMX623_REG_VMAX_OFFSET_H	(0x8A72)
-#define IMX623_REG_VMAX_L		(0x8A74)
-#define IMX623_REG_VMAX_M		(0x8A75)
-#define IMX623_REG_VMAX_H		(0x8A76)
+#define IMX623_REG_BLACK_LEVEL_SP2L_P0_L	(0xB476) /* BLC SP2L R */
+#define IMX623_REG_BLACK_LEVEL_SP2L_P0_H	(0xB477)
+#define IMX623_REG_BLACK_LEVEL_SP2L_P1_L	(0xB478) /* BLC SP2L GR */
+#define IMX623_REG_BLACK_LEVEL_SP2L_P1_H	(0xB479)
+#define IMX623_REG_BLACK_LEVEL_SP2L_P2_L	(0xB47A) /* BLC SP2L GB */
+#define IMX623_REG_BLACK_LEVEL_SP2L_P2_H	(0xB47B)
+#define IMX623_REG_BLACK_LEVEL_SP2L_P3_L	(0xB47C) /* BLC SP2L B */
+#define IMX623_REG_BLACK_LEVEL_SP2L_P3_H	(0xB47D)
 
-#define IMX623_REG_STREAM_00		(0x9789)
-#define IMX623_REG_STREAM_01		(0x95C1)
-#define IMX623_REG_STREAM_02		(0x1B04)
+#ifdef IMX623_TUNING_DEBUG
+#define IMX623_REG_OBB_AVG_ABS_SP1H_P0_L	(0x1F68)
+#define IMX623_REG_OBB_AVG_ABS_SP1H_P0_H	(0x1F69)
+#define IMX623_REG_OBB_AVG_ABS_SP1H_P1_L	(0x1F6A)
+#define IMX623_REG_OBB_AVG_ABS_SP1H_P1_H	(0x1F6B)
+#define IMX623_REG_OBB_AVG_ABS_SP1H_P2_L	(0x1F6C)
+#define IMX623_REG_OBB_AVG_ABS_SP1H_P2_H	(0x1F6D)
+#define IMX623_REG_OBB_AVG_ABS_SP1H_P3_L	(0x1F6E)
+#define IMX623_REG_OBB_AVG_ABS_SP1H_P3_H	(0x1F6F)
 
-#define IMX623_VMAX_30FPS		(1750)
+#define IMX623_REG_OBB_AVG_ABS_SP1L_P0_L	(0x1F70)
+#define IMX623_REG_OBB_AVG_ABS_SP1L_P0_H	(0x1F71)
+#define IMX623_REG_OBB_AVG_ABS_SP1L_P1_L	(0x1F72)
+#define IMX623_REG_OBB_AVG_ABS_SP1L_P1_H	(0x1F73)
+#define IMX623_REG_OBB_AVG_ABS_SP1L_P2_L	(0x1F74)
+#define IMX623_REG_OBB_AVG_ABS_SP1L_P2_H	(0x1F75)
+#define IMX623_REG_OBB_AVG_ABS_SP1L_P3_L	(0x1F76)
+#define IMX623_REG_OBB_AVG_ABS_SP1L_P3_H	(0x1F77)
+
+#define IMX623_REG_OBB_AVG_ABS_SP2H_P0_L	(0x1F78)
+#define IMX623_REG_OBB_AVG_ABS_SP2H_P0_H	(0x1F79)
+#define IMX623_REG_OBB_AVG_ABS_SP2H_P1_L	(0x1F7A)
+#define IMX623_REG_OBB_AVG_ABS_SP2H_P1_H	(0x1F7B)
+#define IMX623_REG_OBB_AVG_ABS_SP2H_P2_L	(0x1F7C)
+#define IMX623_REG_OBB_AVG_ABS_SP2H_P2_H	(0x1F7D)
+#define IMX623_REG_OBB_AVG_ABS_SP2H_P3_L	(0x1F7E)
+#define IMX623_REG_OBB_AVG_ABS_SP2H_P3_H	(0x1F7F)
+
+#define IMX623_REG_OBB_AVG_ABS_SP2L_P0_L	(0x1F80)
+#define IMX623_REG_OBB_AVG_ABS_SP2L_P0_H	(0x1F81)
+#define IMX623_REG_OBB_AVG_ABS_SP2L_P1_L	(0x1F82)
+#define IMX623_REG_OBB_AVG_ABS_SP2L_P1_H	(0x1F83)
+#define IMX623_REG_OBB_AVG_ABS_SP2L_P2_L	(0x1F84)
+#define IMX623_REG_OBB_AVG_ABS_SP2L_P2_H	(0x1F85)
+#define IMX623_REG_OBB_AVG_ABS_SP2L_P3_L	(0x1F86)
+#define IMX623_REG_OBB_AVG_ABS_SP2L_P3_H	(0x1F87)
+
+#define IMX623_REG_OBB_AVG_SP1H_P0_L		(0x1F88)
+#define IMX623_REG_OBB_AVG_SP1H_P0_H		(0x1F89)
+#define IMX623_REG_OBB_AVG_SP1H_P1_L		(0x1F8A)
+#define IMX623_REG_OBB_AVG_SP1H_P1_H		(0x1F8B)
+#define IMX623_REG_OBB_AVG_SP1H_P2_L		(0x1F8C)
+#define IMX623_REG_OBB_AVG_SP1H_P2_H		(0x1F8D)
+#define IMX623_REG_OBB_AVG_SP1H_P3_L		(0x1F8E)
+#define IMX623_REG_OBB_AVG_SP1H_P3_H		(0x1F8F)
+
+#define IMX623_REG_OBB_AVG_SP1L_P0_L		(0x1F90)
+#define IMX623_REG_OBB_AVG_SP1L_P0_H		(0x1F91)
+#define IMX623_REG_OBB_AVG_SP1L_P1_L		(0x1F92)
+#define IMX623_REG_OBB_AVG_SP1L_P1_H		(0x1F93)
+#define IMX623_REG_OBB_AVG_SP1L_P2_L		(0x1F94)
+#define IMX623_REG_OBB_AVG_SP1L_P2_H		(0x1F95)
+#define IMX623_REG_OBB_AVG_SP1L_P3_L		(0x1F96)
+#define IMX623_REG_OBB_AVG_SP1L_P3_H		(0x1F97)
+
+#define IMX623_REG_OBB_AVG_SP2H_P0_L		(0x1F98)
+#define IMX623_REG_OBB_AVG_SP2H_P0_H		(0x1F99)
+#define IMX623_REG_OBB_AVG_SP2H_P1_L		(0x1F9A)
+#define IMX623_REG_OBB_AVG_SP2H_P1_H		(0x1F9B)
+#define IMX623_REG_OBB_AVG_SP2H_P2_L		(0x1F9C)
+#define IMX623_REG_OBB_AVG_SP2H_P2_H		(0x1F9D)
+#define IMX623_REG_OBB_AVG_SP2H_P3_L		(0x1F9E)
+#define IMX623_REG_OBB_AVG_SP2H_P3_H		(0x1F9F)
+
+#define IMX623_REG_OBB_AVG_SP2L_P0_L		(0x1FA0)
+#define IMX623_REG_OBB_AVG_SP2L_P0_H		(0x1FA1)
+#define IMX623_REG_OBB_AVG_SP2L_P1_L		(0x1FA2)
+#define IMX623_REG_OBB_AVG_SP2L_P1_H		(0x1FA3)
+#define IMX623_REG_OBB_AVG_SP2L_P2_L		(0x1FA4)
+#define IMX623_REG_OBB_AVG_SP2L_P2_H		(0x1FA5)
+#define IMX623_REG_OBB_AVG_SP2L_P3_L		(0x1FA6)
+#define IMX623_REG_OBB_AVG_SP2L_P3_H		(0x1FA7)
+#endif
+
+// Embedded Data Registers
+#define IMX623_REG_MD_FEBD			(0x0171)
+#define IMX623_REG_MD_REBD			(0x0172)
+
+#define IMX623_REG_ADBIT			(0x8A7A)
+#define IMX623_REG_HDRON			(0x8A7B)
+#define IMX623_REG_HDRON_APL			(0xBF02)
+#define IMX623_REG_OUTMODE			(0x8A7C)
+#define IMX623_REG_OUTMODE_APL			(0xBF03)
+#define IMX623_REG_RAW_OUTMODE			(0x8A84)
+#define IMX623_REG_RAW_OUTMODE_APL		(0xBF65)
+#define IMX623_REG_OUTSEL_1			(0x8A80)
+#define IMX623_REG_OUTSEL_1_APL			(0xBF61)
+
+#define IMX623_REG_DCROP_DATA_SEL		(0x8ADA)
+#define IMX623_REG_DCROP_ON			(0x8AA8)
+#define IMX623_REG_DCROP_ON_APL			(0xBF04)
+#define IMX623_REG_DCROP_HOFFSET_L		(0x8AAC)
+#define IMX623_REG_DCROP_HOFFSET_H		(0x8AAD)
+#define IMX623_REG_DCROP_VOFFSET_L		(0x8AB0)
+#define IMX623_REG_DCROP_VOFFSET_H		(0x8AB1)
+#define IMX623_REG_DCROP_HSIZE_L		(0x8AAA)
+#define IMX623_REG_DCROP_HSIZE_H		(0x8AAB)
+#define IMX623_REG_DCROP_VSIZE_L		(0x8AAE)
+#define IMX623_REG_DCROP_VSIZE_H		(0x8AAF)
+#define IMX623_REG_DCROP_HOFFSET_L_APL		(0xBF08)
+#define IMX623_REG_DCROP_HOFFSET_H_APL		(0xBF09)
+#define IMX623_REG_DCROP_VOFFSET_L_APL		(0xBF0C)
+#define IMX623_REG_DCROP_VOFFSET_H_APL		(0xBF0D)
+#define IMX623_REG_DCROP_HSIZE_L_APL		(0xBF06)
+#define IMX623_REG_DCROP_HSIZE_H_APL		(0xBF07)
+#define IMX623_REG_DCROP_VSIZE_L_APL		(0xBF0A)
+#define IMX623_REG_DCROP_VSIZE_H_APL		(0xBF0B)
+
+#define IMX623_REG_SLEEP			(0x8A18)
+#define IMX623_REG_SLEEP_LOCK			(0xBEF2)
+
+// Changing FPS using Line Count Extension
+#define IMX623_REG_VMAX_OFFSET_L		(0x8A70)
+#define IMX623_REG_VMAX_OFFSET_M		(0x8A71)
+#define IMX623_REG_VMAX_OFFSET_H		(0x8A72)
+#define IMX623_REG_VMAX_L			(0x8A74)
+#define IMX623_REG_VMAX_M			(0x8A75)
+#define IMX623_REG_VMAX_H			(0x8A76)
+
+#define IMX623_REG_STREAM_00			(0x9789)
+#define IMX623_REG_STREAM_01			(0x95C1)
+#define IMX623_REG_STREAM_02			(0x1B04)
+
+#define IMX623_VMAX_30FPS			(1750)
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-/*****************************************************************************/
-/**
+/*****************************************************************************
  * @enum RemapMode_e
  * @brief IMX623 Remap mode enumeration
  *
@@ -178,35 +305,46 @@ extern "C"
  * including startup, streaming, and sleep modes with optional pixel shading
  * compensation.
  ****************************************************************************/
-typedef enum {
+typedef enum RemapMode {
+	/* Invalid remap mode */
 	IMX623_REMAP_MODE_INVALID				= -1,
+	/* Startup mode */
 	IMX623_REMAP_MODE_STARTUP				= 0x00,
+	/* Startup w/ pixel shading */
 	IMX623_REMAP_MODE_STARTUP_PIXEL_SHADING_COMPENSATION	= 0x01,
+	/* Streaming mode */
 	IMX623_REMAP_MODE_STREAMING				= 0x04,
+	/* Streaming w/ pixel shading */
 	IMX623_REMAP_MODE_STREAMING_PIXEL_SHADING_COMPENSATION	= 0x05,
+	/* Sleep mode */
 	IMX623_REMAP_MODE_SLEEP					= 0x20,
 } RemapMode_e;
 
-/*****************************************************************************/
-/**
+/*****************************************************************************
  * @enum SensorState_e
  * @brief IMX623 Sensor state enumeration
  *
  * This enumeration defines the different operational states of the IMX623
  * sensor, including startup, streaming, sleep, safe, and BIST standby modes.
  ****************************************************************************/
-typedef enum {
-	IMX623_SENSOR_STATE_INVALID		= -1,
-	IMX623_SENSOR_STATE_STARTUP_IMMEDIATE	= 1,
-	IMX623_SENSOR_STATE_STARTUP		= 2,
-	IMX623_SENSOR_STATE_STREAMING		= 5,
-	IMX623_SENSOR_STATE_SLEEP		= 8,
-	IMX623_SENSOR_STATE_SAFE		= 13,
-	IMX623_SENSOR_STATE_BIST_STANDBY	= 17,
+typedef enum SensorState {
+	/* Invalid sensor state */
+	IMX623_SENSOR_STATE_INVALID				= -1,
+	/* Startup immediate state */
+	IMX623_SENSOR_STATE_STARTUP_IMMEDIATE			= 1,
+	/* Startup state */
+	IMX623_SENSOR_STATE_STARTUP				= 2,
+	/* Active streaming state */
+	IMX623_SENSOR_STATE_STREAMING				= 5,
+	/* Low power sleep state */
+	IMX623_SENSOR_STATE_SLEEP				= 8,
+	/* Safe state for recovery */
+	IMX623_SENSOR_STATE_SAFE				= 13,
+	/* BIST standby */
+	IMX623_SENSOR_STATE_BIST_STANDBY			= 17,
 } SensorState_e;
 
-/*****************************************************************************/
-/**
+/*****************************************************************************
  * @enum imx623_aemode_e
  * @brief IMX623 Auto Exposure mode enumeration
  *
@@ -214,14 +352,13 @@ typedef enum {
  * supported by the IMX623 sensor.
  ****************************************************************************/
 enum imx623_aemode_e {
-	IMX623_AEMODE_AE_AUTO		= 0,
-	IMX623_AEMODE_AE_HOLD		= 1,
-	IMX623_AEMODE_SCALE_ME		= 2,
-	IMX623_AEMODE_FULL_ME		= 3,
+	IMX623_AEMODE_AE_AUTO		= 0,  /* Automatic exposure control */
+	IMX623_AEMODE_AE_HOLD		= 1,  /* Hold current exposure value */
+	IMX623_AEMODE_SCALE_ME		= 2,  /* Scaled manual exposure mode */
+	IMX623_AEMODE_FULL_ME		= 3,  /* Full manual exposure mode */
 };
 
-/*****************************************************************************/
-/**
+/*****************************************************************************
  * @enum imx623_awbmode_e
  * @brief IMX623 Auto White Balance mode enumeration
  *
@@ -229,15 +366,29 @@ enum imx623_aemode_e {
  * supported by the IMX623 sensor.
  ****************************************************************************/
 enum imx623_awbmode_e {
-	IMX623_AWBMODE_ATW		= 0,
-	IMX623_AWBMODE_ALL_PULL_IN	= 1,
-	IMX623_AWBMODE_USER_PRESET	= 2,
-	IMX623_AWBMODE_FULL_MWB		= 3,
-	IMX623_AWBMODE_HOLD		= 4,
+	IMX623_AWBMODE_ATW		= 0,  /* Auto tracking AWB */
+	IMX623_AWBMODE_ALL_PULL_IN	= 1,  /* All pull-in AWB */
+	IMX623_AWBMODE_USER_PRESET	= 2,  /* User preset AWB */
+	IMX623_AWBMODE_FULL_MWB		= 3,  /* Full manual AWB */
+	IMX623_AWBMODE_HOLD		= 4,  /* Hold current AWB */
 };
 
-/*****************************************************************************/
-/**
+/*****************************************************************************
+ * @enum imx623_blsmode_e
+ * @brief IMX623 Black Level Subtraction mode enumeration
+ *
+ * This enumeration defines the different black level subtraction modes
+ * supported by the IMX623 sensor. Black level correction can use user-defined
+ * values, sensor-calculated values, or a combination of both.
+ ****************************************************************************/
+enum imx623_blsmode_e {
+	IMX623_BLSMODE_USER		= 0, /* User-defined BLC */
+	IMX623_BLSMODE_SENSOR		= 1, /* Use sensor-calculated BLC */
+	IMX623_BLSMODE_USER_SENSOR	= 2, /* Combined user+sensor BLC */
+	IMX623_BLSMODE_DISABLE		= 3  /* Disable BLC */
+};
+
+/*****************************************************************************
  * @enum imx623_adbit_e
  * @brief IMX623 ADC bit depth enumeration
  *
@@ -245,12 +396,11 @@ enum imx623_awbmode_e {
  * for the IMX623 sensor.
  ****************************************************************************/
 enum imx623_adbit_e {
-	IMX623_AD_10BIT		= 0,
-	IMX623_AD_12BIT		= 1
+	IMX623_AD_10BIT			= 0, /* 10-bit ADC resolution */
+	IMX623_AD_12BIT			= 1  /* 12-bit ADC resolution */
 };
 
-/*****************************************************************************/
-/**
+/*****************************************************************************
  * @enum imx623_img_raw_mode_e
  * @brief IMX623 image raw mode enumeration
  *
@@ -258,12 +408,11 @@ enum imx623_adbit_e {
  * for the IMX623 sensor (Linear or HDR).
  ****************************************************************************/
 enum imx623_img_raw_mode_e {
-	IMX623_IMG_MODE_LINEAR		= 0x0,
-	IMX623_IMG_MODE_HDR		= 0x1,
+	IMX623_IMG_MODE_LINEAR		= 0x0, /* Linear imaging mode */
+	IMX623_IMG_MODE_HDR		= 0x1, /* HDR imaging mode */
 };
 
-/*****************************************************************************/
-/**
+/*****************************************************************************
  * @enum imx623_outmode_e
  * @brief IMX623 output mode enumeration
  *
@@ -271,13 +420,12 @@ enum imx623_img_raw_mode_e {
  * supported by the IMX623 sensor.
  ****************************************************************************/
 enum imx623_outmode_e {
-	IMX623_OUTMODE_RAW		= 0,
-	IMX623_OUTMODE_RAW12x2_LL	= 1,
-	IMX623_OUTMODE_RAW12x4_LL	= 3
+	IMX623_OUTMODE_RAW		= 0,  /* Standard RAW */
+	IMX623_OUTMODE_RAW12x2_LL	= 1,  /* RAW12 x2 low latency */
+	IMX623_OUTMODE_RAW12x4_LL	= 3   /* RAW12 x4 low latency */
 };
 
-/*****************************************************************************/
-/**
+/*****************************************************************************
  * @enum imx623_raw_outmode_e
  * @brief IMX623 raw output mode enumeration
  *
@@ -285,15 +433,14 @@ enum imx623_outmode_e {
  * supported by the IMX623 sensor.
  ****************************************************************************/
 enum imx623_raw_outmode_e {
-	IMX623_RAW_OUTMODE_RAW12	= 0,
-	IMX623_RAW_OUTMODE_RAW14	= 1,
-	IMX623_RAW_OUTMODE_RAW16	= 2,
-	IMX623_RAW_OUTMODE_RAW20	= 3,
-	IMX623_RAW_OUTMODE_RAW24	= 4
+	IMX623_RAW_OUTMODE_RAW12	= 0,  /* 12-bit RAW output */
+	IMX623_RAW_OUTMODE_RAW14	= 1,  /* 14-bit RAW output */
+	IMX623_RAW_OUTMODE_RAW16	= 2,  /* 16-bit RAW output */
+	IMX623_RAW_OUTMODE_RAW20	= 3,  /* 20-bit RAW output */
+	IMX623_RAW_OUTMODE_RAW24	= 4   /* 24-bit RAW output */
 };
 
-/*****************************************************************************/
-/**
+/*****************************************************************************
  * @enum imx623_raw_outsel_e
  * @brief IMX623 raw output selection enumeration
  *
@@ -301,14 +448,31 @@ enum imx623_raw_outmode_e {
  * for the IMX623 sensor in HDR mode.
  ****************************************************************************/
 enum imx623_raw_outsel_e {
+	/* Sub-pixel 1 High Conversion Gain output */
 	IMX623_RAW_OUTSEL_SP1_HCG	= 0,
+	/* Sub-pixel 1 Low Conversion Gain output */
 	IMX623_RAW_OUTSEL_SP1_LCG	= 1,
+	/* Sub-pixel 2 High sensitivity output */
 	IMX623_RAW_OUTSEL_SP2_H		= 2,
+	/* Sub-pixel 2 Low sensitivity output */
 	IMX623_RAW_OUTSEL_SP2_L		= 3
 };
 
-/*****************************************************************************/
-/**
+/*****************************************************************************
+ * @enum imx623_switching_method_e
+ * @brief IMX623 composite region signal switching method enumeration
+ *
+ * This enumeration defines the switching methods for composite region
+ * signal switching between sub-pixels. Pixel value switching prioritizes
+ * SNR (Signal-to-Noise Ratio), while luminance switching prioritizes
+ * avoiding color shading artifacts.
+ ****************************************************************************/
+enum imx623_switching_method_e {
+	IMX623_PIXEL_VALUE_SWITCHING	= 0, /* Pixel value (SNR priority) */
+	IMX623_LUMINANCE_SWITCHING	= 1  /*< Luminance (avoids shading) */
+};
+
+/*****************************************************************************
  * @enum imx623_fme_shtval_unit_e
  * @brief IMX623 frame shutter value unit enumeration
  *
@@ -316,12 +480,15 @@ enum imx623_raw_outsel_e {
  * value configuration in the IMX623 sensor.
  ****************************************************************************/
 enum imx623_fme_shtval_unit_e {
+	/* Shutter value in line units */
 	IMX623_FME_SHTVAL_UNIT_LINES		= 1,
+	/* Shutter value in microseconds */
 	IMX623_FME_SHTVAL_UNIT_MICROSECONDS	= 3,
+	/* Shutter value in frame units */
 	IMX623_FME_SHTVAL_UNIT_FRAMES		= 4,
 };
 
-typedef struct {
+typedef struct IMX623_Context_s {
 	IsiSensorContext_t	isiCtx;
 	IsiSensorMode_t		sensorMode;
 
@@ -334,20 +501,25 @@ typedef struct {
 	bool_t			testPattern;
 	bool_t			isAfpsRun;
 
+	// Exposure Time Range
 	float			aecMinIntegrationTime;
 	float			aecMaxIntegrationTime;
 	float			aecIntegrationTimeStep;
 
+	// Analog/Digital Gain Range
 	IsiGainInfo_t		aGain;
 	IsiGainInfo_t		dGain;
 
+	// Total Gain Range (Analog gain * Digital Gain)
 	float			aecMinGain;
 	float			aecMaxGain;
 	float			aecGainIncrement;
 
+	// White Balance Gain Range
 	uint16_t		minWBGain;
 	uint16_t		maxWBGain;
 
+	// Current exposure settings
 	IsiSensorGain_t		curAgain;
 	IsiSensorGain_t		curDgain;
 	IsiSensorIntTime_t	curIntTime;
@@ -355,25 +527,38 @@ typedef struct {
 	IsiSensorBlc_t		sensorBlc;
 	IsiSensorWb_t		sensorWb;
 
+	IsiIspStatus_t		sensorConfig;
+
 	uint32_t		i2cId;
 	uint32_t		sensorDevId;
+	osMutex			registerLock;
+	bool_t			regAccessEnable;
 } IMX623_Context_t;
 
 struct imx623_ctrl_point {
-	int x, y;
+	int x;
+	int y;
 };
 
 static struct imx623_ctrl_point imx623_hdr_24bit[] = {
-	{0, 0},
-	{1566, 1024},
-	{105740, 2047},
-	{387380, 2559},
-	{3818601, 3583},
-	{16777215, 4095},
-	{-1, -1}
+	{0,		0},
+	{1,		1023},
+	{14,		1279},
+	{129,		1535},
+	{822,		1791},
+	{4084,		2047},
+	{16796,		2303},
+	{59500,		2559},
+	{186816,	2815},
+	{530922,	3071},
+	{1387735,	3327},
+	{3377806,	3583},
+	{7731973,	3839},
+	{16777215,	4095},
+	{-1,		-1}
 };
 
-static uint16_t IMX623_1920x1080_init[][2] = {
+static uint16_t IMX623_init[][2] = {
 	{IMX623_TABLE_REMAP, 0x00},
 	{IMX623_TABLE_WAIT, IMX623_WAIT_100MS},
 	{0x0048, 0x4C},
@@ -399,8 +584,9 @@ static uint16_t IMX623_1920x1080_init[][2] = {
 	{0x1E12, 0x7A},
 	{0x1E13, 0x03},
 	{0x8ADA, 0x02},
-	{0x8AB2, 0x01},
-	{0x8AB6, 0x00},
+	{0x8AB2, 0x01},	// Pedestal Select 0 - Before PWL, 1 - After PWL
+	{0x8AB6, 0x00},	// Pedestal value after PWL (lower byte)
+	{0x8AB7, 0x00},	// Pedestal value after PWL (higher byte)
 	{0xBF34, 0x51},
 	{0xBF35, 0x15},
 	{0xBF36, 0x15},
@@ -414,7 +600,7 @@ static uint16_t IMX623_1920x1080_init[][2] = {
 	{0x8A55, 0x00},
 	{0xD800, 0x51},
 	{0xD801, 0x51},
-	{0xFFFF, 0xF3},
+
 	{0x0004, 0xFD},
 	{0x0005, 0x02},
 	{0x0040, 0x02},
@@ -756,34 +942,56 @@ static uint16_t IMX623_1920x1080_init[][2] = {
 	{0xAE3F, 0x00},
 	{0xAE46, 0x26},
 	{0xAE47, 0x01},
-	{0xAE58, 0x1B},
-	{0xAE59, 0x39},
-	{0xAE5A, 0x19},
-	{0xAE5B, 0x39},
-	{0xAE5C, 0x27},
-	{0xAE5D, 0x39},
-	{0xAE5E, 0x11},
-	{0xAE5F, 0x39},
-	{0xAE60, 0x5E},
-	{0xAE61, 0x20},
-	{0xAE62, 0x1B},
-	{0xAE63, 0x20},
-	{0xAE64, 0x13},
-	{0xAE65, 0x20},
-	{0xAE66, 0x75},
-	{0xAE67, 0x20},
-	{0xAE68, 0x2F},
-	{0xAE69, 0x54},
-	{0xAE6A, 0x20},
-	{0xAE6C, 0x2E},
-	{0xAE6D, 0xC9},
-	{0xAE6E, 0x1E},
-	{0xAE70, 0xDF},
-	{0xAE71, 0xF9},
-	{0xAE72, 0x1E},
-	{0xAE74, 0xBB},
-	{0xAE75, 0xD1},
-	{0xAE76, 0x1D},
+
+	// Compositing thresholds
+	{0xAFB4, 0x3C},
+	{0xAFB5, 0x0F},
+	{0xAFB6, 0xAC},
+	{0xAFB7, 0x0D},
+
+	{0xAFB8, 0xAC},
+	{0xAFB9, 0x0D},
+	{0xAFBA, 0x80},
+	{0xAFBB, 0x0C},
+
+	{0xAFBC, 0x3C},
+	{0xAFBD, 0x0F},
+	{0xAFBE, 0xAC},
+	{0xAFBF, 0x0D},
+
+	// Sensitivity ratios of SP1_HCG and SP1_LCG
+	{0xAE58, 0x00},
+	{0xAE59, 0x48},
+	{0xAE5A, 0xE7},
+	{0xAE5B, 0x47},
+	{0xAE5C, 0xDA},
+	{0xAE5D, 0x47},
+	{0xAE5E, 0x21},
+	{0xAE5F, 0x48},
+
+	// Sensitivity ratios of SP2_H and SP2_L
+	{0xAE60, 0x50},
+	{0xAE61, 0x1F},
+	{0xAE62, 0x87},
+	{0xAE63, 0x1F},
+	{0xAE64, 0x84},
+	{0xAE65, 0x1F},
+	{0xAE66, 0x56},
+	{0xAE67, 0x1F},
+
+	// Sensitivity ratios of SP1 and SP2
+	{0xAE68, 0x14},
+	{0xAE69, 0x31},
+	{0xAE6A, 0x1A},
+	{0xAE6C, 0x33},
+	{0xAE6D, 0x41},
+	{0xAE6E, 0x18},
+	{0xAE70, 0xAA},
+	{0xAE71, 0x41},
+	{0xAE72, 0x18},
+	{0xAE74, 0x3E},
+	{0xAE75, 0x91},
+	{0xAE76, 0x17},
 	{0xAE94, 0x2A},
 	{0xAEB9, 0x60},
 	{0xAEBA, 0x50},
@@ -1260,7 +1468,6 @@ static uint16_t IMX623_1920x1080_init[][2] = {
 	{0xB485, 0x00},
 	{0xB486, 0x34},
 	{0xB487, 0x00},
-	{0xB488, 0x02},
 	{0xB48A, 0x00},
 	{0xBD44, 0x04},
 	{0xB9F8, 0x0A},
@@ -1277,49 +1484,76 @@ static uint16_t IMX623_1920x1080_init[][2] = {
 	{IMX623_TABLE_END, 0x00}
 };
 
-static RESULT IMX623_IsiReadRegIss(IsiSensorHandle_t handle, const uint16_t addr,
-				uint16_t *pValue);
-static RESULT IMX623_IsiWriteRegIss(IsiSensorHandle_t handle, const uint16_t addr,
-				const uint16_t value);
-static RESULT IMX623_IsiUpdateRegIss(IsiSensorHandle_t handle, const uint16_t addr,
-				const uint8_t mask, const uint8_t value);
+static RESULT IMX623_IsiReadRegIss(IsiSensorHandle_t handle,
+		const uint16_t addr, uint16_t *pValue);
+static RESULT IMX623_IsiWriteRegIss(IsiSensorHandle_t handle,
+		const uint16_t addr, const uint16_t value);
+#ifdef ENABLE_I2C_GROUPING
+static RESULT IMX623_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
+		const uint16_t addr, uint8_t *value, uint8_t datacount);
+#endif
+static RESULT IMX623_IsiUpdateRegIss(IsiSensorHandle_t handle,
+		const uint16_t addr, const uint8_t mask, const uint8_t value);
 RESULT IMX623_IsiGetSensorIss(IsiSensor_t *pIsiSensor);
-static RESULT IMX623_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig, IsiSensorHandle_t *pHandle);
-static RESULT IMX623_IsiEnumModeIss(IsiSensorHandle_t handle, IsiSensorEnumMode_t *pEnumMode);
+static RESULT IMX623_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
+		IsiSensorHandle_t *pHandle);
+static RESULT IMX623_IsiEnumModeIss(IsiSensorHandle_t handle,
+		IsiSensorEnumMode_t *pEnumMode);
 static RESULT IMX623_IsiCheckConnectionIss(IsiSensorHandle_t handle);
-static RESULT IMX623_IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *pValue);
+static RESULT IMX623_IsiGetRevisionIss(IsiSensorHandle_t handle,
+		uint32_t *pValue);
 static RESULT IMX623_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode);
-static RESULT IMX623_SerDeserSettings(IsiSensorHandle_t);
-static RESULT IMX623_IsiGetModeIss(IsiSensorHandle_t handle, IsiSensorMode_t *pMode);
-static RESULT IMX623_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps);
-RESULT IMX623_IsiGetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg);
-RESULT IMX623_IsiSetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t tpg);
-static RESULT IMX623_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle, IsiAeBaseInfo_t *pAeBaseInfo);
-static RESULT IMX623_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t mode);
 static RESULT IMX623_IsiCloseIss(IsiSensorHandle_t handle);
 static RESULT IMX623_IsiReleaseIss(IsiSensorHandle_t handle);
-static RESULT IMX623_IsiSetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb);
-static RESULT IMX623_IsiGetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb);
-RESULT IMX623_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
-RESULT IMX623_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
-RESULT IMX623_IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain);
-RESULT IMX623_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain);
-RESULT IMX623_IsiGetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pSensorIntTime);
-RESULT IMX623_IsiSetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pSensorIntTime);
-static RESULT IMX623_SetIntTime(IsiSensorHandle_t handle,  float newIntegrationTime);
+static RESULT IMX623_IsiGetModeIss(IsiSensorHandle_t handle,
+		IsiSensorMode_t *pMode);
+static RESULT IMX623_IsiGetCapsIss(IsiSensorHandle_t handle,
+		IsiCaps_t *pCaps);
+RESULT IMX623_IsiGetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg);
+RESULT IMX623_IsiSetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t tpg);
+static RESULT IMX623_InitialExposure(IsiSensorHandle_t handle);
+static RESULT IMX623_Configure2A(IsiSensorHandle_t handle);
+static RESULT IMX623_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
+		IsiAeBaseInfo_t *pAeBaseInfo);
+RESULT IMX623_IsiGetAGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorAGain);
+RESULT IMX623_IsiSetAGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorAGain);
+RESULT IMX623_IsiGetDGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorDGain);
+RESULT IMX623_IsiSetDGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorDGain);
+RESULT IMX623_IsiGetIntTimeIss(IsiSensorHandle_t handle,
+		IsiSensorIntTime_t *pSensorIntTime);
+static RESULT IMX623_IsiSetIntTimeIss(IsiSensorHandle_t handle,
+		const IsiSensorIntTime_t *pSensorIntTime);
+static RESULT IMX623_SetIntTime(IsiSensorHandle_t handle,
+		float newIntegrationTime);
+static RESULT IMX623_IsiSetWBIss(IsiSensorHandle_t handle,
+		const IsiSensorWb_t *pWb);
+static RESULT IMX623_IsiGetWBIss(IsiSensorHandle_t handle,
+		IsiSensorWb_t *pWb);
+static RESULT IMX623_ConfigureBLC(IsiSensorHandle_t handle);
+static RESULT IMX623_IsiSetBlcIss(IsiSensorHandle_t handle,
+		const IsiSensorBlc_t *pBlc);
+static RESULT IMX623_IsiGetBlcIss(IsiSensorHandle_t handle,
+		IsiSensorBlc_t *pBlc);
+static RESULT IMX623_IsiSetStreamingIss(IsiSensorHandle_t handle,
+		bool_t mode);
 RESULT IMX623_IsiGetFpsIss(IsiSensorHandle_t handle, uint32_t *pFps);
 RESULT IMX623_IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps);
-RESULT IMX623_IsiGetIspStatusIss(IsiSensorHandle_t handle, IsiIspStatus_t *pIspStatus);
-static RESULT IMX623_IsiSetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBlc);
-static RESULT IMX623_IsiGetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBlc);
+RESULT IMX623_IsiGetIspStatusIss(IsiSensorHandle_t handle,
+		IsiIspStatus_t *pIspStatus);
 static RESULT IMX623_IsiGetExpandCurveIss(IsiSensorHandle_t handle,
-					IsiSensorCompandCurve_t *pCurve);
-RemapMode_e IMX623_GetRemapMode(IsiSensorHandle_t handle);
+		IsiSensorCompandCurve_t *pCurve);
 SensorState_e IMX623_GetSensorState(IsiSensorHandle_t handle);
 static RESULT IMX623_SetClknStartup(IsiSensorHandle_t handle);
+static RESULT IMX623_Crop(IsiSensorHandle_t handle, uint32_t boundsWidth,
+		uint32_t boundsHeight, uint32_t left, uint32_t top,
+		uint32_t width, uint32_t height);
+static RESULT IMX623_ConfigureHDR(IsiSensorHandle_t handle,
+		struct imx623_ctrl_point *points);
 static RESULT IMX623_Configure(IsiSensorHandle_t handle);
-static RESULT IMX623_HDRConfigure(IsiSensorHandle_t handle, struct imx623_ctrl_point *points);
-static RESULT IMX623_InitialExposure(IsiSensorHandle_t handle);
 
 #ifdef __cplusplus
 }

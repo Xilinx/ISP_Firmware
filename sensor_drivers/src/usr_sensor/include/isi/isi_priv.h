@@ -37,8 +37,8 @@ extern "C"
 #endif
 
 typedef struct {
-	IsiSensor_t		*pSensor;
-	HalI2cHandle_t		halI2cHandle;
+	IsiSensor_t	*pSensor;
+	HalI2cHandle_t	halI2cHandle;
 } IsiSensorContext_t;
 
 #ifdef __cplusplus

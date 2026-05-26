@@ -23,24 +23,22 @@
  *
  ****************************************************************************/
 
-#include <ebase/trace.h>
 #include <ebase/builtins.h>
 #include <common/misc.h>
 #include <isi/isi_fmc.h>
 #include "isi/isi.h"
 #include "isi/isi_iss.h"
-#include "isi/isi_priv.h"
 #include "sensor_drv/semu_priv.h"
 
 CREATE_TRACER(Semu_INFO, "semu: ", INFO,    1);
 CREATE_TRACER(Semu_WARN, "semu: ", WARNING, 1);
 CREATE_TRACER(Semu_ERROR, "semu: ", ERROR,   1);
-CREATE_TRACER(Semu_DEBUG,     "semu: ", INFO, 0);
+CREATE_TRACER(Semu_DEBUG,     "semu: ", INFO, 1);
 CREATE_TRACER(Semu_REG_INFO, "semu: ", INFO, 1);
 CREATE_TRACER(Semu_REG_DEBUG, "semu: ", INFO, 1);
 
-#define SEMU_ID_MAX 5
-#define VTPG_OFFSET 0x1000
+#define SEMU_ID_MAX (5)
+#define VTPG_OFFSET (0x1000)
 
 const uint32_t semuss_baseaddr[SEMU_ID_MAX] = {
 	0xB1020000,
@@ -272,7 +270,7 @@ static IsiSensorMode_t psemu_mode_info[] = {
 	}
 };
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsValidSemuId
  *
  * @brief   Checks if the provided sensor emulator ID is valid.
@@ -289,7 +287,7 @@ static RESULT Semu_IsValidSemuId(uint32_t sensorDevId)
 	return RET_SUCCESS;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiReadRegIss
  *
  * @brief   Reads a value from a sensor register.
@@ -304,7 +302,8 @@ static RESULT Semu_IsValidSemuId(uint32_t sensorDevId)
  * @retval  RET_NOTSUPP
  *
  *****************************************************************************/
-static RESULT Semu_IsiReadRegIss(IsiSensorHandle_t handle, const uint32_t addr, uint32_t *pValue)
+static RESULT Semu_IsiReadRegIss(IsiSensorHandle_t handle,
+		const uint16_t addr, uint16_t *pValue)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -312,8 +311,10 @@ static RESULT Semu_IsiReadRegIss(IsiSensorHandle_t handle, const uint32_t addr, 
 
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
 
-	if (pSemuCtx == NULL)
+	if (pSemuCtx == NULL) {
+		TRACE(Semu_ERROR, "%s: NULL pointer detected\n", __func__);
 		return RET_NULL_POINTER;
+	}
 
 	if (Semu_IsValidSemuId(pSemuCtx->sensorDevId)) {
 		TRACE(Semu_ERROR, "%s: Can't Support this sensor_id:%d\n",
@@ -321,13 +322,14 @@ static RESULT Semu_IsiReadRegIss(IsiSensorHandle_t handle, const uint32_t addr, 
 		return RET_NOTSUPP;
 	}
 
-	*pValue = Xil_In32(semuss_baseaddr[pSemuCtx->sensorDevId] + VTPG_OFFSET + addr);
+	*pValue = (uint16_t)Xil_In32(semuss_baseaddr[pSemuCtx->sensorDevId] +
+			VTPG_OFFSET + addr);
 
 	TRACE(Semu_INFO, "%s (exit) result = %d\n", __func__, result);
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiWriteRegIss
  *
  * @brief   Writes a value to a sensor register.
@@ -342,8 +344,8 @@ static RESULT Semu_IsiReadRegIss(IsiSensorHandle_t handle, const uint32_t addr, 
  * @retval  RET_NOTSUPP
  *
  *****************************************************************************/
-static RESULT Semu_IsiWriteRegIss(IsiSensorHandle_t handle, const uint32_t addr,
-		const uint32_t value)
+static RESULT Semu_IsiWriteRegIss(IsiSensorHandle_t handle,
+		const uint16_t addr, const uint16_t value)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -351,8 +353,10 @@ static RESULT Semu_IsiWriteRegIss(IsiSensorHandle_t handle, const uint32_t addr,
 
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
 
-	if (pSemuCtx == NULL)
+	if (pSemuCtx == NULL) {
+		TRACE(Semu_ERROR, "%s: NULL pointer detected\n", __func__);
 		return RET_NULL_POINTER;
+	}
 
 	if (Semu_IsValidSemuId(pSemuCtx->sensorDevId)) {
 		TRACE(Semu_ERROR, "%s: Can't Support this sensor_id:%d\n",
@@ -360,13 +364,14 @@ static RESULT Semu_IsiWriteRegIss(IsiSensorHandle_t handle, const uint32_t addr,
 		return RET_NOTSUPP;
 	}
 
-	Xil_Out32(semuss_baseaddr[pSemuCtx->sensorDevId] + VTPG_OFFSET + addr, value);
+	Xil_Out32(semuss_baseaddr[pSemuCtx->sensorDevId] +
+			VTPG_OFFSET + addr, value);
 
 	TRACE(Semu_INFO, "%s (exit) result = %d\n", __func__, result);
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiCreateIss
  *
  * @brief   Creates and initializes a sensor instance.
@@ -377,29 +382,31 @@ static RESULT Semu_IsiWriteRegIss(IsiSensorHandle_t handle, const uint32_t addr,
  * @return  Handle to the created sensor instance or NULL on failure.
  *
  *****************************************************************************/
-static RESULT Semu_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig, IsiSensorHandle_t *pHandle)
+static RESULT Semu_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
+		IsiSensorHandle_t *pHandle)
 {
 	RESULT result = RET_SUCCESS;
 
 	TRACE(Semu_INFO, "%s (enter)\n", __func__);
 
-	Semu_Context_t *pSemuCtx = (Semu_Context_t *) osMalloc(sizeof(Semu_Context_t));
+	Semu_Context_t *pSemuCtx =
+		(Semu_Context_t *) osMalloc(sizeof(Semu_Context_t));
 
 	if (!pSemuCtx) {
-		TRACE(Semu_ERROR, "%s: Can't allocate ox03f10 context\n", __func__);
+		TRACE(Semu_ERROR, "%s: Can't allocate context\n", __func__);
 		return RET_OUTOFMEM;
 	}
 
-	xil_printf("semu create start\n");
+	TRACE(Semu_INFO, "semu create start\n");
 
 	MEMSET(pSemuCtx, 0, sizeof(Semu_Context_t));
 
 	pSemuCtx->isiCtx.pSensor     = pConfig->pSensor;
 	pSemuCtx->configured         = BOOL_FALSE;
 	pSemuCtx->streaming          = BOOL_FALSE;
-	pSemuCtx->sensorDevId        = pConfig->cameraDevId;
+	pSemuCtx->sensorDevId        = pConfig->halDevID;
 
-	xil_printf("sensorDevId:%d\n", pSemuCtx->sensorDevId);
+	TRACE(Semu_INFO, "sensorDevId:%d\n", pSemuCtx->sensorDevId);
 
 	pSemuCtx->groupHold          = BOOL_FALSE;
 	pSemuCtx->oldGain            = 0;
@@ -409,7 +416,7 @@ static RESULT Semu_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig, IsiSensorHan
 	pSemuCtx->sensorMode.index   = 0;
 	IsiSensorMode_t *SensorDefaultMode = NULL;
 
-	for (int i = 0; i < sizeof(psemu_mode_info) / sizeof(IsiSensorMode_t); i++) {
+	for (uint32_t i = 0; i < ARRAY_SIZE(psemu_mode_info); i++) {
 		if (psemu_mode_info[i].index == pSemuCtx->sensorMode.index) {
 			SensorDefaultMode = &(psemu_mode_info[i]);
 			break;
@@ -417,7 +424,8 @@ static RESULT Semu_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig, IsiSensorHan
 	}
 
 	if (SensorDefaultMode != NULL) {
-		memcpy(&(pSemuCtx->sensorMode), SensorDefaultMode, sizeof(IsiSensorMode_t));
+		memcpy(&(pSemuCtx->sensorMode),
+				SensorDefaultMode, sizeof(IsiSensorMode_t));
 	} else {
 		TRACE(Semu_ERROR, "%s: Invalid SensorDefaultMode\n", __func__);
 		return RET_NULL_POINTER;
@@ -425,13 +433,13 @@ static RESULT Semu_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig, IsiSensorHan
 
 	*pHandle = (IsiSensorHandle_t) pSemuCtx;
 
-	xil_printf("semu create done\n");
+	TRACE(Semu_INFO, "semu create done\n");
 
 	TRACE(Semu_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          semu_config
  *
  * @brief   Structure holding configuration parameters for the sensor emulator.
@@ -444,10 +452,11 @@ static RESULT semu_config(IsiSensorHandle_t handle)
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
 	RESULT result = RET_SUCCESS;
 
-	xil_printf("middha start semu config\n");
+	TRACE(Semu_INFO, "start semu config\n");
 
 	if (!pSemuCtx) {
-		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n", __func__);
+		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
+				__func__);
 		return RET_WRONG_HANDLE;
 	}
 
@@ -457,44 +466,37 @@ static RESULT semu_config(IsiSensorHandle_t handle)
 		return RET_NOTSUPP;
 	}
 
-	xil_printf("middha - sensorDevId: %d\n", pSemuCtx->sensorDevId);
+	TRACE(Semu_INFO, "sensorDevId: %d\n", pSemuCtx->sensorDevId);
 
 	const uint32_t vtpg_addr = semuss_baseaddr[pSemuCtx->sensorDevId];
-	const uint32_t semu_addr = semuss_baseaddr[pSemuCtx->sensorDevId] + VTPG_OFFSET;
+	const uint32_t semu_addr =
+		semuss_baseaddr[pSemuCtx->sensorDevId] + VTPG_OFFSET;
 
-	xil_printf("middha - 1\n");
 	Xil_Out32(vtpg_addr + 0x0020, 0xB);
-	xil_printf("middha - 2\n");
 	Xil_Out32(vtpg_addr + 0x0028, 0x0);
-	xil_printf("middha - 3\n");
 	Xil_Out32(vtpg_addr + 0x0038, 0x2);
-	xil_printf("middha - 4\n");
 	Xil_Out32(vtpg_addr + 0x0078, 0x50);
-	xil_printf("middha - 5\n");
 	Xil_Out32(vtpg_addr + 0x0010, pSemuCtx->sensorMode.size.height);
-	xil_printf("middha - 6\n");
 	Xil_Out32(vtpg_addr + 0x0018, pSemuCtx->sensorMode.size.width);
-	xil_printf("middha - 7\n");
 
 	Xil_Out32(semu_addr + 0x0008, 0x1);
-	xil_printf("middha - 8\n");
 
 	Xil_Out32(semu_addr + 0x0010, ((pSemuCtx->sensorMode.bitWidth)<<16)|0x4);
-	xil_printf("middha - 9\n");
 	Xil_Out32(semu_addr + 0x000C, ((pSemuCtx->sensorMode.size.width)<<16)|
 		(pSemuCtx->sensorMode.size.height));
-	xil_printf("middha - 10\n");
 
 	Xil_Out32(semu_addr + 0x0020, /*0x2625A0*//*0x3D090*/ 0XE4E1C0);
-	xil_printf("middha - width:%d, height:%d\n", pSemuCtx->sensorMode.size.width,
-			pSemuCtx->sensorMode.size.height);
-	xil_printf("middha - bitwidth:%d\n", pSemuCtx->sensorMode.bitWidth);
 
-	xil_printf("middha end semu config\n");
+	TRACE(Semu_INFO, "width:%d, height:%d\n", pSemuCtx->sensorMode.size.width,
+			pSemuCtx->sensorMode.size.height);
+
+	TRACE(Semu_INFO, "bitwidth:%d\n", pSemuCtx->sensorMode.bitWidth);
+
+	TRACE(Semu_INFO, "end semu config\n");
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiOpenIss
  *
  * @brief   Opens the sensor device for operation.
@@ -515,7 +517,8 @@ static RESULT Semu_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 	TRACE(Semu_INFO, "%s (enter)\n", __func__);
 
 	if (!pSemuCtx) {
-		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n", __func__);
+		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
+				__func__);
 		return RET_WRONG_HANDLE;
 	}
 
@@ -526,7 +529,7 @@ static RESULT Semu_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 
 	IsiSensorMode_t *SensorDefaultMode = NULL;
 
-	for (int i = 0; i < sizeof(psemu_mode_info) / sizeof(IsiSensorMode_t); i++) {
+	for (uint32_t i = 0; i < ARRAY_SIZE(psemu_mode_info); i++) {
 		if (psemu_mode_info[i].index == pSemuCtx->sensorMode.index) {
 			SensorDefaultMode = &(psemu_mode_info[i]);
 			break;
@@ -534,7 +537,8 @@ static RESULT Semu_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 	}
 
 	if (SensorDefaultMode != NULL) {
-		memcpy(&(pSemuCtx->sensorMode), SensorDefaultMode, sizeof(IsiSensorMode_t));
+		memcpy(&(pSemuCtx->sensorMode),
+				SensorDefaultMode, sizeof(IsiSensorMode_t));
 	} else {
 		TRACE(Semu_ERROR, "%s: Invalid SensorDefaultMode\n", __func__);
 		return RET_NULL_POINTER;
@@ -580,7 +584,7 @@ static RESULT Semu_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiCloseIss
  *
  * @brief   Closes the sensor device.
@@ -608,7 +612,7 @@ static RESULT Semu_IsiCloseIss(IsiSensorHandle_t handle)
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiReleaseIss
  *
  * @brief   Releases the sensor instance and frees resources.
@@ -636,7 +640,7 @@ static RESULT Semu_IsiReleaseIss(IsiSensorHandle_t handle)
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiSetStreamingIss
  *
  * @brief   Starts or stops the sensor streaming.
@@ -655,7 +659,6 @@ static RESULT Semu_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t on)
 
 	TRACE(Semu_INFO, "%s (enter)\n", __func__);
 
-	xil_printf("%s: (enter)\n", __func__);
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
 
 	if (pSemuCtx == NULL)
@@ -681,12 +684,19 @@ static RESULT Semu_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t on)
 
 	pSemuCtx->streaming = on;
 
+	TRACE(Semu_INFO,
+	      "%s: streaming=%s mode=%d res=%dx%d fps=%d\n",
+	      __func__, on ? "ON" : "OFF",
+	      pSemuCtx->sensorMode.index,
+	      pSemuCtx->sensorMode.size.width,
+	      pSemuCtx->sensorMode.size.height,
+	      pSemuCtx->currFps / ISI_FPS_QUANTIZE);
+
 	TRACE(Semu_INFO, "%s (exit)\n", __func__);
-	xil_printf("%s: (exit)\n", __func__);
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiGetFpsIss
  *
  * @brief   Retrieves the current frames per second (FPS) setting.
@@ -706,7 +716,8 @@ RESULT Semu_IsiGetFpsIss(IsiSensorHandle_t handle, uint32_t *pFps)
 	RESULT result = RET_SUCCESS;
 
 	if (pSemuCtx == NULL) {
-		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n", __func__);
+		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
+				__func__);
 		return RET_WRONG_HANDLE;
 	}
 
@@ -715,7 +726,7 @@ RESULT Semu_IsiGetFpsIss(IsiSensorHandle_t handle, uint32_t *pFps)
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiSetFpsIss
  *
  * @brief   Sets the frames per second (FPS) for the sensor.
@@ -731,33 +742,31 @@ RESULT Semu_IsiGetFpsIss(IsiSensorHandle_t handle, uint32_t *pFps)
 RESULT Semu_IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps)
 {
 	RESULT result = RET_SUCCESS;
-	uint32_t int_fps_period;
 
-	xil_printf("%s: (enter)\n", __func__);
+	TRACE(Semu_INFO, "%s: (enter)\n", __func__);
 
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
 
 	if (pSemuCtx == NULL) {
-		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n", __func__);
+		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
+				__func__);
 		return RET_WRONG_HANDLE;
 	}
 
 	fps /= ISI_FPS_QUANTIZE;
 
-	int_fps_period = 25000000 / fps;
-
 	if (result != RET_SUCCESS) {
 		TRACE(Semu_ERROR, "%s: set fps failed!\n", __func__);
-		return RET_FAILURE;
-	} else
+		result = RET_FAILURE;
+	} else {
 		pSemuCtx->currFps = fps * ISI_FPS_QUANTIZE;
+	}
 
-
-	xil_printf("%s: (exit)\n", __func__);
+	TRACE(Semu_INFO, "%s: (exit)\n", __func__);
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiGetModeIss
  *
  * @brief   Retrieves the current sensor mode.
@@ -771,14 +780,13 @@ RESULT Semu_IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps)
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static RESULT Semu_IsiGetModeIss(IsiSensorHandle_t handle, IsiSensorMode_t *pMode)
+static RESULT Semu_IsiGetModeIss(IsiSensorHandle_t handle,
+		IsiSensorMode_t *pMode)
 {
 	TRACE(Semu_INFO, "%s (enter)\n", __func__);
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
 
-	if (pSemuCtx == NULL)
-		return RET_WRONG_HANDLE;
-	if (pMode == NULL)
+	if (pSemuCtx == NULL || pMode == NULL)
 		return RET_WRONG_HANDLE;
 
 	memcpy(pMode, &(pSemuCtx->sensorMode), sizeof(IsiSensorMode_t));
@@ -787,7 +795,7 @@ static RESULT Semu_IsiGetModeIss(IsiSensorHandle_t handle, IsiSensorMode_t *pMod
 	return RET_SUCCESS;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiEnumModeIss
  *
  * @brief   Enumerates supported sensor modes.
@@ -801,7 +809,8 @@ static RESULT Semu_IsiGetModeIss(IsiSensorHandle_t handle, IsiSensorMode_t *pMod
  * @retval  RET_OUTOFRANGE
  *
  *****************************************************************************/
-static RESULT Semu_IsiEnumModeIss(IsiSensorHandle_t handle, IsiSensorEnumMode_t *pEnumMode)
+static RESULT Semu_IsiEnumModeIss(IsiSensorHandle_t handle,
+		IsiSensorEnumMode_t *pEnumMode)
 {
 	TRACE(Semu_INFO, "%s (enter)\n", __func__);
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
@@ -814,7 +823,8 @@ static RESULT Semu_IsiEnumModeIss(IsiSensorHandle_t handle, IsiSensorEnumMode_t 
 
 	for (uint32_t i = 0; i < (ARRAY_SIZE(psemu_mode_info)); i++) {
 		if (psemu_mode_info[i].index == pEnumMode->index) {
-			memcpy(&pEnumMode->mode, &psemu_mode_info[i], sizeof(IsiSensorMode_t));
+			memcpy(&pEnumMode->mode, &psemu_mode_info[i],
+					sizeof(IsiSensorMode_t));
 			TRACE(Semu_INFO, "%s (exit)\n", __func__);
 			return RET_SUCCESS;
 		}
@@ -823,10 +833,10 @@ static RESULT Semu_IsiEnumModeIss(IsiSensorHandle_t handle, IsiSensorEnumMode_t 
 	return RET_NOTSUPP;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_AecSetModeParameters
  *
- * @brief   Sets the Auto Exposure Control (AEC) mode parameters for the sensor emulator.
+ * @brief   Sets the AE Control (AEC) mode parameters for the sensor emulator.
  *
  * @param   handle              Handle to the sensor emulator instance.
  * @param   pSemuCtx            Pointer to the sensor emulator context.
@@ -837,13 +847,15 @@ static RESULT Semu_IsiEnumModeIss(IsiSensorHandle_t handle, IsiSensorEnumMode_t 
  * @retval  RET_NULL_POINTER    Null pointer passed for parameters.
  *
  *****************************************************************************/
-static RESULT Semu_AecSetModeParameters(IsiSensorHandle_t handle, Semu_Context_t *pSemuCtx)
+static RESULT Semu_AecSetModeParameters(IsiSensorHandle_t handle,
+		Semu_Context_t *pSemuCtx)
 {
 	RESULT result = RET_SUCCESS;
+	(void)handle;
 
-	TRACE(Semu_INFO, "%s%s: (enter)\n", __func__, pSemuCtx->isAfpsRun ? "(AFPS)" : "");
+	TRACE(Semu_INFO, "%s%s: (enter)\n",
+			__func__, pSemuCtx->isAfpsRun ? "(AFPS)" : "");
 	uint32_t exp_line = 0, again = 0, dgain = 0;
-	uint16_t value = 0;
 
 	pSemuCtx->aecMinIntegrationTime       = pSemuCtx->oneLineDCGExpTime *
 			pSemuCtx->minDCGIntegrationLine;
@@ -866,7 +878,7 @@ static RESULT Semu_AecSetModeParameters(IsiSensorHandle_t handle, Semu_Context_t
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiGetCapsIss
  *
  * @brief   Retrieves the sensor capabilities.
@@ -913,7 +925,7 @@ static RESULT Semu_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps)
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiCheckConnectionIss
  *
  * @brief   Checks the connection to the sensor device.
@@ -957,7 +969,7 @@ static RESULT Semu_IsiCheckConnectionIss(IsiSensorHandle_t handle)
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiGetRevisionIss
  *
  * @brief   Retrieves the sensor revision information.
@@ -971,10 +983,10 @@ static RESULT Semu_IsiCheckConnectionIss(IsiSensorHandle_t handle)
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static RESULT Semu_IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *pValue)
+static RESULT Semu_IsiGetRevisionIss(IsiSensorHandle_t handle,
+									uint32_t *pValue)
 {
 	RESULT result = RET_SUCCESS;
-	uint16_t reg_val;
 	uint32_t sensor_id = 0x5801;
 
 	TRACE(Semu_INFO, "%s (enter)\n", __func__);
@@ -989,7 +1001,7 @@ static RESULT Semu_IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *pValue)
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_pIsiGetAeBaseInfoIss
  *
  * @brief   Retrieves the auto-exposure base information.
@@ -1003,7 +1015,8 @@ static RESULT Semu_IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *pValue)
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static RESULT Semu_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle, IsiAeBaseInfo_t *pAeBaseInfo)
+static RESULT Semu_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
+		IsiAeBaseInfo_t *pAeBaseInfo)
 {
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
 	RESULT result = RET_SUCCESS;
@@ -1011,7 +1024,8 @@ static RESULT Semu_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle, IsiAeBaseInfo_
 	TRACE(Semu_INFO, "%s: (enter)\n", __func__);
 
 	if (pSemuCtx == NULL) {
-		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n", __func__);
+		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
+				__func__);
 		return RET_WRONG_HANDLE;
 	}
 
@@ -1036,11 +1050,11 @@ static RESULT Semu_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle, IsiAeBaseInfo_
 	pAeBaseInfo->nativeHdrRatio[2] = 4.48;
 	pAeBaseInfo->conversionGainDCG = 7.2;
 
-	TRACE(Semu_INFO, "%s: (enter)\n", __func__);
+	TRACE(Semu_INFO, "%s: (exit)\n", __func__);
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiSetAGainIss
  *
  * @brief   Sets the analog gain value for the sensor.
@@ -1053,7 +1067,8 @@ static RESULT Semu_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle, IsiAeBaseInfo_
  * @retval  RET_WRONG_HANDLE
  *
  *****************************************************************************/
-RESULT Semu_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain)
+RESULT Semu_IsiSetAGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorAGain)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -1084,11 +1099,19 @@ RESULT Semu_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGa
 	again = (uint32_t)(pSensorAGain->gain[ISI_LINEAR_PARAS] / 4 * 16);
 	pSemuCtx->curAgain.gain[3] = (float)again/16.0f;
 
+	TRACE(Semu_INFO,
+	      "%s: frame=%d aGain=[%.3f,%.3f,%.3f,%.3f]\n",
+	      __func__, g_Sensor_frame_count,
+	      pSemuCtx->curAgain.gain[0],
+	      pSemuCtx->curAgain.gain[1],
+	      pSemuCtx->curAgain.gain[2],
+	      pSemuCtx->curAgain.gain[3]);
+
 	TRACE(Semu_INFO, "%s: (exit)\n", __func__);
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiSetDGainIss
  *
  * @brief   Sets the digital gain value for the sensor.
@@ -1101,7 +1124,8 @@ RESULT Semu_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGa
  * @retval  RET_WRONG_HANDLE
  *
  *****************************************************************************/
-RESULT Semu_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain)
+RESULT Semu_IsiSetDGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorDGain)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -1125,24 +1149,41 @@ RESULT Semu_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGa
 
 	dgain = (uint32_t)(pSensorDGain->gain[ISI_LINEAR_PARAS] * 1024);
 	pSemuCtx->curDgain.gain[0] = (float)dgain/1024.0f;
-	pSemuCtx->curGain.gain[0] = pSemuCtx->curAgain.gain[0] * pSemuCtx->curDgain.gain[0];
+	pSemuCtx->curGain.gain[0] =
+		pSemuCtx->curAgain.gain[0] * pSemuCtx->curDgain.gain[0];
 
 	dgain = (uint32_t)(pSensorDGain->gain[ISI_LINEAR_PARAS] * 1024);
 	pSemuCtx->curDgain.gain[1] = (float)dgain/1024.0f;
-	pSemuCtx->curGain.gain[1] = pSemuCtx->curAgain.gain[1] * pSemuCtx->curDgain.gain[1];
+	pSemuCtx->curGain.gain[1] =
+		pSemuCtx->curAgain.gain[1] * pSemuCtx->curDgain.gain[1];
 
 	dgain = (uint32_t)(pSensorDGain->gain[ISI_LINEAR_PARAS] * 1024);
 	pSemuCtx->curDgain.gain[2] = (float)dgain/1024.0f;
-	pSemuCtx->curGain.gain[2] = pSemuCtx->curAgain.gain[2] * pSemuCtx->curDgain.gain[2];
+	pSemuCtx->curGain.gain[2] =
+		pSemuCtx->curAgain.gain[2] * pSemuCtx->curDgain.gain[2];
 	dgain = (uint32_t)(pSensorDGain->gain[ISI_LINEAR_PARAS] * 1024);
 	pSemuCtx->curDgain.gain[3] = (float)dgain/1024.0f;
-	pSemuCtx->curGain.gain[3] = pSemuCtx->curAgain.gain[3] * pSemuCtx->curDgain.gain[3];
+	pSemuCtx->curGain.gain[3] =
+		pSemuCtx->curAgain.gain[3] * pSemuCtx->curDgain.gain[3];
+
+	TRACE(Semu_INFO,
+	      "%s: frame=%d dGain=[%.3f,%.3f,%.3f,%.3f] "
+	      "totalGain=[%.3f,%.3f,%.3f,%.3f]\n",
+	      __func__, g_Sensor_frame_count,
+	      pSemuCtx->curDgain.gain[0],
+	      pSemuCtx->curDgain.gain[1],
+	      pSemuCtx->curDgain.gain[2],
+	      pSemuCtx->curDgain.gain[3],
+	      pSemuCtx->curGain.gain[0],
+	      pSemuCtx->curGain.gain[1],
+	      pSemuCtx->curGain.gain[2],
+	      pSemuCtx->curGain.gain[3]);
 
 	TRACE(Semu_INFO, "%s: (exit)\n", __func__);
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiGetAGainIss
  *
  * @brief   Retrieves the current analog gain value.
@@ -1156,7 +1197,8 @@ RESULT Semu_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGa
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT Semu_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain)
+RESULT Semu_IsiGetAGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorAGain)
 {
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
 	RESULT result = RET_SUCCESS;
@@ -1164,7 +1206,8 @@ RESULT Semu_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGa
 	TRACE(Semu_INFO, "%s: (enter)\n", __func__);
 
 	if (pSemuCtx == NULL) {
-		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n", __func__);
+		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
+				__func__);
 		return RET_WRONG_HANDLE;
 	}
 
@@ -1177,7 +1220,7 @@ RESULT Semu_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGa
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiGetDGainIss
  *
  * @brief   Retrieves the current digital gain value.
@@ -1191,7 +1234,8 @@ RESULT Semu_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGa
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT Semu_IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain)
+RESULT Semu_IsiGetDGainIss(IsiSensorHandle_t handle,
+		IsiSensorGain_t *pSensorDGain)
 {
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
 	RESULT result = RET_SUCCESS;
@@ -1199,7 +1243,8 @@ RESULT Semu_IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGa
 	TRACE(Semu_INFO, "%s: (enter)\n", __func__);
 
 	if (pSemuCtx == NULL) {
-		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n", __func__);
+		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
+				__func__);
 		return RET_WRONG_HANDLE;
 	}
 
@@ -1212,20 +1257,22 @@ RESULT Semu_IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGa
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiSetIntTimeIss
  *
  * @brief   Sets the integration time for the sensor.
  *
  * @param   handle              Handle to the image sensor device.
- * @param   pSensorIntTime      Pointer to the sensor integration time structure.
+ * @param   pSensorIntTime      Pointer to the sensor integration time
+ *								structure
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
  * @retval  RET_WRONG_HANDLE
  *
  *****************************************************************************/
-RESULT Semu_IsiSetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pSensorIntTime)
+RESULT Semu_IsiSetIntTimeIss(IsiSensorHandle_t handle,
+		const IsiSensorIntTime_t *pSensorIntTime)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -1233,15 +1280,18 @@ RESULT Semu_IsiSetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pSens
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
 
 	if (!pSemuCtx) {
-		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n", __func__);
+		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
+				__func__);
 		return RET_WRONG_HANDLE;
 	}
 
 	if (pSemuCtx->sensorMode.hdrMode == ISI_SENSOR_MODE_HDR_NATIVE) {
-		result = Semu_SetIntTime(handle, pSensorIntTime->intTime[ISI_LINEAR_PARAS]);
+		result =
+			Semu_SetIntTime(handle, pSensorIntTime->intTime[ISI_LINEAR_PARAS]);
 		if (result != RET_SUCCESS) {
-			TRACE(Semu_INFO, "%s: set sensor IntTime[ISI_LINEAR_PARAS] error!\n",
-		__func__);
+			TRACE(Semu_INFO,
+					"%s: set sensor IntTime[ISI_LINEAR_PARAS] error!\n",
+					__func__);
 			return RET_FAILURE;
 		}
 
@@ -1254,7 +1304,7 @@ RESULT Semu_IsiSetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pSens
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_SetIntTime
  *
  * @brief   Sets the integration time for the sensor emulator.
@@ -1268,7 +1318,8 @@ RESULT Semu_IsiSetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pSens
  * @retval  RET_FAILURE         Failed to set integration time.
  *
  *****************************************************************************/
-static RESULT Semu_SetIntTime(IsiSensorHandle_t handle, float newIntegrationTime)
+static RESULT Semu_SetIntTime(IsiSensorHandle_t handle,
+		float newIntegrationTime)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -1278,7 +1329,8 @@ static RESULT Semu_SetIntTime(IsiSensorHandle_t handle, float newIntegrationTime
 	float sIntegrationTime = 0, vsIntegrationTime = 0;
 
 	if (!pSemuCtx) {
-		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n", __func__);
+		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
+				__func__);
 		return RET_WRONG_HANDLE;
 	}
 	exp_line = newIntegrationTime / pSemuCtx->oneLineDCGExpTime;
@@ -1299,20 +1351,33 @@ static RESULT Semu_SetIntTime(IsiSensorHandle_t handle, float newIntegrationTime
 		MAX(pSemuCtx->minVSIntegrationLine, exp_line));
 	TRACE(Semu_DEBUG, "%s: set VS exp_line = 0x%04x\n", __func__, exp_line);
 	pSemuCtx->curIntTime.intTime[3] = exp_line * pSemuCtx->oneLineVSExpTime;
-	pSemuCtx->maxDCGIntegrationLine   = pSemuCtx->curFrameLengthLines - 13 - exp_line;
+	pSemuCtx->maxDCGIntegrationLine  =
+		pSemuCtx->curFrameLengthLines - 13 - exp_line;
 
-	TRACE(Semu_DEBUG, "%s: set IntTime = %f\n", __func__, pSemuCtx->curIntTime.intTime[0]);
+	TRACE(Semu_DEBUG,
+			"%s: set IntTime = %f\n", __func__,
+			pSemuCtx->curIntTime.intTime[0]);
+
+	TRACE(Semu_INFO,
+	      "%s: frame=%d intTime=[%.6f,%.6f,%.6f,%.6f]\n",
+	      __func__, g_Sensor_frame_count,
+	      pSemuCtx->curIntTime.intTime[0],
+	      pSemuCtx->curIntTime.intTime[1],
+	      pSemuCtx->curIntTime.intTime[2],
+	      pSemuCtx->curIntTime.intTime[3]);
+
 	TRACE(Semu_INFO, "%s: (exit)\n", __func__);
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiGetIntTimeIss
  *
  * @brief   Retrieves the current integration time.
  *
  * @param   handle              Handle to the image sensor device.
- * @param   pSensorIntTime      Pointer to the sensor integration time structure.
+ * @param   pSensorIntTime      Pointer to the sensor integration
+ *								time structure.
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -1320,7 +1385,8 @@ static RESULT Semu_SetIntTime(IsiSensorHandle_t handle, float newIntegrationTime
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT Semu_IsiGetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pSensorIntTime)
+RESULT Semu_IsiGetIntTimeIss(IsiSensorHandle_t handle,
+		IsiSensorIntTime_t *pSensorIntTime)
 {
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
 	RESULT result = RET_SUCCESS;
@@ -1328,7 +1394,8 @@ RESULT Semu_IsiGetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pSens
 	TRACE(Semu_INFO, "%s: (enter)\n", __func__);
 
 	if (!pSemuCtx) {
-		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n", __func__);
+		TRACE(Semu_ERROR, "%s: Invalid sensor handle (NULL pointer detected)\n",
+				__func__);
 		return RET_WRONG_HANDLE;
 	}
 
@@ -1348,7 +1415,7 @@ RESULT Semu_IsiGetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pSens
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiGetIspStatusIss
  *
  * @brief   Retrieves the ISP (Image Signal Processor) status.
@@ -1362,7 +1429,8 @@ RESULT Semu_IsiGetIntTimeIss(IsiSensorHandle_t handle, IsiSensorIntTime_t *pSens
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-RESULT Semu_IsiGetIspStatusIss(IsiSensorHandle_t handle, IsiIspStatus_t *pIspStatus)
+RESULT Semu_IsiGetIspStatusIss(IsiSensorHandle_t handle,
+		IsiIspStatus_t *pIspStatus)
 {
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
 
@@ -1372,19 +1440,20 @@ RESULT Semu_IsiGetIspStatusIss(IsiSensorHandle_t handle, IsiIspStatus_t *pIspSta
 
 	pIspStatus->useSensorAE  = false;
 	pIspStatus->useSensorBLC = true;
-	pIspStatus->useSensorAWB = true;
+	pIspStatus->useAWBMode = ISI_USE_ISP_WB_GAIN;
 
 	TRACE(Semu_INFO, "%s: (exit)\n", __func__);
 	return RET_SUCCESS;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiSetTpgIss
  *
  * @brief   Sets the test pattern generator (TPG) mode.
  *
  * @param   handle              Handle to the image sensor device.
- * @param   pTpg                Pointer to the test pattern generator structure.
+ * @param   pTpg                Pointer to the test pattern
+ *								generator structure.
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -1411,13 +1480,14 @@ RESULT Semu_IsiSetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t tpg)
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiGetTpgIss
  *
  * @brief   Retrieves the current test pattern generator (TPG) mode.
  *
  * @param   handle              Handle to the image sensor device.
- * @param   pTpg                Pointer to the test pattern generator structure.
+ * @param   pTpg                Pointer to the test pattern
+ *								generator structure.
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -1449,7 +1519,7 @@ RESULT Semu_IsiGetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg)
 	TRACE(Semu_INFO, "%s: (exit)\n", __func__);
 	return result;
 }
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiSetWBIss
  *
  * @brief   Sets the white balance (WB) configuration.
@@ -1462,13 +1532,12 @@ RESULT Semu_IsiGetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg)
  * @retval  RET_WRONG_HANDLE
  *
  *****************************************************************************/
-static RESULT Semu_IsiSetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb)
+static RESULT Semu_IsiSetWBIss(IsiSensorHandle_t handle,
+		const IsiSensorWb_t *pWb)
 {
 	RESULT result = RET_SUCCESS;
 
 	TRACE(Semu_INFO, "%s: (enter)\n", __func__);
-
-	uint32_t b_gain, gb_gain, gr_gain, r_gain;
 	Semu_Context_t *pSemuCtx = (Semu_Context_t *) handle;
 
 	if (pSemuCtx == NULL)
@@ -1477,18 +1546,13 @@ static RESULT Semu_IsiSetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb)
 	if (pWb == NULL)
 		return RET_NULL_POINTER;
 
-	b_gain = (uint32_t)(pWb->bGain  * 1024);
-	gb_gain = (uint32_t)(pWb->gbGain * 1024);
-	gr_gain = (uint32_t)(pWb->grGain * 1024);
-	r_gain  = (uint32_t)(pWb->rGain  * 1024);
-
 	memcpy(&pSemuCtx->sensorWb, pWb, sizeof(IsiSensorWb_t));
 
 	TRACE(Semu_INFO, "%s: (exit)\n", __func__);
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiGetWBIss
  *
  * @brief   Retrieves the current white balance (WB) configuration.
@@ -1522,23 +1586,23 @@ static RESULT Semu_IsiGetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb)
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiSetBlcIss
  *
  * @brief   Sets the black level correction (BLC) configuration.
  *
  * @param   handle              Handle to the image sensor device.
- * @param   pBlc                Pointer to the black level correction configuration.
+ * @param   pBlc                Pointer to the black level correction config.
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
  * @retval  RET_WRONG_HANDLE
  *
  *****************************************************************************/
-static RESULT Semu_IsiSetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBlc)
+static RESULT Semu_IsiSetBlcIss(IsiSensorHandle_t handle,
+		const IsiSensorBlc_t *pBlc)
 {
 	RESULT result = RET_SUCCESS;
-	uint16_t blcGain = 0;
 
 	TRACE(Semu_INFO, "%s: (enter)\n", __func__);
 
@@ -1550,21 +1614,19 @@ static RESULT Semu_IsiSetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBlc)
 	if (pBlc == NULL)
 		return RET_NULL_POINTER;
 
-	blcGain = pBlc->red;
-
 	pSemuCtx->sensorBlc = *pBlc;
 
 	TRACE(Semu_INFO, "%s: (exit)\n", __func__);
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiGetBlcIss
  *
  * @brief   Retrieves the current black level correction (BLC) configuration.
  *
  * @param   handle              Handle to the image sensor device.
- * @param   pBlc                Pointer to the black level correction configuration.
+ * @param   pBlc                Pointer to the black level correction config.
  *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
@@ -1592,7 +1654,7 @@ static RESULT Semu_IsiGetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBlc)
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiGetExpandCurveIss
  *
  * @brief   Retrieves the sensor's expand curve data.
@@ -1606,7 +1668,8 @@ static RESULT Semu_IsiGetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBlc)
  * @retval  RET_NULL_POINTER
  *
  *****************************************************************************/
-static RESULT Semu_IsiGetExpandCurveIss(IsiSensorHandle_t handle, IsiSensorCompandCurve_t *pCurve)
+static RESULT Semu_IsiGetExpandCurveIss(IsiSensorHandle_t handle,
+		IsiSensorCompandCurve_t *pCurve)
 {
 	RESULT result = RET_SUCCESS;
 
@@ -1617,8 +1680,9 @@ static RESULT Semu_IsiGetExpandCurveIss(IsiSensorHandle_t handle, IsiSensorCompa
 	if (pSemuCtx == NULL)
 		return RET_NULL_POINTER;
 
-	uint8_t expand_px[64] = {22, 20, 12, 20, 20, 20, 20, 19, 19, 19, 19, 19, 18, 18, 18, 18, 18,
-		18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 17, 17, 17, 17, 12};
+	uint8_t expand_px[64] = {22, 20, 12, 20, 20, 20, 20, 19, 19, 19, 19,
+		19, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18,
+		18, 18, 17, 17, 17, 17, 12};
 	memcpy(pCurve->compandPx, expand_px, sizeof(expand_px));
 
 	pCurve->compandXData[0] = 0;
@@ -1627,10 +1691,12 @@ static RESULT Semu_IsiGetExpandCurveIss(IsiSensorHandle_t handle, IsiSensorCompa
 		if (pCurve->compandXData[i-1] == 0 && pCurve->compandPx[i-1] > 0) {
 			pCurve->compandXData[i] = pCurve->compandXData[i-1] +
 				((1 << pCurve->compandPx[i-1]) - 1);
-		} else if (pCurve->compandXData[i-1] > 0 && pCurve->compandPx[i-1] > 0) {
+		} else if (pCurve->compandXData[i-1] > 0
+				&& pCurve->compandPx[i-1] > 0) {
 			pCurve->compandXData[i] = pCurve->compandXData[i-1] +
 				(1 << pCurve->compandPx[i-1]);
-		} else if (pCurve->compandXData[i-1] > 0 && pCurve->compandPx[i-1] == 0) {
+		} else if (pCurve->compandXData[i-1] > 0
+				&& pCurve->compandPx[i-1] == 0) {
 			pCurve->compandXData[i] = pCurve->compandXData[i-1];
 		} else {
 			TRACE(Semu_INFO, "%s: invalid paramter\n", __func__);
@@ -1638,13 +1704,15 @@ static RESULT Semu_IsiGetExpandCurveIss(IsiSensorHandle_t handle, IsiSensorCompa
 		}
 	}
 
-	uint16_t expandXValue[34] = {0, 1023, 1279, 1279, 1535, 1791, 2047, 2303, 2431, 2559, 2687,
-			2815, 2943, 3007, 3071, 3135, 3199, 3263, 3327, 3391, 3455, 3519, 3583,
-			3647, 3711, 3775, 3839, 3903, 3967, 3999, 4031, 4063, 4095, 4095};
-	uint32_t expandYValue[34] = {0, 1023, 2047, 2047, 4095, 8191, 12287, 16383, 20479, 24575,
-			32767, 40959, 49151, 57343, 65535, 81919, 98303, 114687, 131071, 163839,
-			196607, 262143, 393215, 524287, 786431, 1048575, 1572863, 2097151, 3145727,
-			4194303, 8388607, 12582911, 16777215, 16777215};
+	uint16_t expandXValue[34] = {0, 1023, 1279, 1279, 1535, 1791, 2047, 2303,
+		2431, 2559, 2687, 2815, 2943, 3007, 3071, 3135, 3199, 3263,
+		3327, 3391, 3455, 3519, 3583, 3647, 3711, 3775, 3839, 3903,
+		3967, 3999, 4031, 4063, 4095, 4095};
+	uint32_t expandYValue[34] = {0, 1023, 2047, 2047, 4095, 8191, 12287,
+		16383, 20479, 24575, 32767, 40959, 49151, 57343, 65535, 81919,
+		98303, 114687, 131071, 163839, 196607, 262143, 393215, 524287,
+		786431, 1048575, 1572863, 2097151, 3145727, 4194303, 8388607,
+		12582911, 16777215, 16777215};
 	float slope[34] = {0};
 
 	for (int i = 0; i < 34; i++)
@@ -1654,9 +1722,9 @@ static RESULT Semu_IsiGetExpandCurveIss(IsiSensorHandle_t handle, IsiSensorCompa
 	for (int i = 1; i < 65; i++) {
 		for (int j = 1; j < 34; j++) {
 			if (pCurve->compandXData[i] >= expandXValue[j-1] &&
-				pCurve->compandXData[i] < expandXValue[j]) {
+					pCurve->compandXData[i] < expandXValue[j]) {
 				pCurve->compandYData[i] = expandYValue[j-1] +
-				(pCurve->compandXData[i] - expandXValue[j-1]) * slope[j-1];
+					(pCurve->compandXData[i] - expandXValue[j-1]) * slope[j-1];
 			}
 		}
 	}
@@ -1665,7 +1733,7 @@ static RESULT Semu_IsiGetExpandCurveIss(IsiSensorHandle_t handle, IsiSensorCompa
 	return result;
 }
 
-/*******************************************************************************
+/******************************************************************************
  *          Semu_IsiGetSensorIss
  *
  * @brief   Retrieves the sensor object or information.
@@ -1686,41 +1754,41 @@ RESULT Semu_IsiGetSensorIss(IsiSensor_t *pIsiSensor)
 	TRACE(Semu_INFO, "%s (enter)\n", __func__);
 
 	if (pIsiSensor != NULL) {
-		pIsiSensor->pszName                             = SensorName;
-		pIsiSensor->pIsiCreateIss                       = Semu_IsiCreateIss;
-		pIsiSensor->pIsiOpenIss                         = Semu_IsiOpenIss;
-		pIsiSensor->pIsiCloseIss                        = Semu_IsiCloseIss;
-		pIsiSensor->pIsiReleaseIss                      = Semu_IsiReleaseIss;
-		pIsiSensor->pIsiReadRegIss                      = Semu_IsiReadRegIss;
-		pIsiSensor->pIsiWriteRegIss                     = Semu_IsiWriteRegIss;
-		pIsiSensor->pIsiGetModeIss                      = Semu_IsiGetModeIss;
-		pIsiSensor->pIsiEnumModeIss                     = Semu_IsiEnumModeIss;
-		pIsiSensor->pIsiGetCapsIss                      = Semu_IsiGetCapsIss;
-		pIsiSensor->pIsiCheckConnectionIss              = Semu_IsiCheckConnectionIss;
-		pIsiSensor->pIsiGetRevisionIss                  = Semu_IsiGetRevisionIss;
-		pIsiSensor->pIsiSetStreamingIss                 = Semu_IsiSetStreamingIss;
-		pIsiSensor->pIsiGetAeBaseInfoIss                = Semu_pIsiGetAeBaseInfoIss;
-		pIsiSensor->pIsiGetAGainIss                     = Semu_IsiGetAGainIss;
-		pIsiSensor->pIsiSetAGainIss                     = Semu_IsiSetAGainIss;
-		pIsiSensor->pIsiGetDGainIss                     = Semu_IsiGetDGainIss;
-		pIsiSensor->pIsiSetDGainIss                     = Semu_IsiSetDGainIss;
-		pIsiSensor->pIsiGetIntTimeIss                   = Semu_IsiGetIntTimeIss;
-		pIsiSensor->pIsiSetIntTimeIss                   = Semu_IsiSetIntTimeIss;
-		pIsiSensor->pIsiGetFpsIss                       = Semu_IsiGetFpsIss;
-		pIsiSensor->pIsiSetFpsIss                       = Semu_IsiSetFpsIss;
-		pIsiSensor->pIsiGetIspStatusIss                 = Semu_IsiGetIspStatusIss;
-		pIsiSensor->pIsiSetWBIss                        = Semu_IsiSetWBIss;
-		pIsiSensor->pIsiGetWBIss                        = Semu_IsiGetWBIss;
-		pIsiSensor->pIsiSetBlcIss                       = Semu_IsiSetBlcIss;
-		pIsiSensor->pIsiGetBlcIss                       = Semu_IsiGetBlcIss;
-		pIsiSensor->pIsiSetTpgIss                       = Semu_IsiSetTpgIss;
-		pIsiSensor->pIsiGetTpgIss                       = Semu_IsiGetTpgIss;
-		pIsiSensor->pIsiGetExpandCurveIss               = Semu_IsiGetExpandCurveIss;
-		pIsiSensor->pIsiFocusCreateIss                  = NULL;
-		pIsiSensor->pIsiFocusReleaseIss                 = NULL;
-		pIsiSensor->pIsiFocusGetCalibrateIss            = NULL;
-		pIsiSensor->pIsiFocusSetIss                     = NULL;
-		pIsiSensor->pIsiFocusGetIss                     = NULL;
+		pIsiSensor->pszName						= SensorName;
+		pIsiSensor->pIsiCreateIss				= Semu_IsiCreateIss;
+		pIsiSensor->pIsiOpenIss					= Semu_IsiOpenIss;
+		pIsiSensor->pIsiCloseIss				= Semu_IsiCloseIss;
+		pIsiSensor->pIsiReleaseIss				= Semu_IsiReleaseIss;
+		pIsiSensor->pIsiReadRegIss				= Semu_IsiReadRegIss;
+		pIsiSensor->pIsiWriteRegIss				= Semu_IsiWriteRegIss;
+		pIsiSensor->pIsiGetModeIss				= Semu_IsiGetModeIss;
+		pIsiSensor->pIsiEnumModeIss				= Semu_IsiEnumModeIss;
+		pIsiSensor->pIsiGetCapsIss				= Semu_IsiGetCapsIss;
+		pIsiSensor->pIsiCheckConnectionIss		= Semu_IsiCheckConnectionIss;
+		pIsiSensor->pIsiGetRevisionIss			= Semu_IsiGetRevisionIss;
+		pIsiSensor->pIsiSetStreamingIss			= Semu_IsiSetStreamingIss;
+		pIsiSensor->pIsiGetAeBaseInfoIss		= Semu_pIsiGetAeBaseInfoIss;
+		pIsiSensor->pIsiGetAGainIss				= Semu_IsiGetAGainIss;
+		pIsiSensor->pIsiSetAGainIss				= Semu_IsiSetAGainIss;
+		pIsiSensor->pIsiGetDGainIss				= Semu_IsiGetDGainIss;
+		pIsiSensor->pIsiSetDGainIss				= Semu_IsiSetDGainIss;
+		pIsiSensor->pIsiGetIntTimeIss			= Semu_IsiGetIntTimeIss;
+		pIsiSensor->pIsiSetIntTimeIss			= Semu_IsiSetIntTimeIss;
+		pIsiSensor->pIsiGetFpsIss				= Semu_IsiGetFpsIss;
+		pIsiSensor->pIsiSetFpsIss				= Semu_IsiSetFpsIss;
+		pIsiSensor->pIsiGetIspStatusIss			= Semu_IsiGetIspStatusIss;
+		pIsiSensor->pIsiSetWBIss				= Semu_IsiSetWBIss;
+		pIsiSensor->pIsiGetWBIss				= Semu_IsiGetWBIss;
+		pIsiSensor->pIsiSetBlcIss				= Semu_IsiSetBlcIss;
+		pIsiSensor->pIsiGetBlcIss				= Semu_IsiGetBlcIss;
+		pIsiSensor->pIsiSetTpgIss				= Semu_IsiSetTpgIss;
+		pIsiSensor->pIsiGetTpgIss				= Semu_IsiGetTpgIss;
+		pIsiSensor->pIsiGetExpandCurveIss		= Semu_IsiGetExpandCurveIss;
+		pIsiSensor->pIsiFocusCreateIss			= NULL;
+		pIsiSensor->pIsiFocusReleaseIss			= NULL;
+		pIsiSensor->pIsiFocusGetCalibrateIss	= NULL;
+		pIsiSensor->pIsiFocusSetIss				= NULL;
+		pIsiSensor->pIsiFocusGetIss				= NULL;
 
 	} else {
 		result = RET_NULL_POINTER;
@@ -1730,7 +1798,7 @@ RESULT Semu_IsiGetSensorIss(IsiSensor_t *pIsiSensor)
 	return result;
 }
 
-/*****************************************************************************
+/******************************************************************************
  * each sensor driver need declare this struct for isi load
  *****************************************************************************/
 IsiCamDrvConfig_t Semu_IsiCamDrvConfig = {

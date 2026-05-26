@@ -1,4 +1,4 @@
-/****************************************************************************
+/******************************************************************************
  *
  * The MIT License (MIT)
  *
@@ -22,7 +22,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 #ifndef __RETURN_CODES_H__
 #define __RETURN_CODES_H__
@@ -52,7 +52,7 @@ typedef int RESULT;
 #define UPDATE_RESULT(cur_res, new_res)				\
 		{ RESULT __lres__ = (new_res);			\
 		do {						\
-			if (curr_res == RET_SUCCESS)		\
+			if (cur_res == RET_SUCCESS)		\
 				cur_res = __lres__;		\
 		} while (0) }
 

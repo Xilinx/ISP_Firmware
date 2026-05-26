@@ -1,7 +1,38 @@
+/****************************************************************************
+ * *
+ * * The MIT License (MIT)
+ * *
+ * * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
+ * *
+ * * Permission is hereby granted, free of charge, to any person obtaining a
+ * * copy of this software and associated documentation files (the "Software"),
+ * * to deal in the Software without restriction, including without limitation
+ * * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * * and/or sell copies of the Software, and to permit persons to whom the
+ * * Software is furnished to do so, subject to the following conditions:
+ * *
+ * * The above copyright notice and this permission notice shall be included in
+ * * all copies or substantial portions of the Software.
+ * *
+ * * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * * DEALINGS IN THE SOFTWARE.
+ * *
+ * ****************************************************************************/
+
 #include "xil_mpu.h"
 #include "xreg_cortexr5.h"
 #include "xipipsu.h"
 #include "isp_fw_main.h"
+#include <stdint.h>
+#include "memory_layout.h"
+
+
+
 
 #if defined (RPU6_FW)
 
@@ -355,7 +386,7 @@ XIpiPsu_Config XIpiPsu_ConfigTable[] __attribute__ ((section (".drvcfg_sec"))) =
 XMpuConfig_Initial InitialMpu_Config __attribute__((section(".bootdata"))) = {
 
 {
-			/* TCM  */
+		/* TCM  */
 		0x00000000U,
 		0x2000,
 		NORM_NSHARED_WT_NWA | PRIV_RO_USER_RO,
@@ -363,8 +394,8 @@ XMpuConfig_Initial InitialMpu_Config __attribute__((section(".bootdata"))) = {
  
 	{
 		/* BootData */
-		0x2400,
-		0x20000,
+		0x2000,
+		0x1E000,
 		NORM_NSHARED_WT_NWA | PRIV_RW_USER_RW,
 	},
 	{
@@ -373,6 +404,14 @@ XMpuConfig_Initial InitialMpu_Config __attribute__((section(".bootdata"))) = {
 		RPU_FW_SIZE,
 		NORM_NSHARED_WT_NWA | PRIV_RW_USER_RW,
 	},
+
+	{
+		/* TRACE LOG */
+		RPU_TRACE_LOG_START_ADDR,
+		RPU_TRACE_LOG_SIZE,
+		STRONG_ORDERD_SHARED | PRIV_RW_USER_RW,
+	},
+
 	{
 	
 		RPU_LOAD_CALIB_START_ADDR,
@@ -389,6 +428,15 @@ XMpuConfig_Initial InitialMpu_Config __attribute__((section(".bootdata"))) = {
 		
 		STRONG_ORDERD_SHARED | PRIV_RW_USER_RW,
 	},
+
+#ifdef BM_TESTAPP
+	{
+
+	    RPU_TDATABASE_BIN_ADDR,
+		RPU_TDATABASE_BIN_SIZE,
+		STRONG_ORDERD_SHARED | PRIV_RW_USER_RW,
+	},
+#endif
 
 	{
 		/* 512 MB LPD to AFI fabric slave port */
@@ -445,14 +493,28 @@ XMpuConfig_Initial InitialMpu_Config __attribute__((section(".bootdata"))) = {
 	}
 };
 
+
+
+
 uint32_t cam_load_calib = RPU_LOAD_CALIB_START_ADDR; //TODO:Change load calib based on CPU_ID
 uint32_t MBOX_start_Addr  = RPU_MBOX_START_ADDR;
-uint32_t _MBOX_MEM_SIZE = RPU_MBOX_SIZE;
+uint32_t  _MBOX_MEM_SIZE = RPU_MBOX_SIZE;
 
-uint32_t HAL_RESERVED_MEM_PRIV_START = RPU_PRIV_MEM_START_ADDR ;
-uint32_t HAL_RESERVED_MEM_PRIV_SIZE = RPU_PRIV_MEM_SIZE;
+uint32_t HAL_RESERVED_MEM_PRIV_START = RPU_PRIV_MEM_START_ADDR;
+uint32_t HAL_RESERVED_MEM_PRIV_SIZE  = RPU_PRIV_MEM_SIZE;
 
-void print_memory_layout_info()
+#ifdef BM_TESTAPP
+uint32_t VSI_MMB_RESERVED_MEM_OPEN_START = RPU_OPEN_MEM_START_ADDR;
+uint32_t VSI_MMB_RESERVED_MEM_OPEN_SIZE  = RPU_OPEN_MEM_SIZE;
+#else
+uint32_t VSI_MMB_RESERVED_MEM_OPEN_START =
+    RPU_PRIV_MEM_START_ADDR + RPU_PRIV_MEM_SIZE - VSI_MMB_OPEN_REGION_SIZE;
+
+uint32_t VSI_MMB_RESERVED_MEM_OPEN_SIZE = VSI_MMB_OPEN_REGION_SIZE;
+#endif
+
+uint32_t TRACE_LOG_START_ADDR = RPU_TRACE_LOG_START_ADDR;
+void print_memory_layout_info( )
 {
 	xil_printf("RPU_FW_START_ADDR - 0x%x \n",RPU_FW_START_ADDR);
 	xil_printf("RPU_FW_SIZE - 0x%x \n",RPU_FW_SIZE);

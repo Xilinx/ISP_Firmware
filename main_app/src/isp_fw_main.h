@@ -23,103 +23,152 @@
  * * DEALINGS IN THE SOFTWARE.
  * *
  * ****************************************************************************/
-
 #ifndef ISP_FW_MAIN_H
 #define ISP_FW_MAIN_H
 
+
 #if defined(RPU6_FW)
 
-#define RPU6_FW_START_ADDR 					(0x0C000000U)
-#define RPU6_FW_SIZE 						(0x37FFFFFU)
-		
-#define RPU6_LOAD_CALIB_START_ADDR           (0xF800000U)
-#define RPU6_LOAD_CALIB_SIZE     	         (0x28000U)
+#define RPU6_OPEN_MEM_START_ADDR            0x20000000
+#define RPU6_OPEN_MEM_SIZE                  0x10000000
+
+#define RPU_OPEN_MEM_START_ADDR              RPU6_OPEN_MEM_START_ADDR
+#define RPU_OPEN_MEM_SIZE                    RPU6_OPEN_MEM_SIZE
+
+#define RPU6_FW_START_ADDR                  (0x0C000000U)
+#define RPU6_FW_SIZE                        (0x36FEFFFU) // 55 MB - (4 KB + 1 MB)
+
+#define RPU6_TRACE_LOG_START_ADDR           (0x0C000000U + 0x36FF000U)
+#define RPU6_TRACE_LOG_SIZE                 (0x100FFFU) // 4 KB + 1 MB
+#define RPU6_TRACE_LOG_END_ADDR             (RPU6_TRACE_LOG_START_ADDR + RPU6_TRACE_LOG_SIZE)
+
+#define RPU6_LOAD_CALIB_START_ADDR          (0xF800000U)
+#define RPU6_LOAD_CALIB_SIZE                (0x28000U)
 
 #define RPU6_PRIV_MEM_START_ADDR             (0xF828000U)
 #define RPU6_PRIV_MEM_SIZE     	             (0x1001000U)
-#define RPU6_LOAD_CALIB_PRIV_MEM_SIZE        (RPU6_LOAD_CALIB_SIZE +RPU6_PRIV_MEM_SIZE -1)
+#define RPU6_LOAD_CALIB_PRIV_MEM_SIZE        (RPU6_LOAD_CALIB_SIZE +RPU6_PRIV_MEM_SIZE -1 )
 
 #define RPU_FW_START_ADDR                    RPU6_FW_START_ADDR
 #define RPU_FW_SIZE                          RPU6_FW_SIZE
-#define RPU_LOAD_CALIB_START_ADDR            RPU6_LOAD_CALIB_START_ADDR
-#define RPU_LOAD_CALIB_SIZE                  RPU6_LOAD_CALIB_SIZE
-#define RPU_PRIV_MEM_START_ADDR              RPU6_PRIV_MEM_START_ADDR
-#define RPU_PRIV_MEM_SIZE                    RPU6_PRIV_MEM_SIZE
-#define RPU_LOAD_CALIB_PRIV_MEM_SIZE         RPU6_LOAD_CALIB_PRIV_MEM_SIZE
+#define RPU_LOAD_CALIB_START_ADDR            RPU6_LOAD_CALIB_START_ADDR   
+#define RPU_LOAD_CALIB_SIZE                  RPU6_LOAD_CALIB_SIZE 
+#define RPU_PRIV_MEM_START_ADDR              RPU6_PRIV_MEM_START_ADDR 
+#define RPU_PRIV_MEM_SIZE                    RPU6_PRIV_MEM_SIZE 
+#define RPU_LOAD_CALIB_PRIV_MEM_SIZE         RPU6_LOAD_CALIB_PRIV_MEM_SIZE 
+
+#define RPU_TRACE_LOG_START_ADDR             RPU6_TRACE_LOG_START_ADDR
+#define RPU_TRACE_LOG_SIZE                   RPU6_TRACE_LOG_SIZE
+#define RPU_TRACE_LOG_END_ADDR               RPU6_TRACE_LOG_END_ADDR
+
+#define RPU_TDATABASE_BIN_ADDR              0x30000000
+#define RPU_TDATABASE_BIN_SIZE              0xe5e50
+
 
 /*************************RPU7 *****************************************************/
 #elif defined(RPU7_FW)
 
-#define RPU7_FW_START_ADDR 					(0x1082A000U)
-#define RPU7_FW_SIZE 						(0x37FFFFFU)
+#define RPU7_FW_START_ADDR                  (0x1082A000U)
+#define RPU7_FW_SIZE                        (0x36FEFFFU) // 55 MB - (4 KB + 1 MB)
+
+#define RPU7_TRACE_LOG_START_ADDR           (0x1082A000U + 0x36FF000U)
+#define RPU7_TRACE_LOG_SIZE                 (0x100FFFU) // 4 KB + 1 MB
+#define RPU7_TRACE_LOG_END_ADDR             (RPU7_TRACE_LOG_START_ADDR + RPU7_TRACE_LOG_SIZE)
+
 #define RPU7_LOAD_CALIB_START_ADDR          (0x1402A000U)
 #define RPU7_LOAD_CALIB_SIZE     	         (0x28000U)
 #define RPU7_PRIV_MEM_START_ADDR              (0x14052000U)
 #define RPU7_PRIV_MEM_SIZE     	             (0x1001000U)
-#define RPU7_LOAD_CALIB_PRIV_MEM_SIZE       (RPU7_LOAD_CALIB_SIZE +RPU7_PRIV_MEM_SIZE -1)
+#define RPU7_LOAD_CALIB_PRIV_MEM_SIZE       (RPU7_LOAD_CALIB_SIZE +RPU7_PRIV_MEM_SIZE -1 )
 
 
 #define RPU_FW_START_ADDR                    RPU7_FW_START_ADDR
 #define RPU_FW_SIZE                          RPU7_FW_SIZE
-#define RPU_LOAD_CALIB_START_ADDR            RPU7_LOAD_CALIB_START_ADDR
-#define RPU_LOAD_CALIB_SIZE                  RPU7_LOAD_CALIB_SIZE
-#define RPU_PRIV_MEM_START_ADDR              RPU7_PRIV_MEM_START_ADDR
-#define RPU_PRIV_MEM_SIZE                    RPU7_PRIV_MEM_SIZE
-#define RPU_LOAD_CALIB_PRIV_MEM_SIZE         RPU7_LOAD_CALIB_PRIV_MEM_SIZE
+#define RPU_LOAD_CALIB_START_ADDR            RPU7_LOAD_CALIB_START_ADDR   
+#define RPU_LOAD_CALIB_SIZE                  RPU7_LOAD_CALIB_SIZE 
+#define RPU_PRIV_MEM_START_ADDR              RPU7_PRIV_MEM_START_ADDR 
+#define RPU_PRIV_MEM_SIZE                    RPU7_PRIV_MEM_SIZE 
+#define RPU_LOAD_CALIB_PRIV_MEM_SIZE         RPU7_LOAD_CALIB_PRIV_MEM_SIZE 
 
+#define RPU_TRACE_LOG_START_ADDR             RPU7_TRACE_LOG_START_ADDR
+#define RPU_TRACE_LOG_SIZE                   RPU7_TRACE_LOG_SIZE
+#define RPU_TRACE_LOG_END_ADDR               RPU7_TRACE_LOG_END_ADDR
 
 /*************************RPU8 *****************************************************/
 #elif defined(RPU8_FW)
 
-#define RPU8_FW_START_ADDR 					(0x15054000U)
-#define RPU8_FW_SIZE 						(0x37FFFFFU)
+#define RPU8_FW_START_ADDR                  (0x15054000U)
+#define RPU8_FW_SIZE                        (0x36FEFFFU) // 55 MB - (4 KB + 1 MB)
+
+#define RPU8_TRACE_LOG_START_ADDR           (0x15054000U + 0x36FF000U)
+#define RPU8_TRACE_LOG_SIZE                 (0x100FFFU) // 4 KB + 1 MB
+#define RPU8_TRACE_LOG_END_ADDR             (RPU8_TRACE_LOG_START_ADDR + RPU8_TRACE_LOG_SIZE)
+
+
 #define RPU8_LOAD_CALIB_START_ADDR          (0x18854000U)
 #define RPU8_LOAD_CALIB_SIZE     	         (0x28000U)
 #define RPU8_PRIV_MEM_START_ADDR              (0x1887C000U)
 #define RPU8_PRIV_MEM_SIZE     	             (0x1001000U)
-#define RPU8_LOAD_CALIB_PRIV_MEM_SIZE       (RPU8_LOAD_CALIB_SIZE +RPU8_PRIV_MEM_SIZE -1)
+#define RPU8_LOAD_CALIB_PRIV_MEM_SIZE       (RPU8_LOAD_CALIB_SIZE +RPU8_PRIV_MEM_SIZE -1 )
 
 
 #define RPU_FW_START_ADDR                    RPU8_FW_START_ADDR
 #define RPU_FW_SIZE                          RPU8_FW_SIZE
-#define RPU_LOAD_CALIB_START_ADDR            RPU8_LOAD_CALIB_START_ADDR
-#define RPU_LOAD_CALIB_SIZE                  RPU8_LOAD_CALIB_SIZE
-#define RPU_PRIV_MEM_START_ADDR              RPU8_PRIV_MEM_START_ADDR
-#define RPU_PRIV_MEM_SIZE                    RPU8_PRIV_MEM_SIZE
-#define RPU_LOAD_CALIB_PRIV_MEM_SIZE         RPU8_LOAD_CALIB_PRIV_MEM_SIZE
+#define RPU_LOAD_CALIB_START_ADDR            RPU8_LOAD_CALIB_START_ADDR   
+#define RPU_LOAD_CALIB_SIZE                  RPU8_LOAD_CALIB_SIZE 
+#define RPU_PRIV_MEM_START_ADDR              RPU8_PRIV_MEM_START_ADDR 
+#define RPU_PRIV_MEM_SIZE                    RPU8_PRIV_MEM_SIZE 
+#define RPU_LOAD_CALIB_PRIV_MEM_SIZE         RPU8_LOAD_CALIB_PRIV_MEM_SIZE 
  
+#define RPU_TRACE_LOG_START_ADDR             RPU8_TRACE_LOG_START_ADDR
+#define RPU_TRACE_LOG_SIZE                   RPU8_TRACE_LOG_SIZE
+#define RPU_TRACE_LOG_END_ADDR               RPU8_TRACE_LOG_END_ADDR
+
 /*************************RPU9 *****************************************************/
 #elif defined(RPU9_FW)
 
-#define RPU9_FW_START_ADDR 					(0x1987E000U)
-#define RPU9_FW_SIZE 						(0x37FFFFFU)
+#define RPU9_FW_START_ADDR                  (0x1987E000U)
+#define RPU9_FW_SIZE                        (0x36FEFFFU) // 55 MB - (4 KB + 1 MB)
+
+#define RPU9_TRACE_LOG_START_ADDR           (0x1987E000U + 0x36FF000U)
+#define RPU9_TRACE_LOG_SIZE                 (0x100FFFU) // 4 KB + 1 MB
+#define RPU9_TRACE_LOG_END_ADDR             (RPU9_TRACE_LOG_START_ADDR + RPU9_TRACE_LOG_SIZE)
+
 #define RPU9_LOAD_CALIB_START_ADDR          (0x1D07E000U)
 #define RPU9_LOAD_CALIB_SIZE     	         (0x28000U)
 #define RPU9_PRIV_MEM_START_ADDR              (0x1D0A6000U)
 #define RPU9_PRIV_MEM_SIZE     	             (0x1001000U)
-#define RPU9_LOAD_CALIB_PRIV_MEM_SIZE       (RPU9_LOAD_CALIB_SIZE +RPU9_PRIV_MEM_SIZE -1)
+#define RPU9_LOAD_CALIB_PRIV_MEM_SIZE       (RPU9_LOAD_CALIB_SIZE +RPU9_PRIV_MEM_SIZE -1 )
 
 
 #define RPU_FW_START_ADDR                    RPU9_FW_START_ADDR
 #define RPU_FW_SIZE                          RPU9_FW_SIZE
-#define RPU_LOAD_CALIB_START_ADDR            RPU9_LOAD_CALIB_START_ADDR
-#define RPU_LOAD_CALIB_SIZE                  RPU9_LOAD_CALIB_SIZE
-#define RPU_PRIV_MEM_START_ADDR              RPU9_PRIV_MEM_START_ADDR
-#define RPU_PRIV_MEM_SIZE                    RPU9_PRIV_MEM_SIZE
-#define RPU_LOAD_CALIB_PRIV_MEM_SIZE         RPU9_LOAD_CALIB_PRIV_MEM_SIZE
+#define RPU_LOAD_CALIB_START_ADDR            RPU9_LOAD_CALIB_START_ADDR   
+#define RPU_LOAD_CALIB_SIZE                  RPU9_LOAD_CALIB_SIZE 
+#define RPU_PRIV_MEM_START_ADDR              RPU9_PRIV_MEM_START_ADDR 
+#define RPU_PRIV_MEM_SIZE                    RPU9_PRIV_MEM_SIZE 
+#define RPU_LOAD_CALIB_PRIV_MEM_SIZE         RPU9_LOAD_CALIB_PRIV_MEM_SIZE 
+
+#define RPU_TRACE_LOG_START_ADDR             RPU9_TRACE_LOG_START_ADDR
+#define RPU_TRACE_LOG_SIZE                   RPU9_TRACE_LOG_SIZE
+#define RPU_TRACE_LOG_END_ADDR               RPU9_TRACE_LOG_END_ADDR
 
 #else
     #error "Processor  Not Supported"
 #endif
 
+#else
+int main_lib(void);
+#endif // ELF_FLAG
+
 #define RPU_MBOX_START_ADDR		    	(0x1E0A8000U)
 #define RPU_MBOX_SIZE                      (0x400000U)
 
-// /*User shall not modify the below MACROS*/
+/*User shall not modify the below MACROS*/
 #define RPU_SHM_START_ADDR		        	(0x1E4A8000U)
 #define RPU_SHM_SIZE                      (0X40000U)  
 #define RPU_SHM_END_ADDR                  (RPU_SHM_START_ADDR+RPU_SHM_SIZE)
-#define RPU_MBOX_RPUSHM_SIZE        	  (RPU_MBOX_SIZE + RPU_SHM_SIZE - 1 )
+#define RPU_MBOX_RPUSHM_SIZE        	  (RPU_MBOX_SIZE + RPU_SHM_SIZE -1)
 
-void print_memory_layout_info();
-#endif // ISP_FW_MAIN_H
+
+

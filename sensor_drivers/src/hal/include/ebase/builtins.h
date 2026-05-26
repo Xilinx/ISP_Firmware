@@ -22,7 +22,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 #ifndef BUILTINS_H_
 #define BUILTINS_H_
@@ -33,7 +33,7 @@
 
 #include <stddef.h>
 
-void *__builtin_memset(void *s, int32_t c, size_t n);
+void *__builtin_memset(void *s, int c, size_t n);
 #define MEMSET(TARGET, C, LEN)		__builtin_memset(TARGET, C, LEN)
 
 void *__builtin_memcpy(void *s1, const void *s2, size_t n);

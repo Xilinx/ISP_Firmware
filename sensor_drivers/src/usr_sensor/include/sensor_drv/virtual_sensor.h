@@ -23,11 +23,10 @@
  * DEALINGS IN THE SOFTWARE.
  *
  ****************************************************************************/
+
 #ifndef __VIRTUAL_SENSOR_PRIV_H__
 #define __VIRTUAL_SENSOR_PRIV_H__
 
-#include <ebase/types.h>
-#include <common/return_codes.h>
 #include <hal/hal_i2c.h>
 #include <isi/isi_common.h>
 #include <isi/isi_vvsensor.h>
@@ -48,47 +47,61 @@ typedef struct {
 } VirtualSensor_Context_t;
 
 static RESULT virtualSensor_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
-					IsiSensorHandle_t *pHandle);
-static RESULT virtualSensor_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode);
+				IsiSensorHandle_t *pHandle);
+static RESULT virtualSensor_IsiOpenIss(IsiSensorHandle_t handle,
+				uint32_t mode);
 static RESULT virtualSensor_IsiCloseIss(IsiSensorHandle_t handle);
 static RESULT virtualSensor_IsiReleaseIss(IsiSensorHandle_t handle);
 static RESULT virtualSensor_IsiEnumModeIss(IsiSensorHandle_t handle,
-					IsiSensorEnumMode_t *pEnumMode);
-static RESULT virtualSensor_IsiCheckConnectionIss(IsiSensorHandle_t handle);
-static RESULT virtualSensor_IsiGetModeIss(IsiSensorHandle_t handle, IsiSensorMode_t *pMode);
-static RESULT virtualSensor_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps);
-static RESULT virtualSensor_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t on);
-static RESULT virtualSensor_IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *pValue);
+				IsiSensorEnumMode_t *pEnumMode);
+static RESULT virtualSensor_IsiCheckConnectionIss(
+				IsiSensorHandle_t handle);
+static RESULT virtualSensor_IsiGetModeIss(IsiSensorHandle_t handle,
+				IsiSensorMode_t *pMode);
+static RESULT virtualSensor_IsiGetCapsIss(IsiSensorHandle_t handle,
+				IsiCaps_t *pCaps);
+static RESULT virtualSensor_IsiSetStreamingIss(IsiSensorHandle_t handle,
+				bool_t on);
+static RESULT virtualSensor_IsiGetRevisionIss(IsiSensorHandle_t handle,
+				uint32_t *pValue);
 static RESULT virtualSensor_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
-					IsiAeBaseInfo_t *pAeBaseInfo);
+				IsiAeBaseInfo_t *pAeBaseInfo);
 static RESULT virtualSensor_IsiGetAGainIss(IsiSensorHandle_t handle,
-					IsiSensorGain_t *pSensorAGain);
+				IsiSensorGain_t *pSensorAGain);
 static RESULT virtualSensor_IsiGetDGainIss(IsiSensorHandle_t handle,
-					IsiSensorGain_t *pSensorDGain);
+				IsiSensorGain_t *pSensorDGain);
 static RESULT virtualSensor_IsiSetAGainIss(IsiSensorHandle_t handle,
-					IsiSensorGain_t *pSensorAGain);
+				IsiSensorGain_t *pSensorAGain);
 static RESULT virtualSensor_IsiSetDGainIss(IsiSensorHandle_t handle,
-					IsiSensorGain_t *pSensorDGain);
+				IsiSensorGain_t *pSensorDGain);
 static RESULT virtualSensor_IsiGetIntTimeIss(IsiSensorHandle_t handle,
-					IsiSensorIntTime_t *pSensorIntTime);
+				IsiSensorIntTime_t *pSensorIntTime);
 static RESULT virtualSensor_IsiSetIntTimeIss(IsiSensorHandle_t handle,
-					IsiSensorIntTime_t *pSensorIntTime);
-static RESULT virtualSensor_IsiGetFpsIss(IsiSensorHandle_t handle, uint32_t *pFps);
-static RESULT virtualSensor_IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps);
+				const IsiSensorIntTime_t *pSensorIntTime);
+static RESULT virtualSensor_IsiGetFpsIss(IsiSensorHandle_t handle,
+				uint32_t *pFps);
+static RESULT virtualSensor_IsiSetFpsIss(IsiSensorHandle_t handle,
+				uint32_t fps);
 static RESULT virtualSensor_IsiGetIspStatusIss(IsiSensorHandle_t handle,
-					IsiIspStatus_t *pIspStatus);
-static RESULT virtualSensor_IsiSetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb);
-static RESULT virtualSensor_IsiGetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb);
-static RESULT virtualSensor_IsiSetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBlc);
-static RESULT virtualSensor_IsiGetBlcIss(IsiSensorHandle_t handle, IsiSensorBlc_t *pBlc);
-static RESULT virtualSensor_IsiSetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t tpg);
-static RESULT virtualSensor_IsiGetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg);
+				IsiIspStatus_t *pIspStatus);
+static RESULT virtualSensor_IsiSetWBIss(IsiSensorHandle_t handle,
+				const IsiSensorWb_t *pWb);
+static RESULT virtualSensor_IsiGetWBIss(IsiSensorHandle_t handle,
+				IsiSensorWb_t *pWb);
+static RESULT virtualSensor_IsiSetBlcIss(IsiSensorHandle_t handle,
+				const IsiSensorBlc_t *pBlc);
+static RESULT virtualSensor_IsiGetBlcIss(IsiSensorHandle_t handle,
+				IsiSensorBlc_t *pBlc);
+static RESULT virtualSensor_IsiSetTpgIss(IsiSensorHandle_t handle,
+				IsiSensorTpg_t tpg);
+static RESULT virtualSensor_IsiGetTpgIss(IsiSensorHandle_t handle,
+				IsiSensorTpg_t *pTpg);
 static RESULT virtualSensor_IsiGetExpandCurveIss(IsiSensorHandle_t handle,
-					IsiSensorCompandCurve_t *pCurve);
-static RESULT virtualSensor_IsiWriteRegIss(IsiSensorHandle_t handle, const uint16_t addr,
-					const uint16_t value);
-static RESULT virtualSensor_IsiReadRegIss(IsiSensorHandle_t handle, const uint16_t addr,
-					uint16_t *pValue);
+				IsiSensorCompandCurve_t *pCurve);
+static RESULT virtualSensor_IsiWriteRegIss(IsiSensorHandle_t handle,
+				const uint16_t addr, const uint16_t value);
+static RESULT virtualSensor_IsiReadRegIss(IsiSensorHandle_t handle,
+				const uint16_t addr, uint16_t *pValue);
 
 #ifdef __cplusplus
 }

@@ -26,11 +26,12 @@ set(USER_UNDEFINED_SYMBOLS
 # Example 3: Adding ${CMAKE_SOURCE_DIR}/data/include to add data/include from this project.
 
 set(USER_INCLUDE_DIRECTORIES
+"."
 "isp_fw_main.h"
 )
 set(USER_COMPILE_SOURCES
-"main.c"
 "isp_fw_config.c"
+"main.c"
 )
 
 # -----------------------------------------

@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
+ * Copyright (c) 2014-2022 Vivante Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,42 +22,125 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- ****************************************************************************/
+ *********************************************************************/
 
 #ifndef __SENSOR_DRV_H__
 #define __SENSOR_DRV_H__
 
-#include "isi/isi_iss.h"
+#include "isi_iss.h"
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-typedef struct {
+#define SENSOR_DRV_NUM		(12)
+#define SENSOR_MODULE_NAME	(50)
+
+#define REGWIDTH		(2)
+#define DATAWIDTH		(1)
+/* Refer ox03f10, ox08b40, ox05b1s for the below registers */
+#define SC_CTRL_A		(0x300A)
+#define SC_CTRL_B		(0x300B)
+#define SC_CTRL_C		(0x300C)
+/* Refer imx728, imx623 for the below registers */
+#define CHIP_ID_1		(0x8385)
+#define CHIP_ID_0		(0x8384)
+
+typedef void *CamDeviceSensorDrvHandle_t;
+
+typedef struct SensorDrvConfig_s {
 	const char		*pSensorName;
 	IsiCamDrvConfig_t	*pSensorConfig;
 } SensorDrvConfig_t;
 
-typedef struct {
-	char			name[20];
-	IsiSensorMode_t		*pSensorMode;
-	int			mode_num;
+typedef struct SensorDrvList_s {
+	char		name[20];
+	IsiSensorMode_t	*pSensorMode;
 } SensorDrvList_t;
 
-typedef struct {
+typedef struct sensorPortInfo_s {
 	uint32_t	chipId;
 	char		name[20];
 } sensorPortInfo_t;
 
-typedef struct {
+typedef struct SensorDrvConfigList_s {
 	char		*pSensorName;
+	uint32_t	slaveAddr;
+	uint8_t		regWidth;
+	uint8_t		dataWidth;
 	uint16_t	regAddr[3];
 	uint32_t	sensorId;
 } SensorDrvConfigList_t;
 
-/*****************************************************************************/
-/**
+typedef enum SensorDrvId_e {
+	SENSOR_DRV_ID_0,	/* Video input sensor index 0. */
+	SENSOR_DRV_ID_1,	/* Video input sensor index 1. */
+	SENSOR_DRV_ID_2,	/* Video input sensor index 2. */
+	SENSOR_DRV_ID_3,	/* Video input sensor index 3. */
+	SENSOR_DRV_ID_MAX,
+} SensorDrvId_t;
+
+typedef struct CamDeviceSensorModuleMapCfg_s {
+	char		moduleName[SENSOR_MODULE_NAME];
+	uint32_t	sensorDevId;
+} CamDeviceSensorModuleMapCfg_t;
+
+extern IsiCamDrvConfig_t Ox03f10_IsiCamDrvConfig;
+extern IsiCamDrvConfig_t Ox08b40_IsiCamDrvConfig;
+extern IsiCamDrvConfig_t Ox05b1s_IsiCamDrvConfig;
+extern IsiCamDrvConfig_t IMX623_IsiCamDrvConfig;
+extern IsiCamDrvConfig_t IMX728_IsiCamDrvConfig;
+extern IsiCamDrvConfig_t virtualSensor_IsiCamDrvConfig;
+extern IsiCamDrvConfig_t Semu_IsiCamDrvConfig;
+
+extern IsiSensorMode_t pox03f10_mode_info[];
+extern IsiSensorMode_t pox08b40_mode_info[];
+extern IsiSensorMode_t pox05b1s_mode_info[];
+extern IsiSensorMode_t pimx728_mode_info[];
+extern IsiSensorMode_t pimx623_mode_info[];
+
+/**********************************************************************
+ * @brief   CamDevice sensor driver mode information.
+ *
+ *********************************************************************/
+typedef struct CamDeviceSensorDrvModeInfo_s {
+	uint32_t		index;		/* Sensor mode index */
+	uint32_t		width;		/* Real image width */
+	uint32_t		height;		/* Real image height */
+	IsiSensorHdrMode_t	sensorType;	/* Type is linear or HDR */
+	IsiSensorStitchingMode_t stitchingMode;	/* HDR stitching */
+	IsiSensorNativeMode_t	nativeMode;	/* HDR Native */
+	uint32_t		bitWidth;	/* Sensor bit width */
+	IsiBayerPattern_t	bayerPattern;	/* Sensor Bayer pattern type */
+	uint32_t		maxFps;		/* Sensor maximum FPS value */
+	IsiSensorAfMode_t	afMode;		/* Sensor auto focusing mode */
+	uint32_t		dataType;	/* Sensor data type */
+	uint32_t		itfType;	/* Sensor interface type */
+	IsiSensorAeInfo_t	aeInfo;		/* Sensor AE info */
+} CamDeviceSensorDrvModeInfo_t;
+
+/**********************************************************************
+ * @brief   CamDevice sensor mode list information.
+ *
+ *********************************************************************/
+typedef struct CamDeviceSensorListInfo_s {
+	uint32_t	number;		/* Sensor index number */
+	char		name[20];	/* Sensor name */
+	/* Mode info */
+	CamDeviceSensorDrvModeInfo_t sensorModeInfo[SENSOR_DRV_NUM];
+} CamDeviceSensorListInfo_t;
+
+/**********************************************************************
+ * @brief   CamDevice sensor connection port information.
+ *
+ *********************************************************************/
+typedef struct CamDeviceSensorConnectPortInfo_s {
+	uint32_t	chipId;		/* Sensor chip ID */
+	char		name[20];	/* Sensor name */
+} CamDeviceSensorConnectPortInfo_t;
+
+/**********************************************************************
  *          SensorDrvConfigMapping
  *
  * @brief   sensor config mapping.
@@ -70,58 +153,76 @@ typedef struct {
  * @retval  RET_NULL_POINTER
  * @retval  RET_OUTOFMEM
  *
- *****************************************************************************/
-RESULT SensorDrvConfigMapping(const char *pSensorName, IsiCamDrvConfig_t **pSensorConfig);
+ *********************************************************************/
+RESULT SensorDrvConfigMapping(const CamDeviceSensorModuleMapCfg_t *pModuleInfo,
+			IsiCamDrvConfig_t **pSensorConfig);
 
-/*****************************************************************************/
-/**
- *          SensorDrvGetSensorNumber
+/*********************************************************************
+ * @brief   Gets the number of sensors.
  *
- * @brief   Get the number of available sensors.
+ * @param   pNumber     Pointer to the sensor number
  *
- * @param   pNumber         Pointer to store the sensor number
+ * @retval  RET_SUCCESS         Operation succeeded
  *
- * @return  Return the result of the function call.
- * @retval  RET_SUCCESS
- * @retval  RET_NULL_POINTER
- * @retval  RET_FAILURE
- *
- *****************************************************************************/
-RESULT SensorDrvGetSensorNumber(uint16_t *pNumber);
+ *********************************************************************/
+RESULT VsiCamDeviceSensorGetNumber(uint16_t *pNumber);
 
-/*****************************************************************************/
-/**
- *          SensorDrvGetConfigList
+/*********************************************************************
+ * @brief   Gets all sensor mode information.
  *
- * @brief   Get sensor driver configuration list.
+ * @param   pSensorListInfo     Pointer to the sensor mode list
+ * @param   sensorNum           The number of sensors
  *
- * @param   sensorNum           Sensor number
- * @param   pSensorDrvList      Pointer to sensor driver list structure
+ * @retval  RET_SUCCESS         Operation succeeded
  *
- * @return  Return the result of the function call.
- * @retval  RET_SUCCESS
- * @retval  RET_NULL_POINTER
- * @retval  RET_FAILURE
- *
- *****************************************************************************/
-RESULT SensorDrvGetConfigList(const uint16_t sensorNum, SensorDrvList_t *pSensorDrvList);
+ *********************************************************************/
+RESULT VsiCamDeviceSensorGetListInfo(
+			CamDeviceSensorListInfo_t *pSensorListInfo,
+			const uint16_t sensorNum);
 
-/*****************************************************************************/
-/**
- *          SensorDrvGetPortInfo
+/*********************************************************************
+ * @brief   Gets the name of sensor connected
+ *          to FPGA i2c-8/9/10/11.
+ * Currently, only i2c-8/9 query is supported.
  *
- * @brief   Get sensor port information.
+ * @param   portId              FPGA port index
+ * @param   pPortInfo           Pointer to the port information
  *
- * @param   pPortInfo       Pointer to sensor port information structure
- * @param   sensorDevId     Sensor device ID
+ * @retval  RET_SUCCESS         Operation succeeded
  *
- * @return  Return the result of the function call.
- * @retval  RET_SUCCESS
- * @retval  RET_NULL_POINTER
- * @retval  RET_FAILURE
+ *********************************************************************/
+RESULT VsiCamDeviceSensorGetConnectPortInfo(SensorDrvId_t sensorDrvId,
+			CamDeviceSensorConnectPortInfo_t *pPortInfo);
+
+/*********************************************************************
+ * @brief   Mapping the sensor driver.
  *
- *****************************************************************************/
-RESULT SensorDrvGetPortInfo(sensorPortInfo_t *pPortInfo, uint32_t sensorDevId);
+ * @param   pSensorName         Pointer to sensor driver name
+ * @param   pSensorDrvhandle    Sensor driver handle pointer
+ *
+ * @retval  RET_SUCCESS         Operation succeeded
+ * @retval  RET_FAILURE         Operation failed
+ * @retval  RET_WRONG_HANDLE    Invalid handle
+ * @retval  RET_NULL_POINTER    Null pointer
+ * @retval  RET_WRONG_STATE     State machine in wrong state
+ * @retval  RET_NOTSUPP         Feature not supported
+ * @retval  RET_INVALID_PARM    Invalid parameter
+ *
+ *********************************************************************/
+RESULT VsiCamDeviceSensorMapping(
+			const CamDeviceSensorModuleMapCfg_t *pModuleInfo,
+			CamDeviceSensorDrvHandle_t *pSensorDrvhandle);
+
+/**************************************************************************
+ * @brief   Map FMC ID of current active FMC
+ *
+ * @param   fmc_id       FMC ID
+ *
+ * @retval  RET_SUCCESS         Operation succeeded
+ * @retval  RET_FAILURE         Operation failed
+ *
+ ************************************************************************/
+RESULT SelectFMCID(int fmc_id);
 
 #ifdef __cplusplus
 }

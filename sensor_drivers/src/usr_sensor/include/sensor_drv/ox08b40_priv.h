@@ -23,11 +23,10 @@
  * DEALINGS IN THE SOFTWARE.
  *
  ****************************************************************************/
+
 #ifndef __Ox08b40_PRIV_H__
 #define __Ox08b40_PRIV_H__
 
-#include <ebase/types.h>
-#include <common/return_codes.h>
 #include <hal/hal_i2c.h>
 #include <isi/isi_common.h>
 #include <isi/isi_vvsensor.h>
@@ -35,17 +34,61 @@
 
 #define OX08B40_TABLE_END	(0xffff)
 #define OX08B40_TABLE_WAIT	(0xfffe)
-#define OX08B40_TABLE_WAIT_MS	(210)
-#define DSER_ADDR		(0x68)
-#define SER_ADDR		(0x62)
+#define OX08B40_TABLE_WAIT_MS	(100)
 
+#define X8B_MIN_AGAIN_STEP				(1.0f/16.0f)
+#define X8B_MIN_DGAIN_STEP				(1.0f/1024.0f)
+#define X8B_MIN_WBGAIN_STEP				(1.0f/1024.0f)
+
+#define X8B_EXP_INDEX_HCG				(0)
+#define X8B_EXP_INDEX_LCG				(1)
+#define X8B_EXP_INDEX_SPD				(2)
+#define X8B_EXP_INDEX_VS				(3)
+
+#define X8B_NATIVE_RATIO_HCG_LCG		(0)
+#define X8B_NATIVE_RATIO_LCG_SPD		(1)
+#define X8B_NATIVE_RATIO_SPD_VS			(2)
+
+#define X8B_DCG_CONVERSION_RATIO		(3.3f)
+#define X8B_DCG_SPD_SENSITIVITY_RATIO	(10)
+
+#define MODE0_ONE_LINE_DCG_EXPTIME		(0.0000448)
+#define MODE0_ONE_LINE_SPD_EXPTIME		(0.0000216)
+#define MODE0_ONE_LINE_VS_EXPTIME		(0.0000214)
+#define MODE0_FRAME_LENGTH_LINES		(0x466)
+#define MODE0_MIN_DCG_INTEGRATION_LINE	(2)
+#define MODE0_MIN_SPD_INTEGRATION_LINE	(2)
+#define MODE0_MAX_VS_INTEGRATION_LINE	(35)
+#define MODE0_MIN_VS_INTEGRATION_LINE	(0)
+#define MODE0_AGAIN_MIN					(1.0)
+#define MODE0_AGAIN_MAX					(15.5)
+#define MODE0_DGAIN_MIN					(1.0)
+#define MODE0_DGAIN_MAX					(15.99)
+
+#define MODE1_ONE_LINE_DCG_EXPTIME		(0.00009664)
+#define MODE1_ONE_LINE_SPD_EXPTIME		(0.00004592)
+#define MODE1_ONE_LINE_VS_EXPTIME		(0.00004856)
+#define MODE1_FRAME_LENGTH_LINES		(0x46a)
+#define MODE1_MIN_DCG_INTEGRATION_LINE	(2)
+#define MODE1_MIN_SPD_INTEGRATION_LINE	(2)
+#define MODE1_MAX_VS_INTEGRATION_LINE	(35)
+#define MODE1_MIN_VS_INTEGRATION_LINE	(0)
+#define MODE1_AGAIN_MIN					(1.0)
+#define MODE1_AGAIN_MAX					(15.5)
+#define MODE1_DGAIN_MIN					(1.0)
+#define MODE1_DGAIN_MAX					(15.99)
+
+#define MIN_FPS							(1 * ISI_FPS_QUANTIZE)
+
+#define DEFAULT_HTS						(0x95D)
+#define DEFAULT_DCG						(0x4C3)
+#define DEFAULT_SPD						(0x250)
+#define DEFAULT_VS						(0x24A)
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
-extern int g_Sensor_frame_count;
 
 typedef struct {
 	IsiSensorContext_t	isiCtx;
@@ -103,25 +146,29 @@ typedef struct {
 } Ox08b40_Context_t;
 
 static RESULT Ox08b40_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
-					IsiSensorHandle_t *pHandle);
+				IsiSensorHandle_t *pHandle);
 static RESULT Ox08b40_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode);
 static RESULT Ox08b40_IsiCloseIss(IsiSensorHandle_t handle);
 static RESULT Ox08b40_IsiReleaseIss(IsiSensorHandle_t handle);
-static RESULT Ox08b40_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps);
+static RESULT Ox08b40_IsiGetCapsIss(IsiSensorHandle_t handle,
+				IsiCaps_t *pCaps);
 static RESULT Ox08b40_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t on);
-static RESULT Ox08b40_IsiGetRevisionIss(IsiSensorHandle_t handle, uint32_t *pValue);
+static RESULT Ox08b40_IsiGetRevisionIss(IsiSensorHandle_t handle,
+				uint32_t *pValue);
 static RESULT Ox08b40_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
-					IsiAeBaseInfo_t *pAeBaseInfo);
-static RESULT Ox08b40_IsiGetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
-static RESULT Ox08b40_IsiGetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain);
-static RESULT Ox08b40_IsiSetAGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorAGain);
-static RESULT Ox08b40_IsiSetDGainIss(IsiSensorHandle_t handle, IsiSensorGain_t *pSensorDGain);
+				IsiAeBaseInfo_t *pAeBaseInfo);
+static RESULT Ox08b40_IsiGetAGainIss(IsiSensorHandle_t handle,
+				IsiSensorGain_t *pSensorAGain);
+static RESULT Ox08b40_IsiGetDGainIss(IsiSensorHandle_t handle,
+				IsiSensorGain_t *pSensorDGain);
+static RESULT Ox08b40_IsiSetAGainIss(IsiSensorHandle_t handle,
+				IsiSensorGain_t *pSensorAGain);
+static RESULT Ox08b40_IsiSetDGainIss(IsiSensorHandle_t handle,
+				IsiSensorGain_t *pSensorDGain);
 static RESULT Ox08b40_IsiGetIntTimeIss(IsiSensorHandle_t handle,
-					IsiSensorIntTime_t *pSensorIntTime);
+				IsiSensorIntTime_t *pSensorIntTime);
 static RESULT Ox08b40_IsiSetIntTimeIss(IsiSensorHandle_t handle,
-					IsiSensorIntTime_t *pSensorIntTime);
-static RESULT Ox08b40_SetIntTime(IsiSensorHandle_t handle, float newIntegrationTime);
-
+				const IsiSensorIntTime_t *pSensorIntTime);
 
 static uint16_t Ox08b40_mipi4lane_8M_native4dol_init[][2] = {
 	{0x0103, 0x1 },
@@ -1930,12 +1977,12 @@ static uint16_t Ox08b40_mipi4lane_8M_native4dol_init[][2] = {
 	{0x4211, 0xed},
 	{0x507a, 0x28},
 	{0x507b, 0x40},
-	{0x380c, 0x04},
-	{0x380d, 0xc3},
+	{0x380c, 0x06},
+	{0x380d, 0x00},
 	{0x384c, 0x02},
 	{0x384d, 0x50},
 	{0x388c, 0x02},
-	{0x388d, 0x4a},
+	{0x388d, 0x50},
 	{0x380e, 0x04},
 	{0x380f, 0x66},
 	{0x3501, 0x01},
