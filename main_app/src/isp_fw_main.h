@@ -168,7 +168,9 @@ int main_lib(void);
 #define RPU_SHM_START_ADDR		        	(0x1E4A8000U)
 #define RPU_SHM_SIZE                      (0X40000U)  
 #define RPU_SHM_END_ADDR                  (RPU_SHM_START_ADDR+RPU_SHM_SIZE)
-#define RPU_MBOX_RPUSHM_SIZE        	  (RPU_MBOX_SIZE + RPU_SHM_SIZE -1)
+#define RPU_FMC_CONFIG_BIN_ADDR           (RPU_SHM_END_ADDR)  /* 0x1E4E8000 */
+#define RPU_FMC_CONFIG_BIN_SIZE           (0x10000U)         /* 64 KB       */
+#define RPU_MBOX_RPUSHM_FMC_SIZE       (RPU_MBOX_SIZE + RPU_SHM_SIZE + RPU_FMC_CONFIG_BIN_SIZE -1)
 
 
 

@@ -57,7 +57,7 @@ include_directories(${CMAKE_BINARY_DIR}/include)
 include(${CMAKE_CURRENT_SOURCE_DIR}/UserConfig.cmake)
 find_package(common)
 enable_language(C ASM)
-collect(PROJECT_LIB_DEPS xilstandalone;xiltimer;xilffs;freertos)
+collect(PROJECT_LIB_DEPS xilstandalone;xiltimer;xilpm;freertos)
 collect(PROJECT_LIB_DEPS xil)
 collect(PROJECT_LIB_DEPS gcc)
 collect(PROJECT_LIB_DEPS c)
@@ -131,9 +131,6 @@ set_target_properties(isp_fw_lib PROPERTIES  IMPORTED_LOCATION ${LIB_ROOT}/libis
 add_library(freertos STATIC IMPORTED)
 set_target_properties(freertos PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/libfreertos.a)
 
-add_library(xilffs STATIC IMPORTED)
-set_target_properties(xilffs PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/libxilffs.a)
-
 add_library(xilstandalone STATIC IMPORTED)
 set_target_properties(xilstandalone PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/libxilstandalone.a)
 
@@ -142,6 +139,9 @@ set_target_properties(xil PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/libxil.a)
 
 add_library(xiltimer STATIC IMPORTED)
 set_target_properties(xiltimer PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/libxiltimer.a)
+
+add_library(xilpm STATIC IMPORTED)
+set_target_properties(xilpm PROPERTIES IMPORTED_LOCATION ${LIB_ROOT}/libxilpm.a)
 
 if (BUILD_ALL_CORES)
     # Build all cores when option 0 is selected

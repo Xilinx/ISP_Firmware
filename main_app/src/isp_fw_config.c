@@ -27,6 +27,7 @@
 #include "xil_mpu.h"
 #include "xreg_cortexr5.h"
 #include "xipipsu.h"
+#include "xwdttb.h"
 #include "isp_fw_main.h"
 #include <stdint.h>
 #include "memory_layout.h"
@@ -36,7 +37,7 @@
 
 #if defined (RPU6_FW)
 
-int xtick_timer = XPAR_TTC12_BASEADDR; //XTICKTIMER_BASEADDRESS // earlier XPAR_TTC18_BASEADDR
+UINTPTR XTickTimer_Instance = XPAR_TTC12_BASEADDR;
 
 XIpiPsu_Config XIpiPsu_ConfigTable[] __attribute__ ((section (".drvcfg_sec"))) = {
 
@@ -123,7 +124,7 @@ XIpiPsu_Config XIpiPsu_ConfigTable[] __attribute__ ((section (".drvcfg_sec"))) =
 
 #if defined (RPU7_FW)
 
-int xtick_timer = XPAR_TTC15_BASEADDR; //XTICKTIMER_BASEADDRESS
+UINTPTR XTickTimer_Instance = XPAR_TTC15_BASEADDR;
 
 
 XIpiPsu_Config XIpiPsu_ConfigTable[] __attribute__ ((section (".drvcfg_sec"))) = {
@@ -211,7 +212,7 @@ XIpiPsu_Config XIpiPsu_ConfigTable[] __attribute__ ((section (".drvcfg_sec"))) =
 
 #if defined (RPU8_FW)
 
-int xtick_timer = XPAR_TTC18_BASEADDR; //XTICKTIMER_BASEADDRESS
+UINTPTR XTickTimer_Instance = XPAR_TTC18_BASEADDR;
 
 XIpiPsu_Config XIpiPsu_ConfigTable[] __attribute__ ((section (".drvcfg_sec"))) = {
 	{
@@ -297,7 +298,7 @@ XIpiPsu_Config XIpiPsu_ConfigTable[] __attribute__ ((section (".drvcfg_sec"))) =
 
 #if defined (RPU9_FW)
 
-int xtick_timer = XPAR_TTC21_BASEADDR; //XTICKTIMER_BASEADDRESS
+UINTPTR XTickTimer_Instance = XPAR_TTC21_BASEADDR;
 
 XIpiPsu_Config XIpiPsu_ConfigTable[] __attribute__ ((section (".drvcfg_sec"))) = {
 
@@ -424,8 +425,7 @@ XMpuConfig_Initial InitialMpu_Config __attribute__((section(".bootdata"))) = {
 	{
 
 	    RPU_MBOX_START_ADDR,
-		RPU_MBOX_RPUSHM_SIZE,
-		
+		RPU_MBOX_RPUSHM_FMC_SIZE,
 		STRONG_ORDERD_SHARED | PRIV_RW_USER_RW,
 	},
 
@@ -525,6 +525,80 @@ void print_memory_layout_info( )
 	xil_printf("RPU_MBOX_START_ADDR - 0x%x \n",RPU_MBOX_START_ADDR);
 	xil_printf("RPU_MBOX_SIZE - 0x%x \n",RPU_MBOX_SIZE);
 	xil_printf("RPU_SHM_SIZE - 0x%x \n",RPU_SHM_SIZE);
-	xil_printf("RPU_MBOX_RPUSHM_SIZE - 0x%x \n",RPU_MBOX_RPUSHM_SIZE);
+	xil_printf("RPU_MBOX_RPUSHM_FMC_SIZE - 0x%x \n",RPU_MBOX_RPUSHM_FMC_SIZE);
 	xil_printf("RPU_LOAD_CALIB_PRIV_MEM_SIZE - 0x%x \n",RPU_LOAD_CALIB_PRIV_MEM_SIZE);
 }
+
+/* -----------------------------------------------------------------------
+ * XWdtTb_ConfigTable - per-core LPD WWDT override
+ *
+ * The BSP (built for freertos_cortexr52_6) only enumerates lpd_wwdt0 and
+ * lpd_wwdt1.  We override the weak BSP symbol here -- one entry per ELF,
+ * selected by the compile-time RPUx_FW macro -- so that XWdtTb_LookupConfig()
+ * finds the correct instance regardless of which ELF is running.
+ *
+ * Field order matches XWdtTb_Config (SDT flow):
+ *   Name, BaseAddr, EnableWinWdt, MaxCountWidth, SstCountWidth, Clock,
+ *   IntrId[4], IntrParent
+ *
+ * Base addresses follow a linear 0x10000 stride per instance.
+ * Interrupt IDs follow a +4 stride per instance.
+ * ----------------------------------------------------------------------- */
+
+#if defined(RPU6_FW)
+XWdtTb_Config XWdtTb_ConfigTable[] __attribute__((section(".drvcfg_sec"))) = {
+	{
+		"xlnx,versal-wwdt-1.0", /* compatible */
+		0xEB000000,             /* lpd_wwdt0 base address */
+		0x0,                    /* xlnx,enable-window-wdt */
+		0x0,                    /* xlnx,max-count-width */
+		0x0,                    /* xlnx,sst-count-width */
+		0x8F0CBA9,              /* xlnx,wdt-clk-freq-hz (~150 MHz) */
+		{0x10EC, 0x10ED, 0x10EE, 0x10EF}, /* interrupts */
+		0xE2000000              /* interrupt-parent (RPU GIC) */
+	},
+	{ NULL }
+};
+#elif defined(RPU7_FW)
+XWdtTb_Config XWdtTb_ConfigTable[] __attribute__((section(".drvcfg_sec"))) = {
+	{
+		"xlnx,versal-wwdt-1.0", /* compatible */
+		0xEB010000,             /* lpd_wwdt1 base address */
+		0x0,                    /* xlnx,enable-window-wdt */
+		0x0,                    /* xlnx,max-count-width */
+		0x0,                    /* xlnx,sst-count-width */
+		0x8F0CBA9,              /* xlnx,wdt-clk-freq-hz (~150 MHz) */
+		{0x10F0, 0x10F1, 0x10F2, 0x10F3}, /* interrupts */
+		0xE2000000              /* interrupt-parent (RPU GIC) */
+	},
+	{ NULL }
+};
+#elif defined(RPU8_FW)
+XWdtTb_Config XWdtTb_ConfigTable[] __attribute__((section(".drvcfg_sec"))) = {
+	{
+		"xlnx,versal-wwdt-1.0", /* compatible */
+		0xEB020000,             /* lpd_wwdt2 base address */
+		0x0,                    /* xlnx,enable-window-wdt */
+		0x0,                    /* xlnx,max-count-width */
+		0x0,                    /* xlnx,sst-count-width */
+		0x8F0CBA9,              /* xlnx,wdt-clk-freq-hz (~150 MHz) */
+		{0x10F4, 0x10F5, 0x10F6, 0x10F7}, /* interrupts */
+		0xE2000000              /* interrupt-parent (RPU GIC) */
+	},
+	{ NULL }
+};
+#elif defined(RPU9_FW)
+XWdtTb_Config XWdtTb_ConfigTable[] __attribute__((section(".drvcfg_sec"))) = {
+	{
+		"xlnx,versal-wwdt-1.0", /* compatible */
+		0xEB030000,             /* lpd_wwdt3 base address */
+		0x0,                    /* xlnx,enable-window-wdt */
+		0x0,                    /* xlnx,max-count-width */
+		0x0,                    /* xlnx,sst-count-width */
+		0x8F0CBA9,              /* xlnx,wdt-clk-freq-hz (~150 MHz) */
+		{0x10F8, 0x10F9, 0x10FA, 0x10FB}, /* interrupts */
+		0xE2000000              /* interrupt-parent (RPU GIC) */
+	},
+	{ NULL }
+};
+#endif
