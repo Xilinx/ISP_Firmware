@@ -4,4 +4,8 @@
 
 collect (PROJECT_LIB_SOURCES max9296.c)
 
-collect (PROJECT_LIB_SOURCES max9295.c)
+collect (PROJECT_LIB_SOURCES max9295.c
+
+collect (PROJECT_LIB_SOURCES max96716.c)
+
+collect (PROJECT_LIB_SOURCES max96717.c)

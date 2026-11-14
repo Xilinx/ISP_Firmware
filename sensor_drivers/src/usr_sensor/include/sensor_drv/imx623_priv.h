@@ -531,7 +531,6 @@ typedef struct IMX623_Context_s {
 
 	uint32_t		i2cId;
 	uint32_t		sensorDevId;
-	osMutex			registerLock;
 	bool_t			regAccessEnable;
 } IMX623_Context_t;
 

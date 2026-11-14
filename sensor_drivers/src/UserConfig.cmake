@@ -19,6 +19,8 @@ set(USER_COMPILE_DEFINITIONS
 #"FRAME_RATE_DEBUG=1"
 "ENABLE_I2C_GROUPING=1"
 #"ENABLE_I2C_GROUPING_DEBUG=1"
+"SENSOR_STATIC_CTX=1"
+"FMC_CONFIG_BIN_BASE_ADDR=0x1E4E8000"
 )
 
 # Undefine any previously specified compiler definitions, either built in or provided with a -D option
@@ -49,9 +51,12 @@ set(USER_INCLUDE_DIRECTORIES
 
 set(USER_COMPILE_SOURCES
 "usr_sensor/source/Multi_sensor_framework/ms_fw.c"
+"usr_sensor/source/Multi_sensor_framework/fmc_config_loader.c"
 "usr_sensor/source/fmc/max9295.c"
 "usr_sensor/source/fmc/max9296.c"
 "usr_sensor/source/fmc/max96716.c"
+"usr_sensor/source/fmc/max96717.c"
+"usr_sensor/source/fmc/max96724.c"
 "usr_sensor/source/sensor_drv/imx623.c"
 "usr_sensor/source/sensor_drv/imx728.c"
 "usr_sensor/source/sensor_drv/ox03f10.c"

@@ -28,6 +28,7 @@
 #define ISI_PRIV_H
 
 #include <ebase/types.h>
+#include <oslayer.h>
 #include "isi/isi.h"
 
 #ifdef __cplusplus
@@ -36,9 +37,19 @@ extern "C"
 {
 #endif
 
+typedef struct IsiLock_s {
+	osMutex *pMutex;
+	uint32_t refCount;
+	bool isActive;
+} IsiLock_t;
+
 typedef struct {
-	IsiSensor_t	*pSensor;
-	HalI2cHandle_t	halI2cHandle;
+	IsiSensor_t    *pSensor;        /**< pointer to the sensor device */
+    HalI2cHandle_t halI2cHandle;    /**< Handle of HAL I2C session to use */
+    uint32_t       instanceId;      /**< instance id */
+    uint32_t       sensorDevId;     /**< sensor device id */
+    IsiLock_t      *pLock;          /**< sensor operation lock */
+    int32_t        lockIdx;         /**< sensor operation lock index*/
 } IsiSensorContext_t;
 
 #ifdef __cplusplus

@@ -44,15 +44,12 @@
 #define	IIC_MUX_FMC_CHANNEL			(0x6)
 
 #define	AXI1_IIC_INSTANCE			(1)
-#define	AXI1_IIC_INTR_ID			(90)
 #define	AXI1_FMC_I2C_BASEADDRESS		(0x80000000)
 
 #define	AXI2_IIC_INSTANCE			(2)
-#define	AXI2_IIC_INTR_ID			(88)
 #define	AXI2_FMC_I2C_BASEADDRESS		(0x80010000)
 
 #define	AXI3_IIC_INSTANCE_ZERO			(3)
-#define	AXI3_IIC_INTR_ID			(89)
 #define	AXI3_FMC_I2C_BASEADDRESS		(0x80020000)
 
 #define	AXI_IIC_MUX_ADDR			(0x71)
@@ -102,7 +99,8 @@ typedef RESULT(*HalI2cDeInit_t) (uint8_t i2cBusId);
 typedef RESULT(*HalI2cReadReg_t) (uint8_t i2cBusId, uint8_t slaveAddr,
 	uint16_t regAddr, uint8_t regWidth, uint8_t *data, uint8_t dataWidth);
 typedef RESULT(*HalI2cWriteReg_t) (uint8_t i2cBusId, uint8_t slaveAddr,
-	uint16_t regAddr, uint8_t regWidth, uint8_t *data, uint8_t dataWidth);
+	uint16_t regAddr, uint8_t regWidth, const uint8_t *data,
+	uint8_t dataWidth);
 
 struct HalI2cApiOps_s {
 	const char		*pi2cName;
@@ -112,12 +110,43 @@ struct HalI2cApiOps_s {
 	HalI2cWriteReg_t	pHalI2cWriteReg;
 };
 
-RESULT HalI2cApuInit(HalI2cConfig_t *pConfig);
-RESULT HalI2cInit(HalI2cConfig_t *pConfig);
+RESULT HalI2cApuInit(const HalI2cConfig_t *pConfig);
+RESULT HalI2cInit(const HalI2cConfig_t *pConfig);
 RESULT HalI2cDeInit(uint8_t i2cBusId);
 RESULT HalReadI2CReg(uint8_t i2cBusId, uint8_t slaveAddr, uint16_t regAddr,
 	uint8_t regWidth, uint8_t *data, uint8_t dataWidth);
 RESULT HalWriteI2CReg(uint8_t i2cBusId, uint8_t slaveAddr, uint16_t regAddr,
-	uint8_t regWidth, uint8_t *data, uint8_t dataWidth);
+	uint8_t regWidth, const uint8_t *data, uint8_t dataWidth);
+
+/*****************************************************************************
+ * @struct HalI2cBusConfig_t
+ * @brief  Runtime I2C controller configuration for one bus.
+ *
+ * Populated from the FMC .bin (which is derived from the Vivado .xsa) by the
+ * sensor_lib config loader. Lets the HAL select an I2C controller's base
+ * address and GIC interrupt ID at run time instead of relying on the
+ * compile-time IIC_INTR_ID / *_BASEADDRESS macros.
+ ****************************************************************************/
+typedef struct {
+	uint8_t		bus_id;		/* 0 = PS I2C, 1..N = AXI I2C instance      */
+	uint8_t		mode;		/* HAL_AXI_I2C_MODE(0) / HAL_PS_I2C_MODE(1) */
+	uint16_t	intr_id;	/* GIC interrupt ID                         */
+	uint32_t	base_addr;	/* controller base address                  */
+	uint32_t	high_addr;	/* controller high address                  */
+	uint32_t	clock_khz;	/* controller input clock (kHz)             */
+	uint8_t		valid;		/* 1 = sourced from the .bin, 0 = default   */
+} HalI2cBusConfig_t;
+
+/*****************************************************************************
+ * @brief  Return the runtime config for an I2C bus.
+ *
+ * If the .bin supplied a matching controller entry, its values are returned
+ * (valid == 1). Otherwise AXI buses get only their default base address
+ * (valid == 0), used by the HAL as the BSP XIic_LookupConfig() key.
+ *
+ * @param  bus_id  I2C bus id (0 = PS, 1..N = AXI instance)
+ * @return Pointer to a static, caller-read-only config record (never NULL).
+ ****************************************************************************/
+const HalI2cBusConfig_t *HalI2cGetBusConfig(uint8_t bus_id);
 
 #endif

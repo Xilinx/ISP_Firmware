@@ -65,7 +65,7 @@
  * @brief   Include queue handling in OS Abstraction Layer library
  *
  *****************************************************************************/
-#if defined OSLAYER_SEMAPHORE && defined OSLAYER_MUTEX
+#if defined (OSLAYER_SEMAPHORE) && defined (OSLAYER_MUTEX)
 #define OSLAYER_QUEUE
 #endif
 
@@ -83,7 +83,7 @@
  * @brief   Include thread handling in OS Abstraction Layer library
  *
  *****************************************************************************/
-#if defined OSLAYER_EVENT && defined OSLAYER_MUTEX
+#if defined (OSLAYER_EVENT) && defined (OSLAYER_MUTEX)
 #define OSLAYER_THREAD
 #endif
 
@@ -93,8 +93,15 @@
  * @brief   Include IRQ service functionality in OS Abstraction Layer library
  *
  *****************************************************************************/
-#if defined OSLAYER_EVENT && defined OSLAYER_MUTEX && defined OSLAYER_THREAD
+#if defined (OSLAYER_EVENT) && defined (OSLAYER_MUTEX) && defined (OSLAYER_THREAD)
 #define OSLAYER_IRQ
+#endif
+
+/******************************************************************************/
+/** @brief  Include task notification functionality in OS Abstraction Layer library */
+#if defined OSLAYER_THREAD
+#define OS_THREAD_STACK_MAX_WORDSIZE (20 * 1024)
+#define OSLAYER_TASKNOTIFICATION
 #endif
 
 /*****************************************************************************
@@ -104,15 +111,6 @@
  *
  *****************************************************************************/
 #define OSLAYER_MISC
-
-/*****************************************************************************
- *          OSLAYER_MEMORY
- *
- * @brief   Include Memory management functionality in OS Abstraction Layer
- *          library
- *
- *****************************************************************************/
-#define OSLAYER_MEMORY
 
 //!@} defgroup OS_LAYER_CONFIG
 
@@ -143,6 +141,9 @@
 #ifdef MFS
 #include "oslayer_mfs.h"
 #endif
+#ifdef SAFERTOS
+#include "oslayer_safertos.h"
+#endif
 
 #ifdef FREERTOS
 #include <oslayer/oslayer_freertos.h>
@@ -162,6 +163,14 @@ extern "C"
  *****************************************************************************/
 #define OSLAYER_ASSERT(x)
 #endif
+
+#define OSLAYER_CROAK(expr)\
+    do {\
+        if ((expr)) {\
+            printf("oslayer assert %s, %d  %s\n", __FILE__, __LINE__, #expr);\
+            return (OSLAYER_INVALID_PARAM);\
+        }\
+    } while(0)
 
 /*****************************************************************************
  *          OSLAYER_STATUS
@@ -193,6 +202,17 @@ typedef enum {
 	OSLAYER_THREAD_PRIO_LOWEST
 } OSLAYER_THREAD_PRIO;
 
+/******************************************************************************/
+/** @brief  Action for task Notification created by OS Abstraction Layer */
+typedef enum _osTaskNotificationAction
+{
+	OSLAYER_TASKNOTIFICATION_NOACTION = 0,
+	OSLAYER_TASKNOTIFICATION_SETBITS,
+	OSLAYER_TASKNOTIFICATION_INCREMENT,
+	OSLAYER_TASKNOTIFICATION_SETVALUEWITHOVERWRITE,
+	OSLAYER_TASKNOTIFICATION_SETVALUEWITHOUTOVERWRITE,
+} osTaskNotificationAction;
+
 /*****************************************************************************
  *          osInterrupt
  *
@@ -203,13 +223,16 @@ typedef enum {
  *          for interrupt service routines.
  *
  *****************************************************************************/
-typedef struct {
+typedef struct _osInterrupt {
+#ifdef OSLAYER_KERNEL
+#else
 	osThread	isr_thread;
 	osEvent		isr_event;
 	osEvent		isr_exit_event;
 	osMutex		isr_access_lock;
 	osEvent		isr_irq_event;
 	osQueue		isr_mis_queue;
+#endif
 	uint32_t	irq_num;
 	osIsrFunc	IsrFunc;
 	osDpcFunc	DpcFunc;
@@ -229,7 +252,7 @@ typedef struct {
  *  @retval OSLAYER_OK     Event successfully created
  *
  *****************************************************************************/
-extern int32_t osTimeStampUs(int64_t *pTimeStamp);
+extern OSLAYER_STATUS osTimeStampUs(int64_t *pTimeStamp);
 
 /******************************************************************************
  *  osTimeStampNs()
@@ -242,7 +265,8 @@ extern int32_t osTimeStampUs(int64_t *pTimeStamp);
  *  @retval OSLAYER_OK     Event successfully created
  *
  *****************************************************************************/
-extern int32_t osTimeStampNs(int64_t *pTimeStamp);
+extern OSLAYER_STATUS osTimeStampNs(float32_t *pTimeStamp);
+extern OSLAYER_STATUS osTimeStampLocalTime(osTimeStamp *pTimeStamp);
 #endif
 
 
@@ -268,7 +292,7 @@ extern int32_t osTimeStampNs(int64_t *pTimeStamp);
  *  @retval OSLAYER_ERROR  Event is not created
  *
  *****************************************************************************/
-extern int32_t osEventInit(osEvent *pEvent, int32_t Automatic,
+extern OSLAYER_STATUS osEventInit(osEvent *pEvent, int32_t Automatic,
 				int32_t InitState);
 
 /******************************************************************************
@@ -286,7 +310,7 @@ extern int32_t osEventInit(osEvent *pEvent, int32_t Automatic,
  *  @retval OSLAYER_OPERATION_FAILED  Signal not send
  *
  *****************************************************************************/
-extern int32_t osEventSignal(osEvent *pEvent);
+extern OSLAYER_STATUS osEventSignal(osEvent *pEvent);
 
 /******************************************************************************
  *  osEventReset()
@@ -303,7 +327,7 @@ extern int32_t osEventSignal(osEvent *pEvent);
  *  @retval OSLAYER_OPERATION_FAILED  Event not reset
  *
  *****************************************************************************/
-extern int32_t osEventReset(osEvent *pEvent);
+extern OSLAYER_STATUS osEventReset(osEvent *pEvent);
 
 /******************************************************************************
  *  osEventPulse()
@@ -321,7 +345,7 @@ extern int32_t osEventReset(osEvent *pEvent);
  *  @retval OSLAYER_OPERATION_FAILED  Event not pulsed
  *
  *****************************************************************************/
-extern int32_t osEventPulse(osEvent *pEvent);
+extern OSLAYER_STATUS osEventPulse(osEvent *pEvent);
 
 /******************************************************************************
  *  osEventWait()
@@ -340,7 +364,7 @@ extern int32_t osEventPulse(osEvent *pEvent);
  *  @retval OSLAYER_OPERATION_FAILED  Wait for event failed
  *
  *****************************************************************************/
-extern int32_t osEventWait(osEvent *pEvent);
+extern OSLAYER_STATUS osEventWait(osEvent *pEvent);
 
 /******************************************************************************
  *  osEventTimedWait()
@@ -365,7 +389,7 @@ extern int32_t osEventWait(osEvent *pEvent);
  *  @retval OSLAYER_OPERATION_FAILED  Wait for event failed
  *
  *****************************************************************************/
-extern int32_t osEventTimedWait(osEvent *pEvent, uint32_t msec);
+extern OSLAYER_STATUS osEventTimedWait(osEvent *pEvent, uint32_t msec);
 
 /******************************************************************************
  *  osEventDestroy()
@@ -378,7 +402,7 @@ extern int32_t osEventTimedWait(osEvent *pEvent, uint32_t msec);
  *
  *  @return             always OSLAYER_OK
  *****************************************************************************/
-extern int32_t osEventDestroy(osEvent *pEvent);
+extern OSLAYER_STATUS osEventDestroy(osEvent *pEvent);
 #endif
 
 
@@ -395,7 +419,7 @@ extern int32_t osEventDestroy(osEvent *pEvent);
  *  @retval OSLAYER_ERROR  Mutex is not created
  *
  *****************************************************************************/
-extern int32_t osMutexInit(osMutex *pMutex);
+extern OSLAYER_STATUS osMutexInit(osMutex *pMutex);
 
 /******************************************************************************
  *  osMutexLock()
@@ -410,7 +434,7 @@ extern int32_t osMutexInit(osMutex *pMutex);
  *  @retval OSLAYER_OK     Mutex successfully locked
  *
  *****************************************************************************/
-extern int32_t osMutexLock(osMutex *pMutex);
+extern OSLAYER_STATUS osMutexLock(osMutex *pMutex);
 
 /******************************************************************************
  *   osMutexUnlock()
@@ -423,7 +447,7 @@ extern int32_t osMutexLock(osMutex *pMutex);
  *  @retval OSLAYER_OK     Mutex successfully unlocked
  *
  *****************************************************************************/
-extern int32_t osMutexUnlock(osMutex *pMutex);
+extern OSLAYER_STATUS osMutexUnlock(osMutex *pMutex);
 
 /******************************************************************************
  *  osMutexTryLock()
@@ -440,7 +464,7 @@ extern int32_t osMutexUnlock(osMutex *pMutex);
  *                                    someone else)
  *
  *****************************************************************************/
-extern int32_t osMutexTryLock(osMutex *pMutex);
+extern OSLAYER_STATUS osMutexTryLock(osMutex *pMutex);
 
 /******************************************************************************
  *  osMutexDestroy()
@@ -451,7 +475,7 @@ extern int32_t osMutexTryLock(osMutex *pMutex);
  *
  *  @return             always OSLAYER_OK
  *****************************************************************************/
-extern int32_t osMutexDestroy(osMutex *pMutex);
+extern OSLAYER_STATUS osMutexDestroy(osMutex *pMutex);
 #endif
 
 
@@ -469,7 +493,7 @@ extern int32_t osMutexDestroy(osMutex *pMutex);
  *  @retval OSLAYER_ERROR  Semaphore is not created
  *
  *****************************************************************************/
-extern int32_t osSemaphoreInit(osSemaphore * pSem, int32_t init_count);
+extern OSLAYER_STATUS osSemaphoreInit(osSemaphore * pSem, uint32_t init_count);
 
 /******************************************************************************
  *  osSemaphoreTimedWait()
@@ -491,7 +515,7 @@ extern int32_t osSemaphoreInit(osSemaphore * pSem, int32_t init_count);
  *                                    semaphore
  *
  *****************************************************************************/
-extern int32_t osSemaphoreTimedWait(osSemaphore *pSem, uint32_t msec);
+extern OSLAYER_STATUS osSemaphoreTimedWait(osSemaphore *pSem, uint32_t msec);
 
 /******************************************************************************
  *  osSemaphoreWait()
@@ -510,7 +534,7 @@ extern int32_t osSemaphoreTimedWait(osSemaphore *pSem, uint32_t msec);
  *                                    semaphore
  *
  *****************************************************************************/
-extern int32_t osSemaphoreWait(osSemaphore *pSem);
+extern OSLAYER_STATUS osSemaphoreWait(osSemaphore *pSem);
 
 /******************************************************************************
  *  osSemaphoreTryWait()
@@ -534,7 +558,7 @@ extern int32_t osSemaphoreWait(osSemaphore *pSem);
  *                                    semaphore
  *
  *****************************************************************************/
-extern int32_t osSemaphoreTryWait(osSemaphore *pSem);
+extern OSLAYER_STATUS osSemaphoreTryWait(osSemaphore *pSem);
 
 /******************************************************************************
  *  osSemaphorePost()
@@ -550,7 +574,7 @@ extern int32_t osSemaphoreTryWait(osSemaphore *pSem);
  *  @retval OSLAYER_OPERATION_FAILED  Increase of semaphore value failed
  *
  *****************************************************************************/
-extern int32_t osSemaphorePost(osSemaphore *pSem);
+extern OSLAYER_STATUS osSemaphorePost(osSemaphore *pSem);
 
 /******************************************************************************
  *   osSemaphoreDestroy()
@@ -561,7 +585,7 @@ extern int32_t osSemaphorePost(osSemaphore *pSem);
  *
  *  @return             always OSLAYER_OK
  *****************************************************************************/
-extern int32_t osSemaphoreDestroy(osSemaphore *pSem);
+extern OSLAYER_STATUS osSemaphoreDestroy(osSemaphore *pSem);
 #endif
 
 
@@ -584,7 +608,7 @@ extern int32_t osSemaphoreDestroy(osSemaphore *pSem);
  *  @retval OSLAYER_ERROR  Queue is not created.
  *
  *****************************************************************************/
-extern int32_t osQueueInit(osQueue *pQueue, int32_t ItemNum, int32_t ItemSize);
+extern OSLAYER_STATUS osQueueInit(osQueue *pQueue, uint32_t ItemNum, uint32_t ItemSize);
 
 
 
@@ -605,19 +629,6 @@ extern int32_t osQueueInit(osQueue *pQueue, int32_t ItemNum, int32_t ItemSize);
 extern bool_t osQueueEmpty(osQueue *pQueue);
 
 /******************************************************************************
- *  osQueueFull()
- ******************************************************************************
- *  @brief  is the queue full.
- *
- *  return whether if the queue is osQueueFull .
- *
- *  @param  pQueue      Reference of the queue object
- *
- *  @return            Trune or False
- *****************************************************************************/
-extern int32_t osQueueFull(osQueue *pQueue);
-
-/******************************************************************************
  *  osQueueRead()
  *****************************************************************************
  *  @brief  Blocking read from the queue.
@@ -635,7 +646,7 @@ extern int32_t osQueueFull(osQueue *pQueue);
  *  @retval OSLAYER_OPERATION_FAILED  Reading from queue failed.
  *
  *****************************************************************************/
-extern int32_t osQueueRead(osQueue *pQueue, void *pvItem);
+extern OSLAYER_STATUS osQueueRead(osQueue *pQueue, void *pvItem);
 
 /******************************************************************************
  *  osQueueTimedRead()
@@ -658,7 +669,7 @@ extern int32_t osQueueRead(osQueue *pQueue, void *pvItem);
  *  @retval OSLAYER_OPERATION_FAILED  Reading from queue failed.
  *
  *****************************************************************************/
-extern int32_t osQueueTimedRead(osQueue *pQueue, void *pvItem, uint32_t msec);
+extern OSLAYER_STATUS osQueueTimedRead(osQueue *pQueue, void *pvItem, uint32_t msec);
 
 /******************************************************************************
  *  osQueueTryRead()
@@ -679,28 +690,7 @@ extern int32_t osQueueTimedRead(osQueue *pQueue, void *pvItem, uint32_t msec);
  *  @retval OSLAYER_OPERATION_FAILED  Reading from queue failed.
  *
  *****************************************************************************/
-extern int32_t osQueueTryRead(osQueue *pQueue, void *pvItem);
-
-/******************************************************************************
- *  osQueueTryReadInISR()
- ******************************************************************************
- *  @brief  Non-blocking read from the queue.
- *
- *  If an item is available in the queue, then copy item from queue. If no
- *  item is available, then return with error.
- *
- *  @param  pQueue                    Reference of the queue object.
- *
- *  @param  pvItem                    Reference to item to read from queue.
- *
- *  @return                           Status of operation.
- *  @retval OSLAYER_OK                Reading from queue succeeded.
- *  @retval OSLAYER_ERROR             Tried to read from a uninitialized queue.
- *  @retval OSLAYER_TIMEOUT           No item was available in the queue.
- *  @retval OSLAYER_OPERATION_FAILED  Reading from queue failed.
- *
- *****************************************************************************/
-extern int32_t osQueueTryReadInISR(osQueue *pQueue, void *pvItem);
+extern OSLAYER_STATUS osQueueTryRead(osQueue *pQueue, void *pvItem);
 
 /******************************************************************************
  *  osQueueWrite()
@@ -720,27 +710,9 @@ extern int32_t osQueueTryReadInISR(osQueue *pQueue, void *pvItem);
  *  @retval OSLAYER_OPERATION_FAILED  Writing into queue failed.
  *
  *****************************************************************************/
-extern int32_t osQueueWrite(osQueue *pQueue, void *pvItem);
+extern OSLAYER_STATUS osQueueWrite(osQueue *pQueue, void *pvItem);
 
-/******************************************************************************
- *  osQueueWriteInISR()
- ******************************************************************************
- *  @brief  Blocking write into the queue.
- *
- *  Wait for space in queue being available and block calling thread, then
- *  copy item into queue.
- *  The function call returns immediatly, if space is already available.
- *
- *  @param  pQueue                    Reference of the queue object.
- *  @param  pvItem                    Reference to item to write into queue.
- *
- *  @return                           Status of operation
- *  @retval OSLAYER_OK                Writing into queue succeeded.
- *  @retval OSLAYER_ERROR             Tried to write into a uninitialized queue
- *  @retval OSLAYER_OPERATION_FAILED  Writing into queue failed.
- *
- *****************************************************************************/
-extern int32_t osQueueWriteInISR(osQueue *pQueue, void *pvItem);
+OSLAYER_STATUS osQueueWriteFromISR(osQueue *pQueue, void* pvItem);
 
 /******************************************************************************
  *  osQueueTimedWrite()
@@ -763,7 +735,7 @@ extern int32_t osQueueWriteInISR(osQueue *pQueue, void *pvItem);
  *  @retval OSLAYER_OPERATION_FAILED  Writing into queue failed.
  *
  *****************************************************************************/
-extern int32_t osQueueTimedWrite(osQueue *pQueue, void *pvItem, uint32_t msec);
+extern OSLAYER_STATUS osQueueTimedWrite(osQueue *pQueue, void *pvItem, uint32_t msec);
 
 /******************************************************************************
  *  osQueueTryWrite()
@@ -786,7 +758,7 @@ extern int32_t osQueueTimedWrite(osQueue *pQueue, void *pvItem, uint32_t msec);
  *  @retval OSLAYER_OPERATION_FAILED  Writing into queue failed.
  *
  *****************************************************************************/
-extern int32_t osQueueTryWrite(osQueue *pQueue, void *pvItem);
+extern OSLAYER_STATUS osQueueTryWrite(osQueue *pQueue, void *pvItem);
 
 /******************************************************************************
  *  osQueueDestroy()
@@ -799,7 +771,10 @@ extern int32_t osQueueTryWrite(osQueue *pQueue, void *pvItem);
  *
  *  @return             always OSLAYER_OK
  *****************************************************************************/
-extern int32_t osQueueDestroy(osQueue *pQueue);
+extern OSLAYER_STATUS osQueueDestroy(osQueue *pQueue);
+#ifdef OSLAYER_QUEUE_DEBUG
+extern OSLAYER_STATUS osQueuePrintAll(void);
+#endif
 #endif
 
 
@@ -812,7 +787,7 @@ extern int32_t osQueueDestroy(osQueue *pQueue);
  *  This function must be called before any other osAtomicXXX call.
  *
  *****************************************************************************/
-extern int32_t osAtomicInit(void);
+extern OSLAYER_STATUS osAtomicInit(void);
 
 /******************************************************************************
  *  osAtomicShutdown()
@@ -823,7 +798,7 @@ extern int32_t osAtomicInit(void);
  *  when osAtomicInit has been called before.
  *
  *****************************************************************************/
-extern int32_t osAtomicShutdown(void);
+extern OSLAYER_STATUS osAtomicShutdown(void);
 
 /******************************************************************************
  *  osAtomicTestAndClearBit()
@@ -839,7 +814,7 @@ extern int32_t osAtomicShutdown(void);
  *  @return                *pVar & (1 << bitpos)
  *
  *****************************************************************************/
-extern uint32_t osAtomicTestAndClearBit(uint32_t *pVar, uint32_t bitpos);
+extern OSLAYER_STATUS osAtomicTestAndClearBit(uint32_t *pVar, uint32_t bitpos);
 
 /******************************************************************************
  *  osAtomicIncrement()
@@ -855,7 +830,7 @@ extern uint32_t osAtomicTestAndClearBit(uint32_t *pVar, uint32_t bitpos);
  *  @return                ++(*pVar)
  *
  *****************************************************************************/
-extern uint32_t osAtomicIncrement(uint32_t *pVar);
+extern OSLAYER_STATUS osAtomicIncrement(uint32_t *pVar);
 
 /******************************************************************************
  *  osAtomicDecrement()
@@ -871,7 +846,7 @@ extern uint32_t osAtomicIncrement(uint32_t *pVar);
  *  @return                --(*pVar)
  *
  *****************************************************************************/
-extern uint32_t osAtomicDecrement(uint32_t *pVar);
+extern OSLAYER_STATUS osAtomicDecrement(uint32_t *pVar);
 
 /******************************************************************************
  *  osAtomicSetBit()
@@ -886,7 +861,7 @@ extern uint32_t osAtomicDecrement(uint32_t *pVar);
  *
  *  @return                always OSLAYER_OK
  *****************************************************************************/
-extern int32_t osAtomicSetBit(uint32_t *pVar, uint32_t bitpos);
+extern OSLAYER_STATUS osAtomicSetBit(uint32_t *pVar, uint32_t bitpos);
 
 /******************************************************************************
  * osAtomicSet()
@@ -901,7 +876,7 @@ extern int32_t osAtomicSetBit(uint32_t *pVar, uint32_t bitpos);
  *
  *  @return                always OSLAYER_OK
  *****************************************************************************/
-extern int32_t osAtomicSet(uint32_t *pVar, uint32_t value);
+extern OSLAYER_STATUS osAtomicSet(uint32_t *pVar, uint32_t value);
 #endif
 
 
@@ -918,7 +893,7 @@ extern int32_t osAtomicSet(uint32_t *pVar, uint32_t value);
  *  @retval OSLAYER_OPERATION_FAILED  Creation of thread object failed
  *
  *****************************************************************************/
-extern int32_t osThreadCreate(osThread *pThread, osThreadFunc thread_func,
+extern OSLAYER_STATUS osThreadCreate(osThread *pThread, osThreadFunc thread_func,
 				void *arg);
 
 /******************************************************************************
@@ -936,7 +911,7 @@ extern int32_t osThreadCreate(osThread *pThread, osThreadFunc thread_func,
  *  @retval OSLAYER_OPERATION_FAILED  Thread priority change failed
  *
  *****************************************************************************/
-extern int32_t osThreadSetPriority(osThread *pThread,
+extern OSLAYER_STATUS osThreadSetPriority(osThread *pThread,
 				OSLAYER_THREAD_PRIO priority);
 
 /******************************************************************************
@@ -951,7 +926,8 @@ extern int32_t osThreadSetPriority(osThread *pThread,
  *
  *  @return                always OSLAYER_OK
  *****************************************************************************/
-extern int32_t osThreadWait(osThread *pThread);
+extern OSLAYER_STATUS osThreadWait(osThread *pThread);
+extern OSLAYER_STATUS osThreadTimedWait(osThread *pThread, uint32_t msec);
 
 /******************************************************************************
  *  osThreadClose()
@@ -962,8 +938,27 @@ extern int32_t osThreadWait(osThread *pThread);
  *
  *  @return               always OSLAYER_OK
  *****************************************************************************/
-extern int32_t osThreadClose(osThread *pThread);
+extern OSLAYER_STATUS osThreadClose(osThread *pThread);
+extern OSLAYER_STATUS osThreadCancel(osThread *pThread);
+extern OSLAYER_STATUS osThreadTimedClose(osThread *pThread, uint32_t msec);
 #endif
+
+OSLAYER_STATUS osTaskNotifyWait(uint32_t ulBitsToClearOnEntry, uint32_t ulBitsToClearOnExit,
+				uint32_t *pulNotificationValue, osTickType xTicksToWait);
+void osTaskDelete(osThread *pThread);
+void osTaskDelay(uint32_t msec);
+OSLAYER_STATUS osTaskNotifyFromISR(osTaskHandle *pxTaskToNotify, uint32_t ulValue,
+				osTaskNotificationAction eAction, osBaseType *pxHigherPriorityTaskWoken);
+void osPortYieldFromISR(osBaseType *pxHigherPriorityTaskWoken);
+void osTaskYield(void);
+OSLAYER_STATUS osPortInstallInterruptHandler(uint16_t ucInterruptID, XInterruptHandler pxHandler, void *pvCallBackRef);
+OSLAYER_STATUS osPortEnableInterrupt(uint16_t ucInterruptID);
+OSLAYER_STATUS osPortDisableInterrupt(uint16_t ucInterruptID);
+#if(SAFERTOS)
+OSLAYER_STATUS osPortSetInterruptPriority(uint16_t uxInterruptID, portUInt32Type ulPriority);
+#endif
+OSLAYER_STATUS osInitScheduler();
+OSLAYER_STATUS osStartScheduler();
 
 
 #ifdef OSLAYER_MISC
@@ -976,7 +971,7 @@ extern int32_t osThreadClose(osThread *pThread);
  *
  *  @return            always OSLAYER_OK
  *****************************************************************************/
-extern int32_t osSleep(uint32_t msec);
+extern OSLAYER_STATUS osSleep(uint32_t msec);
 
 /******************************************************************************
  *   osGetTick()
@@ -1021,7 +1016,7 @@ void *osMallocEx(uint32_t size, uint32_t type);
  *  @param  size       Size of memory block to be allocated
  *
  *****************************************************************************/
-extern void *osMalloc(uint32_t size);
+extern void *osMalloc(size_t size);
 
 /******************************************************************************
  *  osFree()
@@ -1032,7 +1027,7 @@ extern void *osMalloc(uint32_t size);
  *
  *  @return         always OSLAYER_OK
  *****************************************************************************/
-extern int32_t osFree(void *p);
+extern OSLAYER_STATUS osFree(void *p);
 
 
 #ifdef OSLAYER_KERNEL
@@ -1045,7 +1040,7 @@ extern int32_t osFree(void *p);
  *
  *  @return                  always OSLAYER_OK
  *****************************************************************************/
-extern int32_t osSpinLockInit(osSpinLock * p_spin_lock);
+extern OSLAYER_STATUS osSpinLockInit(osSpinLock * p_spin_lock);
 
 /******************************************************************************
  *  osSpinLockAcquire()
@@ -1059,7 +1054,7 @@ extern int32_t osSpinLockInit(osSpinLock * p_spin_lock);
  *
  *  @return                  always OSLAYER_OK
  *****************************************************************************/
-extern int32_t osSpinLockAcquire(osSpinLock *p_spin_lock, uint32_t flags);
+extern OSLAYER_STATUS osSpinLockAcquire(osSpinLock *p_spin_lock, uint32_t flags);
 
 /******************************************************************************
  *   osSpinLockRelease()
@@ -1073,10 +1068,39 @@ extern int32_t osSpinLockAcquire(osSpinLock *p_spin_lock, uint32_t flags);
  *
  *  @return                  always OSLAYER_OK
  *****************************************************************************/
-extern int32_t osSpinLockRelease(osSpinLock *p_spin_lock, uint32_t flags);
+extern OSLAYER_STATUS osSpinLockRelease(osSpinLock *p_spin_lock, uint32_t flags);
 
 #endif
 #endif
+
+#ifdef OS_FILE_SYSTEM_SUPPORT
+typedef struct _osFile
+{
+#ifdef LINUX
+	FILE *file;
+#endif
+#if defined(FREERTOS) || defined(SAFERTOS)
+	FIL file;
+#endif
+} osFile;
+
+osFile* osFopen(const char *filename, const char *mode);
+void osFclose(osFile* pVsiFile);
+size_t osFread(void* ptr, size_t size, size_t count, osFile* pVsiFile);
+size_t osFwrite(const void* ptr, size_t size, size_t count, osFile* pVsiFile);
+int osFseek(osFile* pVsiFile, long int offset, int origin);
+long int osFtell(osFile* pVsiFile);
+long int osFileSize(osFile* pVsiFile);
+int osFeof(osFile* pVsiFile);
+int osFerror(osFile* pVsiFile);
+int osFgetc(osFile* pVsiFile);
+char* osFgets(char* str, int size, osFile* pVsiFile);
+int osFputs(const char* str, osFile* file);
+int osFscanf(osFile* pVsiFile, const char* format, ...);
+int osFprintf(osFile* pVsiFile, const char* format, ...);
+#endif
+
+void osUSleep(unsigned int microseconds);
 
 #ifdef __cplusplus
 }

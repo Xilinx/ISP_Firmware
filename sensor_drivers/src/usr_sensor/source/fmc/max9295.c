@@ -256,6 +256,8 @@ RESULT max9295_init(struct serializer_driver *ser_inst)
 {
 	RESULT Status = RET_SUCCESS;
 
+	TRACE(MAX_9295_INFO, "%s (enter)\n", __func__);
+
 	if (ser_inst == NULL) {
 		TRACE(MAX_9295_ERROR, "%s: ser_inst is NULL\n", __func__);
 		return RET_NULL_POINTER;
@@ -276,8 +278,8 @@ RESULT max9295_init(struct serializer_driver *ser_inst)
 		len = ser_inst->init_array_len;
 
 #if defined(READ_I2C_REG)
-		TRACE(MAX_9295_ALWAYS, "Initializing Serializer(%s) at
-				Virtual Address = 0x%x on Serial Link %c...\n\r",
+		TRACE(MAX_9295_ALWAYS, "Initializing Serializer(%s) at "
+				"Virtual Address = 0x%x on Serial Link %c...\n\r",
 				ser_inst->name, ser_addr,
 				(ser_inst->link_lane == LINK_A)?'A':'B');
 #endif
@@ -299,12 +301,15 @@ RESULT max9295_init(struct serializer_driver *ser_inst)
 		    0x2, wr_data, 1);
 			if (Status != RET_SUCCESS) {
 				TRACE(MAX_9295_ERROR,
-				      "%s: HalWriteI2CReg failed at reg_index %lu, addr 0x%x (error=%d)\n",
+				      "%s: serializer init write failed at reg_index %lu, addr 0x%x (error=%d)\n",
 				      __func__,
 				      (unsigned long)reg_index,
 				      (Serializer_initialization
 				       + reg_index)->addr,
 				      Status);
+				report_pipeline_fault("MAX9295 serializer", "serializer initialisation",
+					"The serializer did not accept its init sequence over I2C - the camera link is absent or defective.",
+					"Check the camera cable and the serializer link/power, then power-cycle the board.");
 				return Status;
 			}
 
@@ -314,12 +319,15 @@ RESULT max9295_init(struct serializer_driver *ser_inst)
 		    0x2, rd_data, 1);
 			if (Status != RET_SUCCESS) {
 				TRACE(MAX_9295_ERROR,
-				      "%s: HalReadI2CReg failed at reg_index %lu, addr 0x%x (error=%d)\n",
+				      "%s: serializer init read-back failed at reg_index %lu, addr 0x%x (error=%d)\n",
 				      __func__,
 				      (unsigned long)reg_index,
 				      (Serializer_initialization
 				       + reg_index)->addr,
 				      Status);
+				report_pipeline_fault("MAX9295 serializer", "serializer initialisation",
+					"The serializer did not respond during init read-back over I2C - the camera link is absent or defective.",
+					"Check the camera cable and the serializer link/power, then power-cycle the board.");
 				return Status;
 			}
 
@@ -341,6 +349,7 @@ RESULT max9295_init(struct serializer_driver *ser_inst)
 		      ser_inst->ser_state);
 	}
 
+	TRACE(MAX_9295_INFO, "%s (exit)\n", __func__);
 	return Status;
 }
 
@@ -360,6 +369,8 @@ RESULT max9295_deinit(struct serializer_driver *ser_inst)
 {
 	RESULT Status = RET_SUCCESS;
 
+	TRACE(MAX_9295_INFO, "%s (enter)\n", __func__);
+
 	if (ser_inst == NULL) {
 		TRACE(MAX_9295_ERROR, "%s: ser_inst is NULL\n", __func__);
 		return RET_NULL_POINTER;
@@ -372,12 +383,16 @@ RESULT max9295_deinit(struct serializer_driver *ser_inst)
 	Status = HalWriteI2CReg(ser_inst->bus_num, ser_addr, 0x10, 0x2, wr_data, 1);
 	if (Status != RET_SUCCESS) {
 		TRACE(MAX_9295_ERROR,
-			 "%s: HalWriteI2CReg failed for deinit reset (error=%d)\n",
-			 	__func__, Status);
+			 "%s: serializer reset (deinit) write failed at 0x%02x (error=%d)\n",
+			 	__func__, (ser_addr << 1), Status);
+		report_pipeline_fault("MAX9295 serializer", "serializer deinit",
+			"The serializer did not accept the reset (deinit) write over I2C - the camera link is absent or defective.",
+			"Check the camera cable and the serializer link/power, then power-cycle the board.");
 		return Status;
 	}
 
 	ser_inst->ser_state = in_deinit;
 
+	TRACE(MAX_9295_INFO, "%s (exit)\n", __func__);
 	return Status;
 }

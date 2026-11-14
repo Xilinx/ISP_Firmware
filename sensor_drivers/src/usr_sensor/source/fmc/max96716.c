@@ -24,6 +24,7 @@
  *
  *************************************************************************/
 #include <fmc/max96716.h>
+#include <fmc/fmc_config.h>
 
 CREATE_TRACER(MAX_96716_INFO, "MAX_96716_INFO: ", INFO, 1);
 CREATE_TRACER(MAX_96716_WARNING, "MAX_96716_WARNING: ", WARNING, 1);
@@ -32,6 +33,16 @@ CREATE_TRACER(MAX_96716_ALWAYS, "MAX_96716_ALWAYS: ", ALWAYS, 1);
 
 static u32 fmcinitDone;
 static u32 core_des_status;
+
+extern RESULT check_ser_id(u8 i2cBusId, u8 ser7bit, const char *link_tag);
+
+/* Common deserializer identity / FMC-identification check (implemented in
+ * ms_fw.c and shared by both FMC drivers). Reads the DEV_ID register (0x0D)
+ * to read the Des native slave address (register 0x00) and fail if it does not
+ * match the address defined for this Des index, i.e. the wrong deserializer is
+ * being remapped. */
+extern RESULT verify_deser_identity(u8 i2cBusId, desInterface *desIface,
+				    const char *fmc_name, u8 addr_mask);
 
 IsiFmc_t g_fmc_max96716 = {
 	.FmcName                       = "max96716_xylon_fmc",
@@ -242,6 +253,8 @@ void max96716_on_board_topology(void)
 {
 	u8 des_idx = 0;
 
+	TRACE(MAX_96716_INFO, "%s (enter)\n", __func__);
+
 	TRACE(MAX_96716_ALWAYS, "\n\r	New fmc - Max96716\n");
 	TRACE(MAX_96716_ALWAYS, "\n\r	On-Board Sensor Status==>");
 	TRACE(MAX_96716_ALWAYS,
@@ -262,6 +275,8 @@ void max96716_on_board_topology(void)
 					des_idx + 1);
 		}
 	}
+
+	TRACE(MAX_96716_INFO, "%s (exit)\n", __func__);
 }
 
 /**************************************************************************
@@ -274,12 +289,16 @@ void max96716_on_board_topology(void)
  *************************************************************************/
 void max96716_WrFmcDataTo_sharedmem(void)
 {
+	TRACE(MAX_96716_INFO, "%s (enter)\n", __func__);
+
 	byte_memcpy(SHARED_DES_ARRAY_SRUCT,
 		max96716_des_arr,
 		sizeof(max96716_des_arr));
 	TRACE(MAX_96716_ALWAYS,
 		"Des-arr loaded by Core-%x for all cores\r\n",
 		cpu_id);
+
+	TRACE(MAX_96716_INFO, "%s (exit)\n", __func__);
 }
 
 /**************************************************************************
@@ -292,12 +311,16 @@ void max96716_WrFmcDataTo_sharedmem(void)
  *************************************************************************/
 void max96716_RdFmcReadFrom_sharedmem(void)
 {
+	TRACE(MAX_96716_INFO, "%s (enter)\n", __func__);
+
 	byte_memcpy(max96716_des_arr,
 		SHARED_DES_ARRAY_SRUCT,
 		sizeof(max96716_des_arr));
 	TRACE(MAX_96716_ALWAYS,
 		"Des-arr loaded for Core-%x \r\n",
 		cpu_id);
+
+	TRACE(MAX_96716_INFO, "%s (exit)\n", __func__);
 }
 
 /**************************************************************************
@@ -326,6 +349,8 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 	u8 wr_data[2] =	{0};
 	HalI2cConfig_t i2cConfig;
 
+	TRACE(MAX_96716_INFO, "%s (enter)\n", __func__);
+
 	get_fmcinit_lock();
 
 	if (*FMC_INIT_STATUS_REG == 1)
@@ -348,8 +373,13 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 		Status = HalWriteI2CReg(IIC_INSTANCE_ZERO, potent_addr,
 			register_addr, MAX96716_FMC_REG_ADDR_SIZE, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failedaddr=0x%x (err=%d)\n",
-				 __func__, __LINE__, potent_addr, Status);
+			TRACE(MAX_96716_ERROR,
+				"%s:%d MAX96716 FMC bring-up failed: potentiometer at 0x%02x did "
+				"not accept an I2C write on bus %d (err=%d).\r\n",
+				__func__, __LINE__, potent_addr, IIC_INSTANCE_ZERO, Status);
+			report_pipeline_fault("MAX96716 FMC", "FMC power / bring-up",
+				"The FMC card is not responding on I2C - it is most likely not seated or not powered.",
+				"Re-seat the MAX96716 FMC card and check its power, then power-cycle the board.");
 			return Status;
 		}
 
@@ -358,7 +388,7 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 		Status = HalReadI2CReg(IIC_INSTANCE_ZERO, potent_addr,
 			 register_addr, MAX96716_FMC_REG_ADDR_SIZE, read_data, bytes_read);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failedaddr=0x%x (err=%d)\n",
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
 				__func__, __LINE__, potent_addr, Status);
 			return Status;
 		}
@@ -379,22 +409,18 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 			return Status;
 		}
 
-		TRACE(MAX_96716_INFO,
-			"ldac before: Data Read is:[0]:0x%x\r\n",
-			read_data[0]);
-		TRACE(MAX_96716_INFO,
-			"ldac : Data Read is:[1]:0x%x\r\n",
-			read_data[1]);
-
 		wr_data[0]	= MAX96716_LDAC_WR_VAL;
 		wr_data[1]	= MAX96716_LDAC_WR_VAL;
 		Status = HalWriteI2CReg(IIC_INSTANCE_ZERO, ldac_addr, register_addr,
 				MAX96716_FMC_REG_ADDR_SIZE, wr_data, 2);
 		if (Status != RET_SUCCESS) {
 			TRACE(MAX_96716_ERROR,
-				"%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__,
-				ldac_addr, Status);
+				"%s:%d MAX96716 FMC bring-up failed: LDAC/DAC at 0x%02x did not "
+				"accept an I2C write (err=%d).\r\n",
+				__func__, __LINE__, ldac_addr, Status);
+			report_pipeline_fault("MAX96716 FMC", "FMC power / bring-up",
+				"The FMC card's DAC did not respond on I2C - the card may not be seated or powered.",
+				"Re-seat the MAX96716 FMC card and check its power, then power-cycle the board.");
 			return Status;
 		}
 
@@ -408,12 +434,6 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 			return Status;
 		}
 
-		TRACE(MAX_96716_INFO,
-			"ldac : after Data Read is:[0]:0x%x\r\n",
-			read_data[0]);
-		TRACE(MAX_96716_INFO,
-			"ldac : Data Read is:[1]:0x%x\r\n",
-			read_data[1]);
 
 	ldac_addr	= MAX96716_LDAC_ADDR;
 	register_addr	= MAX96716_LDAC_MODE_REG;
@@ -422,13 +442,10 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 			ldac_addr, register_addr,
 			MAX96716_FMC_REG_ADDR_SIZE, read_data, 2);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ldac_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, register_addr, Status);
 			return Status;
 		}
-
-		TRACE(MAX_96716_INFO, "before Data Read is:[0]:0x%x\r\n", read_data[0]);
-		TRACE(MAX_96716_INFO, "Data Read is:[1]:0x%x\r\n", read_data[1]);
 
 		wr_data[0]	= MAX96716_LDAC_WR_VAL;
 		wr_data[1]	= MAX96716_LDAC_WR_VAL;
@@ -437,9 +454,12 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 			MAX96716_FMC_REG_ADDR_SIZE, wr_data, 2);
 		if (Status != RET_SUCCESS) {
 			TRACE(MAX_96716_ERROR,
-				"%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__,
-				ldac_addr, Status);
+				"%s:%d MAX96716 FMC bring-up failed: LDAC/DAC mode-set at 0x%02x "
+				"did not accept an I2C write (err=%d).\r\n",
+				__func__, __LINE__, ldac_addr, Status);
+			report_pipeline_fault("MAX96716 FMC", "FMC power / bring-up",
+				"The FMC card's DAC did not respond on I2C - the card may not be seated or powered.",
+				"Re-seat the MAX96716 FMC card and check its power, then power-cycle the board.");
 			return Status;
 		}
 
@@ -447,8 +467,8 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 			ldac_addr, register_addr,
 			MAX96716_FMC_REG_ADDR_SIZE, read_data, 2);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ldac_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, register_addr, Status);
 			return Status;
 		}
 
@@ -526,9 +546,12 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 			MAX96716_FMC_REG_ADDR_SIZE, wr_data, 1);
 		if (Status != RET_SUCCESS) {
 			TRACE(MAX_96716_ERROR,
-				"%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__,
-				expander_addr, Status);
+				"%s:%d MAX96716 FMC bring-up failed: I/O expander (config) at 0x%02x "
+				"did not accept an I2C write (err=%d).\r\n",
+				__func__, __LINE__, expander_addr, Status);
+			report_pipeline_fault("MAX96716 FMC", "FMC I/O expander",
+				"The FMC I/O expander did not respond on I2C - the card may not be seated or powered.",
+				"Re-seat the MAX96716 FMC card and check its power, then power-cycle the board.");
 			return Status;
 		}
 
@@ -547,8 +570,8 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 		Status = HalReadI2CReg(IIC_INSTANCE_ZERO, expander_addr,
 			 register_addr, MAX96716_FMC_REG_ADDR_SIZE, read_data, bytes_read);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, expander_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, register_addr, Status);
 			return Status;
 		}
 		TRACE(MAX_96716_INFO, "expander 0x0c: after :0x%x\n", read_data[0]);
@@ -567,8 +590,8 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 		Status = HalReadI2CReg(IIC_INSTANCE_ZERO, expander_addr,
 			 register_addr, MAX96716_FMC_REG_ADDR_SIZE, read_data, bytes_read);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, expander_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, register_addr, Status);
 			return Status;
 		}
 		TRACE(MAX_96716_INFO, "expander 0x04: before :0x%x\n", read_data[0]);
@@ -582,9 +605,12 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 			MAX96716_FMC_REG_ADDR_SIZE, wr_data, 1);
 		if (Status != RET_SUCCESS) {
 			TRACE(MAX_96716_ERROR,
-				"%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__,
-				expander_addr, Status);
+				"%s:%d MAX96716 FMC: failed to switch ON camera/deserializer power "
+				"via I/O expander 0x%02x (err=%d).\r\n",
+				__func__, __LINE__, expander_addr, Status);
+			report_pipeline_fault("MAX96716 FMC", "camera power enable",
+				"The camera power supply could not be switched on through the FMC I/O expander.",
+				"Re-seat the MAX96716 FMC card and camera cabling, check power, then power-cycle the board.");
 			return Status;
 		}
 
@@ -593,8 +619,8 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 		Status = HalReadI2CReg(IIC_INSTANCE_ZERO, expander_addr,
 			 register_addr, MAX96716_FMC_REG_ADDR_SIZE, read_data, bytes_read);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, expander_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, register_addr, Status);
 			return Status;
 		}
 
@@ -647,29 +673,44 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 		u8 map_idx, des_iter;
 		bool_t core_found = BOOL_FALSE;
 
-		TRACE(MAX_96716_INFO, "Inside %s and Value of array: %d\n",
-			__func__, MAX96716_CORE_DES_MAP_SIZE);
+		/* Prefer the core->DES->I2C-bus map carried in the .bin; fall
+		 * back to the compiled max96716_core_des_map when no .bin is
+		 * applied. This makes each deserializer use the I2C bus the
+		 * .bin (i.e. the .xsa) specifies. */
+		const core_des_mapping_t *active_map = max96716_core_des_map;
+		u8 active_map_size = MAX96716_CORE_DES_MAP_SIZE;
+		int bin_core_cnt = 0;
+		const core_des_mapping_t *bin_map =
+			fmc_config_get_core_map(&bin_core_cnt);
 
-		for (map_idx = 0; map_idx < MAX96716_CORE_DES_MAP_SIZE; map_idx++) {
-			if (max96716_core_des_map[map_idx].core_id == cpu_id) {
+		if ((bin_map != NULL) && (bin_core_cnt > 0)) {
+			active_map = bin_map;
+			active_map_size = (u8)bin_core_cnt;
+		}
+
+		TRACE(MAX_96716_INFO, "Inside %s and Value of array: %d\n",
+			__func__, active_map_size);
+
+		for (map_idx = 0; map_idx < active_map_size; map_idx++) {
+			if (active_map[map_idx].core_id == cpu_id) {
 				core_found = BOOL_TRUE;
 				TRACE(MAX_96716_INFO,
 					"Core %d remapping %d deserializers\r\n",
 					cpu_id,
-					max96716_core_des_map[map_idx]
+					active_map[map_idx]
 					.num_deserializers);
 
 				u8 num_des =
-					max96716_core_des_map[map_idx]
+					active_map[map_idx]
 					.num_deserializers;
 				for (des_iter = 0;
 					des_iter < num_des;
 					des_iter++) {
 					u8 des_idx =
-						max96716_core_des_map[map_idx]
+						active_map[map_idx]
 						.des_indices[des_iter];
 					u8 i2c_bus =
-						max96716_core_des_map[map_idx]
+						active_map[map_idx]
 						.i2cBusIds[des_iter];
 
 					memset(&i2cConfig, 0, sizeof(HalI2cConfig_t));
@@ -682,10 +723,14 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 
 					if (result != RET_SUCCESS) {
 						TRACE(MAX_96716_ERROR,
-							"%s: Failed to init I2C bus %d (err=%d)\n",
+							"%s: Failed to initialise AXI I2C bus %d for the deserializer (err=%d)\n",
 							__func__,
 							i2cConfig.i2cBusId,
 							result);
+						report_pipeline_fault("MAX96716 FMC",
+							"AXI I2C bus initialisation",
+							"The AXI I2C controller used to reach this deserializer could not be initialised.",
+							"Check the hardware design/bitstream provides this I2C bus, then rebuild/reload and power-cycle the board.");
 						return RET_FAILURE;
 					}
 
@@ -704,6 +749,19 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 							"    [status: 0x%08x, mask: 0x%08x]\r\n",
 							*DES_REMAPPED_STATUS_REG,
 							ndes_bit_mask);
+						continue;
+					}
+
+					/* Skip a DES with no sensor ONLY when a .bin is loaded (the
+					 * loader sets link_type from it). Without a .bin every DES
+					 * keeps its compile-time link_type = NO_LINK, so skipping
+					 * here would drop all of them; fall through and use the
+					 * compile-time defaults instead. */
+					if (fmc_config_is_loaded() &&
+					    (max96716_des_arr[des_idx].link_type == NO_LINK)) {
+						TRACE(MAX_96716_ALWAYS,
+							"Skipping DS_%d - no sensor mapped in .bin (link_type=NO_LINK)\r\n",
+							des_idx + 1);
 						continue;
 					}
 
@@ -728,7 +786,7 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 		}
 
 		core_des_status = 1;
-		max96716_on_board_topology();
+		//max96716_on_board_topology();
 
 		max96716_WrFmcDataTo_sharedmem();
 		TRACE(MAX_96716_ALWAYS,
@@ -743,6 +801,7 @@ RESULT max96716_Xylon_Fmc_Setup(int ndes_arr_id)
 	release_fmcinit_lock();
 
 	TRACE(MAX_96716_ALWAYS, "FMC init Lock Released \r\n");
+	TRACE(MAX_96716_INFO, "%s (exit)\n", __func__);
 	return Status;
 }
 
@@ -769,11 +828,18 @@ RESULT max96716_enable_link(u8 i2c_bus_id, u8 Deser_addr, u8 link_type)
 
 	u16 reg_addr = CTRL0_REG;
 
+	TRACE(MAX_96716_INFO, "%s (enter)\n", __func__);
+
 	Status = HalReadI2CReg(i2c_bus_id, Deser_addr, reg_addr, 0x2,
 			read_data, 1);
 	if (Status != RET_SUCCESS) {
-		TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
+		TRACE(MAX_96716_ERROR,
+			"%s:%d MAX96716 link enable failed: deserializer at 0x%02x did not "
+			"respond over I2C (err=%d).\r\n",
 			__func__, __LINE__, Deser_addr, Status);
+		report_pipeline_fault("MAX96716 deserializer", "camera link enable",
+			"The deserializer did not respond while enabling the camera link.",
+			"Check the FMC seating and the camera cable/link, then power-cycle the board.");
 		return Status;
 	}
 
@@ -782,16 +848,16 @@ RESULT max96716_enable_link(u8 i2c_bus_id, u8 Deser_addr, u8 link_type)
 	Status = HalWriteI2CReg(i2c_bus_id, Deser_addr, reg_addr, 0x2,
 			wr_data, 1);
 	if (Status != RET_SUCCESS) {
-		TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-			__func__, __LINE__, Deser_addr, Status);
+		TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+			__func__, __LINE__, reg_addr, Status);
 		return Status;
 	}
 
 	Status = HalReadI2CReg(i2c_bus_id, Deser_addr, reg_addr, 0x2,
 			read_data, 1);
 	if (Status != RET_SUCCESS) {
-		TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-			__func__, __LINE__, Deser_addr, Status);
+		TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+			__func__, __LINE__, reg_addr, Status);
 		return Status;
 	}
 
@@ -803,8 +869,8 @@ RESULT max96716_enable_link(u8 i2c_bus_id, u8 Deser_addr, u8 link_type)
 	Status = HalReadI2CReg(i2c_bus_id, Deser_addr, reg_addr, 0x2,
 			read_data, 1);
 	if (Status != RET_SUCCESS) {
-		TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-			__func__, __LINE__, Deser_addr, Status);
+		TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+			__func__, __LINE__, reg_addr, Status);
 		return Status;
 	}
 
@@ -814,16 +880,16 @@ RESULT max96716_enable_link(u8 i2c_bus_id, u8 Deser_addr, u8 link_type)
 	Status = HalWriteI2CReg(i2c_bus_id, Deser_addr, reg_addr, 0x2,
 			wr_data, 1);
 	if (Status != RET_SUCCESS) {
-		TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-			__func__, __LINE__, Deser_addr, Status);
+		TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+			__func__, __LINE__, reg_addr, Status);
 		return Status;
 	}
 
 	Status = HalReadI2CReg(i2c_bus_id, Deser_addr, reg_addr, 0x2,
 			read_data, 1);
 	if (Status != RET_SUCCESS) {
-		TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-			__func__, __LINE__, Deser_addr, Status);
+		TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+			__func__, __LINE__, reg_addr, Status);
 		return Status;
 	}
 	TRACE(MAX_96716_INFO, "GMSL1_EN =%x\n\r", read_data[0]);
@@ -834,8 +900,8 @@ RESULT max96716_enable_link(u8 i2c_bus_id, u8 Deser_addr, u8 link_type)
 		reg_addr = CTRL0_REG;
 		Status = HalReadI2CReg(i2c_bus_id, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -846,8 +912,8 @@ RESULT max96716_enable_link(u8 i2c_bus_id, u8 Deser_addr, u8 link_type)
 		Status = HalWriteI2CReg(i2c_bus_id, Deser_addr, reg_addr, 0x2,
 				wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 	} else {
@@ -856,8 +922,8 @@ RESULT max96716_enable_link(u8 i2c_bus_id, u8 Deser_addr, u8 link_type)
 		reg_addr = CTRL1_REG;
 		Status = HalReadI2CReg(i2c_bus_id, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -867,20 +933,20 @@ RESULT max96716_enable_link(u8 i2c_bus_id, u8 Deser_addr, u8 link_type)
 		wr_data[0] = read_data[0];
 		Status = HalWriteI2CReg(i2c_bus_id, Deser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
 		Status = HalReadI2CReg(i2c_bus_id, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
-		TRACE(MAX_96716_INFO, "CTRL1 =%x\n\r", read_data[0]);
 	}
 
+	TRACE(MAX_96716_INFO, "%s (exit)\n", __func__);
 	return Status;
 }
 
@@ -902,89 +968,112 @@ RESULT max96716_probe_if_links(u8 Deser_addr, desInterface *desIface)
 	RESULT Status = RET_SUCCESS;
 
 	u8 read_data[2] = {0};
-	const TickType_t xDelay2 = MAX96716_PROBE_DELAY_MS;
+	const osTickType xDelay2 = MAX96716_PROBE_DELAY_MS;
 	u16 reg_addr;
 	u8 i2cBusId = GetI2cBusIdForDes(desIface->Port_DES_index);
+
+	/* Link type comes from the .bin: a link exists only when the config
+	 * gave it a serializer address (!= 0). Enable/probe only those links,
+	 * so an empty link (0x00) can never force splitter mode. */
+	u8 cfg_a = (desIface->link_a.serializer_default_addr != 0U) ? TRUE : FALSE;
+	u8 cfg_b = (desIface->link_b.serializer_default_addr != 0U) ? TRUE : FALSE;
 
 	u8 dev_a = FALSE;
 	u8 dev_b = FALSE;
 
-	u8 itr_num = 1;
+	u8 itr_num;
 
-	TRACE(MAX_96716_INFO, "Inside %s and I2C busid: %d\n", __func__, i2cBusId);
-	max96716_enable_link(i2cBusId, Deser_addr, LINK_A);
+	TRACE(MAX_96716_INFO, "%s (enter) DS_%d\n", __func__,
+		desIface->Port_DES_index + 1);
 
-	while (1) {
+	if (cfg_a == TRUE) {
+		itr_num = 1;
+		max96716_enable_link(i2cBusId, Deser_addr, LINK_A);
+
+		while (1) {
 #if defined(READ_I2C_REG)
-		TRACE(MAX_96716_INFO,
-			"\n\rProbing sensor on link-A of Des%d ",
-			desIface->Port_DES_index + 1);
+			TRACE(MAX_96716_INFO,
+				"\n\rProbing sensor on link-A of Des%d ",
+				desIface->Port_DES_index + 1);
 #endif
-		osSleep(xDelay2);
+			osSleep(xDelay2);
 
-		reg_addr = CTRL3_REG;
-		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr,
-				0x2, read_data, 1);
-		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
-			return Status;
-		}
+			reg_addr = CTRL3_REG;
+			Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr,
+					0x2, read_data, 1);
+			if (Status != RET_SUCCESS) {
+				TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+					__func__, __LINE__, reg_addr, Status);
+				return Status;
+			}
 
 #if defined(READ_I2C_REG)
-		TRACE(MAX_96716_INFO, "CTRL3_REG =%x\n\r", read_data[0]);
+			TRACE(MAX_96716_INFO, "CTRL3_REG =%x\n\r", read_data[0]);
 #endif
-		if ((read_data[0] & (1 << LOCKED)) == (1 << LOCKED)) {
-			dev_a = TRUE;
-			break;
-		}
+			if ((read_data[0] & (1 << LOCKED)) == (1 << LOCKED)) {
+				dev_a = TRUE;
+				break;
+			}
 
-		if (itr_num == NUM_INTERATION)
-			break;
-		itr_num++;
+			if (itr_num == NUM_INTERATION)
+				break;
+			itr_num++;
+		}
 	}
 
-	itr_num = 1;
-	max96716_enable_link(i2cBusId, Deser_addr, LINK_B);
+	if (cfg_b == TRUE) {
+		itr_num = 1;
+		max96716_enable_link(i2cBusId, Deser_addr, LINK_B);
 
-	while (1) {
+		while (1) {
 #if defined(READ_I2C_REG)
-		TRACE(MAX_96716_INFO, "\n\rProbing sensor on link-B of Des%d ",
-			desIface->Port_DES_index + 1);
+			TRACE(MAX_96716_INFO, "\n\rProbing sensor on link-B of Des%d ",
+				desIface->Port_DES_index + 1);
 #endif
-		osSleep(xDelay2);
+			osSleep(xDelay2);
 
-		reg_addr = CTRL9_REG;
-		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr,
-				0x2, read_data, 1);
-		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
-			return Status;
-		}
+			reg_addr = CTRL9_REG;
+			Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr,
+					0x2, read_data, 1);
+			if (Status != RET_SUCCESS) {
+				TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+					__func__, __LINE__, reg_addr, Status);
+				return Status;
+			}
 
 #if defined(READ_I2C_REG)
-		TRACE(MAX_96716_INFO, "CTRL9_REG =%x\n\r", read_data[0]);
+			TRACE(MAX_96716_INFO, "CTRL9_REG =%x\n\r", read_data[0]);
 #endif
-		if ((read_data[0] & (1 << LOCKED)) == (1 << LOCKED)) {
-			dev_b = TRUE;
-			break;
-		}
+			if ((read_data[0] & (1 << LOCKED)) == (1 << LOCKED)) {
+				dev_b = TRUE;
+				break;
+			}
 
-		if (itr_num == NUM_INTERATION)
-			break;
-		itr_num++;
+			if (itr_num == NUM_INTERATION)
+				break;
+			itr_num++;
+		}
 	}
 
+	/* A link counts only if it actually locked (dev_*). Probing above is
+	 * already restricted to links the .bin populated, so an empty link or a
+	 * configured-but-unlocked link (camera absent) never forces splitter. */
 	if (dev_a == TRUE && dev_b == TRUE)
 		desIface->link_type = LINK_REVERSE_SPLITTER;
-	else if (dev_a == FALSE && dev_b == FALSE)
-		desIface->link_type = NO_LINK;
-	else if (dev_a == TRUE && dev_b == FALSE)
+	else if (dev_a == TRUE)
 		desIface->link_type = LINK_A;
-	else
+	else if (dev_b == TRUE)
 		desIface->link_type = LINK_B;
+	else
+		desIface->link_type = NO_LINK;
 
+	TRACE(MAX_96716_ALWAYS,
+		"%s DS_%d link_type=0x%x cfg_a=%d lock_a=%d cfg_b=%d lock_b=%d\n",
+		__func__, desIface->Port_DES_index + 1, desIface->link_type,
+		cfg_a, dev_a, cfg_b, dev_b);
+
+	TRACE(MAX_96716_INFO, "%s (exit) DS_%d\n", __func__,
+		desIface->Port_DES_index + 1);
 	return Status;
 }
 
@@ -1007,7 +1096,7 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 
 	u8 read_data[2] = {0};
 	u8 wr_data[2] = {0};
-	const TickType_t xDelay = MAX96716_REMAP_DELAY_MS;
+	const osTickType xDelay = MAX96716_REMAP_DELAY_MS;
 
 	u8 i2cBusId = GetI2cBusIdForDes(desIface->Port_DES_index);
 	u8 Deser_addr;
@@ -1015,14 +1104,23 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 	u16 reg_addr;
 	dslink *link_ptr;
 
+	TRACE(MAX_96716_INFO, "%s (enter) DS_%d\n", __func__,
+		desIface->Port_DES_index + 1);
+
 	Deser_addr = (desIface->des_actual_addr >> 1);
+
 	TRACE(MAX_96716_INFO,
-		"Inside %s and Default Des Addr: 0x%x and Alias: 0x%x\n",
-		__func__, desIface->des_actual_addr, Deser_addr);
+		"Des Index %d with Default Des Addr: 0x%x and Alias: 0x%x\n",
+		desIface->Port_DES_index, desIface->des_actual_addr, Deser_addr);
+
 	TRACE(MAX_96716_INFO, "I2C bus ID passed: %d\n", i2cBusId);
 
 	max96716_Xylon_Deser_Enable(desIface->Port_DES_index);
-	TRACE(MAX_96716_INFO, "%s - des:%d\n", __func__, desIface->Port_DES_index);
+
+	Status = verify_deser_identity(i2cBusId,
+			&max96716_des_arr[desIface->Port_DES_index], "MAX96716", 0xFE);
+	if (Status != RET_SUCCESS)
+		return Status;
 
 	{
 		Deser_addr = (desIface->des_actual_addr >> 1);
@@ -1030,8 +1128,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 		TRACE(MAX_96716_INFO, "des_base before =%x\n", read_data[0]);
@@ -1039,8 +1137,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = desIface->des_alias_addr;
 		Status = HalWriteI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1080,8 +1178,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1089,8 +1187,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1098,15 +1196,15 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = read_data[0];
 		Status = HalWriteI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1127,8 +1225,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = read_data[0];
 		Status = HalWriteI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1147,8 +1245,11 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 			reg_addr = CTRL3_REG;
 			Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 			if (Status != RET_SUCCESS) {
-				TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-					__func__, __LINE__, Deser_addr, Status);
+				TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+					__func__, __LINE__, reg_addr, Status);
+				report_pipeline_fault("MAX96716 camera link", "link-A lock",
+					"The deserializer stopped responding while waiting for the camera link to lock.",
+					"Check the camera cable/connector and the FMC seating, then power-cycle the board.");
 				return Status;
 			}
 
@@ -1158,20 +1259,26 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 				break;
 		}
 
+		/* Verify the serializer just before the first alias write. */
+		Status = check_ser_id(i2cBusId,
+				(link_ptr->serializer_default_addr) >> 1, "link-A");
+		if (Status != RET_SUCCESS)
+			return Status;
+
 		ser_addr = (link_ptr->serializer_default_addr)>>1;
 		reg_addr = DEV_ADDR_REG;
 		wr_data[0] = link_ptr->serializer_alias_addr;
 		Status = HalReadI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
 		Status = HalWriteI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1185,8 +1292,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		reg_addr = DEV_ADDR_REG;
 		Status = HalReadI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1198,8 +1305,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = MAX96716_SER_GPIO_DOUBLE_MODE_VAL;
 		Status = HalWriteI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1216,8 +1323,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = MAX96716_SER_GPIO_DOUBLE_MODE_VAL;
 		Status = HalWriteI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1225,8 +1332,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = link_ptr->sensor_alias_addr;
 		Status = HalWriteI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1234,8 +1341,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = link_ptr->sensor_default_addr;
 		Status = HalWriteI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1243,8 +1350,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		reg_addr = I2C_2;
 		Status = HalReadI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1253,8 +1360,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		reg_addr = I2C_3;
 		Status = HalReadI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1275,16 +1382,16 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		reg_addr = CTRL0_REG;
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 		TRACE(MAX_96716_INFO, "Link B CTRL0 before : 0x%x\n", read_data[0]);
 
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 		read_data[0] = read_data[0] & (~(1 << AUTO_LINK));
@@ -1293,15 +1400,15 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = read_data[0];
 		Status = HalWriteI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1312,8 +1419,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		reg_addr = GMSL1_EN;
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 		read_data[0] = read_data[0] & (~(LINK_MASK));
@@ -1321,15 +1428,15 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = read_data[0];
 		Status = HalWriteI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 		TRACE(MAX_96716_INFO, "B: GMSL1_EN =%x\n\r", read_data[0]);
@@ -1339,15 +1446,15 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = read_data[0];
 		Status = HalWriteI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 		TRACE(MAX_96716_INFO, "Link B after RST: 0x%x\n", read_data[0]);
@@ -1358,8 +1465,11 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 			reg_addr = CTRL9_REG;
 			Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 			if (Status != RET_SUCCESS) {
-				TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-					__func__, __LINE__, Deser_addr, Status);
+				TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+					__func__, __LINE__, reg_addr, Status);
+				report_pipeline_fault("MAX96716 camera link", "link-B lock",
+					"The deserializer stopped responding while waiting for the camera link to lock.",
+					"Check the camera cable/connector and the FMC seating, then power-cycle the board.");
 				return Status;
 			}
 
@@ -1369,13 +1479,19 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 				break;
 		}
 
+		/* Verify the serializer just before the first alias write. */
+		Status = check_ser_id(i2cBusId,
+				(link_ptr->serializer_default_addr) >> 1, "link-B");
+		if (Status != RET_SUCCESS)
+			return Status;
+
 		ser_addr = (link_ptr->serializer_default_addr)>>1;
 		reg_addr = DEV_ADDR_REG;
 		wr_data[0] = link_ptr->serializer_alias_addr;
 		Status = HalReadI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1383,8 +1499,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 
 		Status = HalWriteI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1397,8 +1513,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		reg_addr = DEV_ADDR_REG;
 		Status = HalReadI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1411,8 +1527,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = link_ptr->sensor_alias_addr;
 		Status = HalWriteI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1420,8 +1536,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = link_ptr->sensor_default_addr;
 		Status = HalWriteI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1429,8 +1545,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		reg_addr = I2C_2;
 		Status = HalReadI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1439,8 +1555,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		reg_addr = I2C_3;
 		Status = HalReadI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1459,8 +1575,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		reg_addr = CTRL0_REG;
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1472,15 +1588,15 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = read_data[0];
 		Status = HalWriteI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1494,8 +1610,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = read_data[0];
 		Status = HalWriteI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1503,8 +1619,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2,
 				read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1513,15 +1629,15 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		wr_data[0] = read_data[0];
 		Status = HalWriteI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
 		Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, Deser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1541,8 +1657,11 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 
 			Status = HalReadI2CReg(i2cBusId, Deser_addr, reg_addr, 0x2, read_data, 1);
 			if (Status != RET_SUCCESS) {
-				TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-					__func__, __LINE__, Deser_addr, Status);
+				TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+					__func__, __LINE__, reg_addr, Status);
+				report_pipeline_fault("MAX96716 camera link", "camera link lock",
+					"The deserializer stopped responding while waiting for the camera link to lock.",
+					"Check the camera cable/connector and the FMC seating, then power-cycle the board.");
 				return Status;
 			}
 #if defined(READ_I2C_REG)
@@ -1553,6 +1672,13 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 				break;
 		}
 
+		/* Verify the serializer just before the first alias write. */
+		Status = check_ser_id(i2cBusId,
+				(link_ptr->serializer_default_addr) >> 1,
+				(desIface->link_type == LINK_A) ? "link-A" : "link-B");
+		if (Status != RET_SUCCESS)
+			return Status;
+
 		ser_addr = (link_ptr->serializer_default_addr)>>1;
 		reg_addr = DEV_ADDR_REG;
 		wr_data[0] = link_ptr->serializer_alias_addr;
@@ -1560,8 +1686,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 #if defined(READ_I2C_REG)
 		Status = HalReadI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1569,8 +1695,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 #endif
 		Status = HalWriteI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1586,8 +1712,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		reg_addr = DEV_ADDR_REG;
 		Status = HalReadI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1598,8 +1724,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 
 		Status = HalWriteI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1608,8 +1734,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 
 		Status = HalWriteI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, wr_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1617,8 +1743,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		reg_addr = I2C_2;
 		Status = HalReadI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1627,8 +1753,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 		reg_addr = I2C_3;
 		Status = HalReadI2CReg(i2cBusId, ser_addr, reg_addr, 0x2, read_data, 1);
 		if (Status != RET_SUCCESS) {
-			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-				__func__, __LINE__, ser_addr, Status);
+			TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+				__func__, __LINE__, reg_addr, Status);
 			return Status;
 		}
 
@@ -1639,6 +1765,9 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
 #endif
 
 	}
+
+	TRACE(MAX_96716_INFO, "%s (exit) DS_%d\n", __func__,
+		desIface->Port_DES_index + 1);
 	return Status;
 }
 
@@ -1656,6 +1785,8 @@ static RESULT max96716_Remapping_des_addr(desInterface *desIface)
  *************************************************************************/
 u32 get_max96716_des_array(desInterface *des, RegI2CT **max96716_des_arr)
 {
+	TRACE(MAX_96716_INFO, "%s (enter)\n", __func__);
+
 	if (des == NULL || max96716_des_arr == NULL) {
 		TRACE(MAX_96716_ERROR,
 			"%s:%d Invalid input params\n",
@@ -1690,6 +1821,7 @@ u32 get_max96716_des_array(desInterface *des, RegI2CT **max96716_des_arr)
 		return RET_INVALID_PARM;
 	}
 
+	TRACE(MAX_96716_INFO, "%s (exit)\n", __func__);
 	return len;
 }
 
@@ -1709,11 +1841,14 @@ static RESULT max96716_Xylon_Deser_setup(desInterface *des)
 {
 	RESULT Status = RET_SUCCESS;
 
+	TRACE(MAX_96716_INFO, "%s (enter)\n", __func__);
+
 	if (des == NULL)
 		return RET_NULL_POINTER;
 
 	u8 wr_data[4] = {0};
 	u8 i2cBusId = GetI2cBusIdForDes(des->Port_DES_index);
+	u16 reg_addr;
 
 	u32 len = 0, reg_idx = 0;
 	RegI2CT *Deserializer_initialization = NULL;
@@ -1738,12 +1873,13 @@ static RESULT max96716_Xylon_Deser_setup(desInterface *des)
 			}
 
 			wr_data[0] = ((Deserializer_initialization + reg_idx)->val);
+			reg_addr = ((Deserializer_initialization + reg_idx)->addr);
 
 			Status = HalWriteI2CReg(i2cBusId, Deser_addr,
-					(Deserializer_initialization + reg_idx)->addr, 0x2, wr_data, 1);
+					reg_addr, 0x2, wr_data, 1);
 			if (Status != RET_SUCCESS) {
-				TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-					__func__, __LINE__, Deser_addr, Status);
+				TRACE(MAX_96716_ERROR, "%s:%d I2C write failed reg=0x%x (err=%d)\n",
+					__func__, __LINE__, reg_addr, Status);
 				return Status;
 			}
 
@@ -1751,8 +1887,8 @@ static RESULT max96716_Xylon_Deser_setup(desInterface *des)
 			Status = HalReadI2CReg(i2cBusId, Deser_addr,
 					(Deserializer_initialization + reg_idx)->addr, 0x2, rd_data, 1);
 			if (Status != RET_SUCCESS) {
-				TRACE(MAX_96716_ERROR, "%s:%d I2C read failed addr=0x%x (err=%d)\n",
-					__func__, __LINE__, Deser_addr, Status);
+				TRACE(MAX_96716_ERROR, "%s:%d I2C read failed reg=0x%x (err=%d)\n",
+					__func__, __LINE__, reg_addr, Status);
 				return Status;
 			}
 
@@ -1777,6 +1913,7 @@ static RESULT max96716_Xylon_Deser_setup(desInterface *des)
 			des->des_state);
 	}
 
+	TRACE(MAX_96716_INFO, "%s (exit)\n", __func__);
 	return Status;
 }
 
@@ -1803,6 +1940,8 @@ static RESULT max96716_Xylon_Deser_Enable(u8 pos)
 	u8 read_data[2] = {0};
 	u8 wr_data[2] = {0};
 
+	TRACE(MAX_96716_INFO, "%s (enter) pos=%d\n", __func__, pos);
+
 	expander_addr = MAX96716_EXPANDER_ADDR;
 	wr_data[0] = 0x00;
 	register_addr = MAX96716_EXPANDER_OUT_PORT1_REG;
@@ -1819,8 +1958,13 @@ static RESULT max96716_Xylon_Deser_Enable(u8 pos)
 	Status = HalWriteI2CReg(IIC_INSTANCE_ZERO, expander_addr,
 		register_addr, MAX96716_FMC_REG_ADDR_SIZE, wr_data, 1);
 	if (Status != RET_SUCCESS) {
-		TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-			__func__, __LINE__, expander_addr, Status);
+		TRACE(MAX_96716_ERROR,
+			"%s:%d MAX96716 FMC: failed to enable deserializer %d via the I/O "
+			"expander at 0x%02x on bus %d (err=%d).\r\n",
+			__func__, __LINE__, pos + 1, expander_addr, IIC_INSTANCE_ZERO, Status);
+		report_pipeline_fault("MAX96716 FMC", "deserializer power enable",
+			"The I/O expander that powers the deserializers is not responding.",
+			"Re-seat the MAX96716 FMC card and check its power, then power-cycle the board.");
 		return Status;
 	}
 
@@ -1850,6 +1994,7 @@ static RESULT max96716_Xylon_Deser_Enable(u8 pos)
 	TRACE(MAX_96716_INFO, "expander:Register OutB=0x%x\n", read_data[0]);
 #endif
 
+	TRACE(MAX_96716_INFO, "%s (exit) pos=%d\n", __func__, pos);
 	return Status;
 }
 
@@ -1876,6 +2021,8 @@ static RESULT max96716_Xylon_Deser_Disable(u8 pos)
 	u8 read_data[2] = {0};
 	u8 wr_data[2] = {0};
 
+	TRACE(MAX_96716_INFO, "%s (enter) pos=%d\n", __func__, pos);
+
 	expander_addr = MAX96716_EXPANDER_ADDR;
 	register_addr = MAX96716_EXPANDER_OUT_PORT1_REG;
 
@@ -1891,8 +2038,13 @@ static RESULT max96716_Xylon_Deser_Disable(u8 pos)
 	Status = HalWriteI2CReg(IIC_INSTANCE_ZERO, expander_addr,
 		register_addr, MAX96716_FMC_REG_ADDR_SIZE, wr_data, 1);
 	if (Status != RET_SUCCESS) {
-		TRACE(MAX_96716_ERROR, "%s:%d I2C write failed addr=0x%x (err=%d)\n",
-			__func__, __LINE__, expander_addr, Status);
+		TRACE(MAX_96716_ERROR,
+			"%s:%d MAX96716 FMC: failed to disable deserializer %d via the I/O "
+			"expander at 0x%02x (err=%d).\r\n",
+			__func__, __LINE__, pos + 1, expander_addr, Status);
+		report_pipeline_fault("MAX96716 FMC", "deserializer power disable",
+			"The I/O expander that powers the deserializers is not responding.",
+			"Re-seat the MAX96716 FMC card and check its power, then power-cycle the board.");
 		return Status;
 	}
 #if defined(READ_I2C_REG)
@@ -1909,5 +2061,6 @@ static RESULT max96716_Xylon_Deser_Disable(u8 pos)
 
 	TRACE(MAX_96716_ALWAYS, "Disabled DeSerializer-%d \r\n", pos + 1);
 #endif
+	TRACE(MAX_96716_INFO, "%s (exit) pos=%d\n", __func__, pos);
 	return Status;
 }

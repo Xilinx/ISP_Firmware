@@ -576,4 +576,6 @@ int32_t rpu_wait_for_ACK(uint32_t instance_id, Payload_packet *ack_payload,
 MboxCoreId mbox_get_core_id(void);
 void mailbox_memory_init(void);
 
+bool_t get_apu_instance_id(uint32_t rpu_instance_id, uint32_t* apu_instance_id);
+
 #endif

@@ -31,7 +31,7 @@
 CREATE_TRACER(IMX623_INFO, "IMX623: ", INFO, 1);
 CREATE_TRACER(IMX623_WARN, "IMX623: ", WARNING, 1);
 CREATE_TRACER(IMX623_ERROR, "IMX623: ", ERROR, 1);
-CREATE_TRACER(IMX623_DEBUG, "IMX623: ", INFO, 1);
+CREATE_TRACER(IMX623_DEBUG, "IMX623: ", DEBUG, 1);
 CREATE_TRACER(IMX623_REG_INFO, "IMX623: ", INFO, 1);
 CREATE_TRACER(IMX623_REG_DEBUG, "IMX623: ", INFO, 1);
 
@@ -113,6 +113,11 @@ IsiSensorMode_t pimx623_mode_info[] = {
 
 int imx623_mode_num = ARRAY_SIZE(pimx623_mode_info);
 
+#if (SENSOR_STATIC_CTX)
+#define osFree(p)    ((void)(p))
+#endif
+
+
 /*****************************************************************************
  * @brief IMX623 camera driver configuration structure
  *
@@ -145,7 +150,7 @@ static RESULT IMX623_IsiReadRegIss(IsiSensorHandle_t handle,
 				   const uint16_t addr,
 				   uint16_t *pValue)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	RESULT Status = RET_SUCCESS;
 	uint8_t read_val = 0;
@@ -159,13 +164,11 @@ static RESULT IMX623_IsiReadRegIss(IsiSensorHandle_t handle,
 		return RET_NULL_POINTER;
 	}
 
-	osMutexLock(&pIMX623Ctx->registerLock);
 	memset(pValue, 0, sizeof(uint16_t));
 
 	if (!pIMX623Ctx->regAccessEnable) {
 		TRACE(IMX623_ERROR,
 		      "%s: register cannot be read!\n", __func__);
-		osMutexUnlock(&pIMX623Ctx->registerLock);
 		return RET_WRONG_STATE;
 	}
 
@@ -173,7 +176,6 @@ static RESULT IMX623_IsiReadRegIss(IsiSensorHandle_t handle,
 
 	if (!active_fmc) {
 		TRACE(IMX623_ERROR, "%s: No FMC selected\r\n", __func__);
-		osMutexUnlock(&pIMX623Ctx->registerLock);
 		return RET_INVALID_PARM;
 	}
 
@@ -187,14 +189,12 @@ static RESULT IMX623_IsiReadRegIss(IsiSensorHandle_t handle,
 	if (Status != RET_SUCCESS) {
 		TRACE(IMX623_ERROR, "%s: I2C read failed for address 0x%04x (err=%d)\n",
 			__func__, addr, Status);
-		osMutexUnlock(&pIMX623Ctx->registerLock);
 		return RET_FAILURE;
 	}
 	*pValue = (uint16_t)read_val;
 
-	osMutexUnlock(&pIMX623Ctx->registerLock);
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
 }
 
@@ -216,7 +216,7 @@ static RESULT IMX623_IsiReadRegIss(IsiSensorHandle_t handle,
 static RESULT IMX623_IsiWriteRegIss(IsiSensorHandle_t handle,
 		const uint16_t addr, const uint16_t value)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	RESULT Status = RET_SUCCESS;
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
@@ -228,12 +228,10 @@ static RESULT IMX623_IsiWriteRegIss(IsiSensorHandle_t handle,
 		return RET_NULL_POINTER;
 	}
 
-	osMutexLock(&pIMX623Ctx->registerLock);
 
 	if (!pIMX623Ctx->regAccessEnable) {
 		TRACE(IMX623_ERROR,
 		      "%s: register cannot be written!\n", __func__);
-		osMutexUnlock(&pIMX623Ctx->registerLock);
 		return RET_WRONG_STATE;
 	}
 
@@ -241,7 +239,6 @@ static RESULT IMX623_IsiWriteRegIss(IsiSensorHandle_t handle,
 
 	if (!active_fmc) {
 		TRACE(IMX623_ERROR, "%s: No FMC selected\r\n", __func__);
-		osMutexUnlock(&pIMX623Ctx->registerLock);
 		return RET_INVALID_PARM;
 	}
 
@@ -259,16 +256,14 @@ static RESULT IMX623_IsiWriteRegIss(IsiSensorHandle_t handle,
 	if (Status != RET_SUCCESS) {
 		TRACE(IMX623_ERROR, "%s: I2C write failed for address 0x%04x (err=%d)\n",
 			__func__, addr, Status);
-		osMutexUnlock(&pIMX623Ctx->registerLock);
 		return RET_FAILURE;
 	}
 
 	if ((addr == IMX623_REG_MODE_SET_F_H) && (value == 0x00))
 		pIMX623Ctx->regAccessEnable = BOOL_FALSE;
 
-	osMutexUnlock(&pIMX623Ctx->registerLock);
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
 }
 
@@ -292,7 +287,7 @@ static RESULT IMX623_IsiWriteRegIss(IsiSensorHandle_t handle,
 static RESULT IMX623_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
 		const uint16_t addr, uint8_t *value, uint8_t datacount)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	RESULT Status = RET_SUCCESS;
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
@@ -311,12 +306,10 @@ static RESULT IMX623_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
 		return RET_FAILURE;
 	}
 
-	osMutexLock(&pIMX623Ctx->registerLock);
 
 	if (!pIMX623Ctx->regAccessEnable) {
 		TRACE(IMX623_ERROR,
 		      "%s: register cannot be written!\n", __func__);
-		osMutexUnlock(&pIMX623Ctx->registerLock);
 		return RET_WRONG_STATE;
 	}
 
@@ -324,7 +317,6 @@ static RESULT IMX623_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
 
 	if (!active_fmc) {
 		TRACE(IMX623_ERROR, "%s: No FMC selected\r\n", __func__);
-		osMutexUnlock(&pIMX623Ctx->registerLock);
 		return RET_INVALID_PARM;
 	}
 
@@ -337,16 +329,14 @@ static RESULT IMX623_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
 	if (Status != RET_SUCCESS) {
 		TRACE(IMX623_ERROR, "%s: I2C group write failed for address 0x%04x (err=%d)\n",
 			__func__, addr, Status);
-		osMutexUnlock(&pIMX623Ctx->registerLock);
 		return RET_FAILURE;
 	}
 
 	if ((addr == IMX623_REG_MODE_SET_F_H) && (value == 0x00))
 		pIMX623Ctx->regAccessEnable = BOOL_FALSE;
 
-	osMutexUnlock(&pIMX623Ctx->registerLock);
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
 }
 #endif
@@ -372,7 +362,7 @@ static RESULT IMX623_IsiUpdateRegIss(IsiSensorHandle_t handle,
 				      const uint8_t mask,
 				      const uint8_t value)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	RESULT result = RET_SUCCESS;
 	uint16_t reg_val16 = 0;
 
@@ -399,7 +389,7 @@ static RESULT IMX623_IsiUpdateRegIss(IsiSensorHandle_t handle,
 		return RET_FAILURE;
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -417,7 +407,7 @@ static RESULT IMX623_IsiUpdateRegIss(IsiSensorHandle_t handle,
  *****************************************************************************/
 SensorState_e IMX623_GetSensorState(IsiSensorHandle_t handle)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	uint8_t sensor_state = 0;
 
 	RESULT result = RET_SUCCESS;
@@ -430,7 +420,7 @@ SensorState_e IMX623_GetSensorState(IsiSensorHandle_t handle)
 	}
 
 	TRACE(IMX623_DEBUG, "%s: IMX623 Sensor State: %d\n", __func__, sensor_state);
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return (SensorState_e)sensor_state;
 }
 
@@ -448,6 +438,8 @@ SensorState_e IMX623_GetSensorState(IsiSensorHandle_t handle)
  *****************************************************************************/
 int imx623_sensor_framecount(IsiSensorHandle_t handle)
 {
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
+
 	u32 frame_counter;
 	uint16_t read_buf[4] = {0};
 	int Status = RET_SUCCESS;
@@ -486,6 +478,7 @@ int imx623_sensor_framecount(IsiSensorHandle_t handle)
 		(read_buf[1] << 8) | (read_buf[0]);
 	g_Sensor_frame_count = frame_counter;
 
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return Status;
 }
 
@@ -503,7 +496,7 @@ int imx623_sensor_framecount(IsiSensorHandle_t handle)
  *****************************************************************************/
 RESULT IMX623_IsiGetSensorIss(IsiSensor_t *pIsiSensor)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	RESULT result = RET_SUCCESS;
 
 	static const char SensorName[16] = "IMX623";
@@ -563,9 +556,42 @@ RESULT IMX623_IsiGetSensorIss(IsiSensor_t *pIsiSensor)
 		result = RET_NULL_POINTER;
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
+
+#if (SENSOR_STATIC_CTX)
+/*****************************************************************************
+ *          IMX623_AllocCtx
+ *
+ * @brief   Obtain the sensor context for the given input pipe.
+ *
+ * With SENSOR_STATIC_CTX the context comes from a fixed per-pipe pool (no
+ * heap); the legacy osMalloc path is kept for the default build.
+ *
+ * @param   pipeId   Input-pipe id (halDevID / sensorDevId)
+ *
+ * @return  Pointer to the context, or NULL if pipeId is out of range.
+ *
+ *****************************************************************************/
+static IMX623_Context_t g_imx623CtxPool[IN_PIPE_LAST];
+
+static IMX623_Context_t *IMX623_AllocCtx(uint32_t pipeId)
+{
+	if (pipeId >= IN_PIPE_LAST) {
+		return NULL;
+	}
+	return &g_imx623CtxPool[pipeId];
+}
+
+/* Static context is never freed; the per-pipe slot is reused on next create. */
+#else
+static IMX623_Context_t *IMX623_AllocCtx(uint32_t pipeId)
+{
+	(void)pipeId;
+	return (IMX623_Context_t *)osMalloc(sizeof(IMX623_Context_t));
+}
+#endif
 
 /*****************************************************************************
  *          IMX623_IsiCreateIss
@@ -583,13 +609,13 @@ RESULT IMX623_IsiGetSensorIss(IsiSensor_t *pIsiSensor)
 static RESULT IMX623_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 				  IsiSensorHandle_t *pHandle)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	RESULT result = RET_SUCCESS;
 	uint32_t desId = 0, pipeId = 0;
 
 	IMX623_Context_t *pIMX623Ctx;
 
-	pIMX623Ctx = (IMX623_Context_t *)osMalloc(sizeof(IMX623_Context_t));
+	pIMX623Ctx = IMX623_AllocCtx(pConfig->halDevID);
 
 	if (!pIMX623Ctx) {
 		TRACE(IMX623_ERROR,
@@ -611,7 +637,6 @@ static RESULT IMX623_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 	pIMX623Ctx->sensorDevId		= pConfig->halDevID;
 	pIMX623Ctx->regAccessEnable	= BOOL_TRUE;
 
-	osMutexInit(&pIMX623Ctx->registerLock);
 
 	pipeId = pIMX623Ctx->sensorDevId;
 	*pHandle = (IsiSensorHandle_t)pIMX623Ctx;
@@ -625,7 +650,7 @@ static RESULT IMX623_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 		return RET_UNSUPPORT_ID;
 	}
 
-	desId = MAPPING_INPIPE_TO_DES_ID(pipeId);
+	desId = GetDesIdForPipe(pipeId);
 
 	/*Assignment of  Bus ID */
 	pIMX623Ctx->i2cId = GetI2cBusIdForDes(desId);
@@ -660,7 +685,7 @@ static RESULT IMX623_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 		osFree(pIMX623Ctx);
 		return result;
 	}
-	result = init_sensor(pipeId, desId, SENSOR_IMX623_ADDRESS);
+	result = init_sensor(pipeId, desId, SENSOR_IMX623_ADDRESS, IMX623_SENSOR_ID);
 	if (result != RET_SUCCESS) {
 		TRACE(IMX623_ERROR,
 		      "%s: init_sensor failed for pipe %d (err=%d)\n",
@@ -669,7 +694,7 @@ static RESULT IMX623_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 		return result;
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -691,14 +716,14 @@ static RESULT IMX623_IsiEnumModeIss(IsiSensorHandle_t handle,
 {
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
 
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
+
 	if (pIMX623Ctx == NULL || pEnumMode == NULL) {
 		TRACE(IMX623_ERROR,
 		      "%s: Invalid handle or NULL pointer for pEnumMode\n",
 		      __func__);
 		return RET_NULL_POINTER;
 	}
-
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
 
 	if (pEnumMode->index >= ARRAY_SIZE(pimx623_mode_info)) {
 		TRACE(IMX623_ERROR,
@@ -713,12 +738,12 @@ static RESULT IMX623_IsiEnumModeIss(IsiSensorHandle_t handle,
 		if (pimx623_mode_info[mode_idx].index == pEnumMode->index) {
 			memcpy(&pEnumMode->mode, &pimx623_mode_info[mode_idx],
 			       sizeof(IsiSensorMode_t));
-			TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+			TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 			return RET_SUCCESS;
 		}
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return RET_NOTSUPP;
 }
 
@@ -737,7 +762,7 @@ static RESULT IMX623_IsiEnumModeIss(IsiSensorHandle_t handle,
  *****************************************************************************/
 static RESULT IMX623_SetClknStartup(IsiSensorHandle_t handle)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	RESULT result = RET_SUCCESS;
 
@@ -794,7 +819,7 @@ static RESULT IMX623_SetClknStartup(IsiSensorHandle_t handle)
 
 	osSleep(60);
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -819,7 +844,7 @@ static RESULT IMX623_IsiGetRevisionIss(IsiSensorHandle_t handle,
 	uint16_t reg_val = 0;
 	uint32_t sensor_id = 0;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	if (pValue == NULL) {
 		TRACE(IMX623_ERROR, "%s: NULL pointer for pValue\n", __func__);
@@ -853,7 +878,7 @@ static RESULT IMX623_IsiGetRevisionIss(IsiSensorHandle_t handle,
 	*pValue = sensor_id;
 
 	TRACE(IMX623_DEBUG, "%s: Sensor ID = 0x%08X\n", __func__, sensor_id);
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
 }
 
@@ -873,7 +898,7 @@ static RESULT IMX623_IsiCheckConnectionIss(IsiSensorHandle_t handle)
 {
 	RESULT result = RET_SUCCESS;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	TRACE(IMX623_INFO, "============ IMX623 ============\n");
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *)handle;
@@ -917,7 +942,7 @@ static RESULT IMX623_IsiCheckConnectionIss(IsiSensorHandle_t handle)
 	TRACE(IMX623_INFO,
 	      "%s: Sensor ID verification successful - ID: 0x%08x\n",
 	      __func__, sensor_id);
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -939,7 +964,7 @@ RESULT IMX623_IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps)
 {
 	RESULT result = RET_SUCCESS;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
 
@@ -999,7 +1024,7 @@ RESULT IMX623_IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps)
 		return RET_FAILURE;
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1020,7 +1045,7 @@ RESULT IMX623_IsiGetFpsIss(IsiSensorHandle_t handle, uint32_t *pFps)
 {
 	RESULT result = RET_SUCCESS;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	uint32_t vmax = 0;
 	uint16_t reg_value = 0;
@@ -1091,7 +1116,7 @@ RESULT IMX623_IsiGetFpsIss(IsiSensorHandle_t handle, uint32_t *pFps)
 
 	TRACE(IMX623_DEBUG,
 	      "%s: IMX623 FPS: %u\n", __func__, *pFps / ISI_FPS_QUANTIZE);
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1114,7 +1139,7 @@ static RESULT IMX623_ConfigureBLC(IsiSensorHandle_t handle)
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *)handle;
 	RESULT result = RET_SUCCESS;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	if (!pIMX623Ctx) {
 		TRACE(IMX623_ERROR,
@@ -1138,7 +1163,7 @@ static RESULT IMX623_ConfigureBLC(IsiSensorHandle_t handle)
 
 	result = IMX623_IsiSetBlcIss(handle, &pBlc);
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1159,7 +1184,7 @@ static RESULT IMX623_InitialExposure(IsiSensorHandle_t handle)
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
 	RESULT result = RET_SUCCESS;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	if (!pIMX623Ctx) {
 		TRACE(IMX623_ERROR,
@@ -1205,7 +1230,7 @@ static RESULT IMX623_InitialExposure(IsiSensorHandle_t handle)
 		return RET_FAILURE;
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1229,7 +1254,7 @@ static RESULT IMX623_Configure2A(IsiSensorHandle_t handle)
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *)handle;
 	RESULT result = RET_SUCCESS;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	if (!pIMX623Ctx) {
 		TRACE(IMX623_ERROR,
@@ -1290,7 +1315,7 @@ static RESULT IMX623_Configure2A(IsiSensorHandle_t handle)
 		return RET_FAILURE;
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1312,7 +1337,7 @@ static RESULT IMX623_Configure2A(IsiSensorHandle_t handle)
 static RESULT IMX623_ConfigureHDR(IsiSensorHandle_t handle,
 				  struct imx623_ctrl_point *points)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	RESULT result = RET_SUCCESS;
 
 	/*
@@ -1391,7 +1416,7 @@ static RESULT IMX623_ConfigureHDR(IsiSensorHandle_t handle,
 		return RET_FAILURE;
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1409,7 +1434,7 @@ static RESULT IMX623_ConfigureHDR(IsiSensorHandle_t handle,
  *****************************************************************************/
 static RESULT IMX623_Configure(IsiSensorHandle_t handle)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	RESULT result = RET_SUCCESS;
 
 	/* Set sensor drive mode register */
@@ -1488,15 +1513,34 @@ static RESULT IMX623_Configure(IsiSensorHandle_t handle)
 		return RET_FAILURE;
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
+/*****************************************************************************
+ *          IMX623_Crop
+ *
+ * @brief   Configures digital cropping to output a windowed region of the
+ *          full sensor array.
+ *
+ * @param   handle        Sensor instance handle
+ * @param   boundsWidth   Full sensor bounds width
+ * @param   boundsHeight  Full sensor bounds height
+ * @param   left          Horizontal crop offset (pixels)
+ * @param   top           Vertical crop offset (pixels)
+ * @param   width         Output crop width (pixels)
+ * @param   height        Output crop height (pixels)
+ *
+ * @return  Return the result of the function call.
+ * @retval  RET_SUCCESS
+ * @retval  RET_FAILURE
+ *
+ *****************************************************************************/
 static RESULT IMX623_Crop(IsiSensorHandle_t handle, uint32_t boundsWidth,
 			  uint32_t boundsHeight, uint32_t left, uint32_t top,
 			  uint32_t width, uint32_t height)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	RESULT result = RET_SUCCESS;
 
 	/* Validate bounds against sensor maximum resolution */
@@ -1617,7 +1661,7 @@ static RESULT IMX623_Crop(IsiSensorHandle_t handle, uint32_t boundsWidth,
 		return RET_FAILURE;
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1639,7 +1683,7 @@ static RESULT IMX623_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
 	RESULT result = RET_SUCCESS;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	if (!pIMX623Ctx) {
 		TRACE(IMX623_ERROR,
@@ -1752,7 +1796,7 @@ static RESULT IMX623_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 
 	pIMX623Ctx->configured = BOOL_TRUE;
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1772,7 +1816,7 @@ static RESULT IMX623_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 static RESULT IMX623_IsiGetModeIss(IsiSensorHandle_t handle,
 				    IsiSensorMode_t *pMode)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *)handle;
 
@@ -1783,7 +1827,7 @@ static RESULT IMX623_IsiGetModeIss(IsiSensorHandle_t handle,
 
 	memcpy(pMode, &(pIMX623Ctx->sensorMode), sizeof(pIMX623Ctx->sensorMode));
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
 }
 
@@ -1806,7 +1850,7 @@ static RESULT IMX623_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps)
 
 	RESULT result = RET_SUCCESS;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	if (pIMX623Ctx == NULL || pCaps == NULL) {
 		TRACE(IMX623_ERROR, "%s: NULL pointer detected\n", __func__);
@@ -1828,7 +1872,7 @@ static RESULT IMX623_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps)
 	else
 		pCaps->mipiMode = ISI_MIPI_OFF;
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1847,6 +1891,7 @@ static RESULT IMX623_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps)
  *****************************************************************************/
 RESULT IMX623_IsiGetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg)
 {
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	RESULT result = RET_SUCCESS;
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
@@ -1855,6 +1900,7 @@ RESULT IMX623_IsiGetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg)
 		TRACE(IMX623_ERROR, "%s: NULL pointer detected\n", __func__);
 		return RET_NULL_POINTER;
 	}
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1873,6 +1919,8 @@ RESULT IMX623_IsiGetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg)
  *****************************************************************************/
 RESULT IMX623_IsiSetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t tpg)
 {
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
+
 	RESULT result = RET_SUCCESS;
 	(void)tpg;    /* Unused parameter */
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
@@ -1882,6 +1930,7 @@ RESULT IMX623_IsiSetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t tpg)
 		return RET_NULL_POINTER;
 	}
 
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1902,7 +1951,7 @@ RESULT IMX623_IsiSetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t tpg)
 static RESULT IMX623_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
 					  IsiAeBaseInfo_t *pAeBaseInfo)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *)handle;
 	RESULT result = RET_SUCCESS;
@@ -1941,7 +1990,7 @@ static RESULT IMX623_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
 	pAeBaseInfo->conversionGainDCG =
 		(float)IMX623_SP1_HCG_MIN_AGAIN / IMX623_SP1_LCG_MIN_AGAIN;
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1963,7 +2012,7 @@ static RESULT IMX623_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t mode)
 {
 	RESULT result = RET_SUCCESS;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *)handle;
 
@@ -2022,7 +2071,7 @@ static RESULT IMX623_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t mode)
 	      pIMX623Ctx->sensorMode.size.height,
 	      pIMX623Ctx->currFps / ISI_FPS_QUANTIZE);
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -2043,7 +2092,7 @@ static RESULT IMX623_IsiCloseIss(IsiSensorHandle_t handle)
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *)handle;
 	RESULT result = RET_SUCCESS;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	if (pIMX623Ctx == NULL) {
 		TRACE(IMX623_ERROR, "%s: NULL pointer detected\n", __func__);
@@ -2056,7 +2105,7 @@ static RESULT IMX623_IsiCloseIss(IsiSensorHandle_t handle)
 		return result;
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -2076,7 +2125,7 @@ static RESULT IMX623_IsiReleaseIss(IsiSensorHandle_t handle)
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *)handle;
 	RESULT result = RET_SUCCESS;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	if (pIMX623Ctx == NULL) {
 		TRACE(IMX623_ERROR,
@@ -2086,14 +2135,13 @@ static RESULT IMX623_IsiReleaseIss(IsiSensorHandle_t handle)
 
 	/* Stop the sensor stream */
 	stop_sensor(pIMX623Ctx->sensorDevId);
-	osMutexDestroy(&pIMX623Ctx->registerLock);
 
 
 	/* Clear the context structure and free memory */
 	MEMSET(pIMX623Ctx, 0, sizeof(IMX623_Context_t));
 	osFree(pIMX623Ctx);
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -2114,7 +2162,7 @@ static RESULT IMX623_IsiReleaseIss(IsiSensorHandle_t handle)
 static RESULT IMX623_IsiSetWBIss(IsiSensorHandle_t handle,
 				 const IsiSensorWb_t *pWb)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	RESULT result = RET_SUCCESS;
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
@@ -2209,7 +2257,7 @@ static RESULT IMX623_IsiSetWBIss(IsiSensorHandle_t handle,
 	/* Update context with new white balance values */
 	memcpy(&pIMX623Ctx->sensorWb, pWb, sizeof(IsiSensorWb_t));
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -2229,7 +2277,7 @@ static RESULT IMX623_IsiSetWBIss(IsiSensorHandle_t handle,
  *****************************************************************************/
 static RESULT IMX623_IsiGetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *)handle;
 
@@ -2240,7 +2288,7 @@ static RESULT IMX623_IsiGetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb)
 
 	memcpy(pWb, &pIMX623Ctx->sensorWb, sizeof(IsiSensorWb_t));
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
 }
 
@@ -2260,7 +2308,7 @@ static RESULT IMX623_IsiGetWBIss(IsiSensorHandle_t handle, IsiSensorWb_t *pWb)
 RESULT IMX623_IsiGetAGainIss(IsiSensorHandle_t handle,
 			     IsiSensorGain_t *pSensorAGain)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
 
@@ -2271,7 +2319,7 @@ RESULT IMX623_IsiGetAGainIss(IsiSensorHandle_t handle,
 
 	*pSensorAGain = pIMX623Ctx->curAgain;
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
 }
 
@@ -2291,7 +2339,7 @@ RESULT IMX623_IsiGetAGainIss(IsiSensorHandle_t handle,
 RESULT IMX623_IsiSetAGainIss(IsiSensorHandle_t handle,
 			     IsiSensorGain_t *pSensorAGain)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	RESULT result = RET_SUCCESS;
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
@@ -2445,7 +2493,7 @@ RESULT IMX623_IsiSetAGainIss(IsiSensorHandle_t handle,
 	      pIMX623Ctx->curAgain.gain[2],
 	      pIMX623Ctx->curAgain.gain[3]);
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -2456,6 +2504,7 @@ RESULT IMX623_IsiSetAGainIss(IsiSensorHandle_t handle,
  *
  * @param   handle                   sensor instance handle
  * @param   pSensorDGain             pointer to sensor dgain to get
+ *
  * @return  Return the result of the function call.
  * @retval  RET_SUCCESS
  * @retval  RET_NULL_POINTER
@@ -2464,7 +2513,7 @@ RESULT IMX623_IsiSetAGainIss(IsiSensorHandle_t handle,
 RESULT IMX623_IsiGetDGainIss(IsiSensorHandle_t handle,
 			      IsiSensorGain_t *pSensorDGain)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
 
@@ -2475,7 +2524,7 @@ RESULT IMX623_IsiGetDGainIss(IsiSensorHandle_t handle,
 
 	*pSensorDGain = pIMX623Ctx->curDgain;
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
 }
 
@@ -2495,7 +2544,7 @@ RESULT IMX623_IsiGetDGainIss(IsiSensorHandle_t handle,
 RESULT IMX623_IsiSetDGainIss(IsiSensorHandle_t handle,
 			      IsiSensorGain_t *pSensorDGain)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	RESULT result = RET_SUCCESS;
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
@@ -2578,7 +2627,7 @@ RESULT IMX623_IsiSetDGainIss(IsiSensorHandle_t handle,
 	      pIMX623Ctx->curDgain.gain[2],
 	      pIMX623Ctx->curDgain.gain[3]);
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -2598,7 +2647,7 @@ RESULT IMX623_IsiSetDGainIss(IsiSensorHandle_t handle,
 RESULT IMX623_IsiGetIntTimeIss(IsiSensorHandle_t handle,
 				IsiSensorIntTime_t *pSensorIntTime)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	RESULT result = RET_SUCCESS;
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *)handle;
@@ -2615,7 +2664,7 @@ RESULT IMX623_IsiGetIntTimeIss(IsiSensorHandle_t handle,
 		return RET_NOTSUPP;
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -2637,7 +2686,7 @@ RESULT IMX623_IsiGetIntTimeIss(IsiSensorHandle_t handle,
 static RESULT IMX623_IsiSetIntTimeIss(IsiSensorHandle_t handle,
 				      const IsiSensorIntTime_t *pSensorIntTime)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	RESULT result = RET_SUCCESS;
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
@@ -2661,7 +2710,7 @@ static RESULT IMX623_IsiSetIntTimeIss(IsiSensorHandle_t handle,
 		return RET_NOTSUPP;
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -2680,7 +2729,7 @@ static RESULT IMX623_IsiSetIntTimeIss(IsiSensorHandle_t handle,
 static RESULT IMX623_SetIntTime(IsiSensorHandle_t handle,
 				float newIntegrationTime)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	RESULT result = RET_SUCCESS;
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
@@ -2804,7 +2853,7 @@ static RESULT IMX623_SetIntTime(IsiSensorHandle_t handle,
 	      pIMX623Ctx->curIntTime.intTime[2],
 	      pIMX623Ctx->curIntTime.intTime[3]);
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -2824,7 +2873,7 @@ static RESULT IMX623_SetIntTime(IsiSensorHandle_t handle,
 RESULT IMX623_IsiGetIspStatusIss(IsiSensorHandle_t handle,
 				  IsiIspStatus_t *pIspStatus)
 {
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 	RESULT result = RET_SUCCESS;
 
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
@@ -2839,7 +2888,7 @@ RESULT IMX623_IsiGetIspStatusIss(IsiSensorHandle_t handle,
 	pIspStatus->useAWBMode = pIMX623Ctx->sensorConfig.useAWBMode;
 	pIspStatus->useSensorBLC = pIMX623Ctx->sensorConfig.useSensorBLC;
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -2847,7 +2896,6 @@ RESULT IMX623_IsiGetIspStatusIss(IsiSensorHandle_t handle,
  *          IMX623_IsiSetBlcIss
  *
  * @brief   set sensor linear mode black level
- *
  *
  * @param   handle            sensor instance handle
  * @param   pBlc              blc params pointer
@@ -2862,7 +2910,7 @@ static RESULT IMX623_IsiSetBlcIss(IsiSensorHandle_t handle,
 {
 	RESULT result = RET_SUCCESS;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	/* Scale BLS values by 32 (5-bit left shift) for register format */
 	uint16_t bls_r = pBlc->red << 5;
@@ -3020,7 +3068,7 @@ static RESULT IMX623_IsiSetBlcIss(IsiSensorHandle_t handle,
 		return RET_FAILURE;
 	}
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -3028,7 +3076,6 @@ static RESULT IMX623_IsiSetBlcIss(IsiSensorHandle_t handle,
  *          IMX623_IsiGetBlcIss
  *
  * @brief   set sensor linear mode black level
- *
  *
  * @param   handle            sensor instance handle
  * @param   pBlc              blc params point
@@ -3043,7 +3090,7 @@ static RESULT IMX623_IsiGetBlcIss(IsiSensorHandle_t handle,
 {
 	RESULT result = RET_SUCCESS;
 
-	TRACE(IMX623_DEBUG, "%s (enter)\n", __func__);
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
 
 	/* Read black level values (scaled by 32 in register format) */
 	uint16_t reg_value = 0;
@@ -3088,7 +3135,7 @@ static RESULT IMX623_IsiGetBlcIss(IsiSensorHandle_t handle,
 	pBlc->gb = bls_gb;
 	pBlc->blue = bls_b;
 
-	TRACE(IMX623_DEBUG, "%s (exit)\n", __func__);
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -3108,6 +3155,8 @@ static RESULT IMX623_IsiGetBlcIss(IsiSensorHandle_t handle,
 static RESULT IMX623_IsiGetExpandCurveIss(IsiSensorHandle_t handle,
 					  IsiSensorCompandCurve_t *pCurve)
 {
+	TRACE(IMX623_INFO, "%s (enter)\n", __func__);
+
 	RESULT result = RET_SUCCESS;
 	IMX623_Context_t *pIMX623Ctx = (IMX623_Context_t *) handle;
 
@@ -3116,5 +3165,6 @@ static RESULT IMX623_IsiGetExpandCurveIss(IsiSensorHandle_t handle,
 		return RET_NULL_POINTER;
 	}
 
+	TRACE(IMX623_INFO, "%s (exit)\n", __func__);
 	return result;
 }

@@ -32,12 +32,15 @@
 CREATE_TRACER(Ox03f10_INFO, "Ox03f10: ", INFO, 1);
 CREATE_TRACER(Ox03f10_WARN, "Ox03f10: ", WARNING, 1);
 CREATE_TRACER(Ox03f10_ERROR, "Ox03f10: ", ERROR, 1);
-CREATE_TRACER(Ox03f10_DEBUG, "Ox03f10: ", INFO, 1);
+CREATE_TRACER(Ox03f10_DEBUG, "Ox03f10: ", DEBUG, 1);
 CREATE_TRACER(Ox03f10_REG_INFO, "Ox03f10: ", INFO,    1);
-CREATE_TRACER(Ox03f10_REG_DEBUG, "Ox03f10: ", INFO,    1);
+CREATE_TRACER(Ox03f10_REG_DEBUG, "Ox03f10: ", DEBUG,    1);
 
 #define Ox03f10_MIN_GAIN_STEP	(1.0f/1024.0f)
 
+#if (SENSOR_STATIC_CTX)
+#define osFree(p)    ((void)(p))
+#endif
 /*****************************************************************************
  *Sensor Info
  *****************************************************************************/
@@ -79,8 +82,8 @@ IsiSensorMode_t pox03f10_mode_info[] = {
 			.aGainRange[2] = {4.25, 15.5, (1.0f/16.0f)},//SPD again
 			.aGainRange[3] = {1.0, 15.5, (1.0f/16.0f)},//VS again
 			.dGainRange[0] = {1.0, 1.0, (1.0f/1024.0f)},//HCG dgain
-			.intTimeDelayFrame = 0,
-			.gainDelayFrame = 0,
+			.intTimeDelayFrame = 2,
+			.gainDelayFrame = 1,
 		},
 		.fps       = 30 * ISI_FPS_QUANTIZE,
 		.hdrMode  = ISI_SENSOR_MODE_HDR_NATIVE,
@@ -130,8 +133,8 @@ IsiSensorMode_t pox03f10_mode_info[] = {
 			.aGainRange[2] = {4.25, 15.5, (1.0f/16.0f)},//SPD again
 			.aGainRange[3] = {1.0, 15.5, (1.0f/16.0f)},//VS again
 			.dGainRange[0] = {1.0, 1.0, (1.0f/1024.0f)},//HCG dgain
-			.intTimeDelayFrame = 0,
-			.gainDelayFrame = 0,
+			.intTimeDelayFrame = 2,
+			.gainDelayFrame = 1,
 		},
 		.fps       = 30 * ISI_FPS_QUANTIZE,
 		.hdrMode  = ISI_SENSOR_MODE_HDR_NATIVE,
@@ -181,8 +184,8 @@ IsiSensorMode_t pox03f10_mode_info[] = {
 			.aGainRange[2] = {4.25, 15.5, (1.0f/16.0f)},//SPD again
 			.aGainRange[3] = {1.0, 15.5, (1.0f/16.0f)},//VS again
 			.dGainRange[0] = {1.0, 1.0, (1.0f/1024.0f)},//HCG dgain
-			.intTimeDelayFrame = 0,
-			.gainDelayFrame = 0,
+			.intTimeDelayFrame = 2,
+			.gainDelayFrame = 1,
 		},
 		.fps       = 30 * ISI_FPS_QUANTIZE,
 		.hdrMode  = ISI_SENSOR_MODE_HDR_NATIVE,
@@ -225,6 +228,8 @@ static RESULT Ox03f10_IsiReadRegIss(IsiSensorHandle_t handle,
 
 	Ox03f10_Context_t *pOx03f10Ctx = (Ox03f10_Context_t *) handle;
 
+	TRACE(Ox03f10_INFO, "%s (enter)\n", __func__);
+
 	if (pOx03f10Ctx == NULL || pValue == NULL) {
 		TRACE(Ox03f10_ERROR, "%s: Invalid parameter (NULL pointer)\n",
 				__func__);
@@ -256,6 +261,7 @@ static RESULT Ox03f10_IsiReadRegIss(IsiSensorHandle_t handle,
 	*pValue &= 0xff;
 
 
+	TRACE(Ox03f10_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -283,6 +289,8 @@ static RESULT Ox03f10_IsiWriteRegIss(IsiSensorHandle_t handle,
 	RESULT result = RET_SUCCESS;
 
 	Ox03f10_Context_t *pOx03f10Ctx = (Ox03f10_Context_t *) handle;
+
+	TRACE(Ox03f10_INFO, "%s (enter)\n", __func__);
 
 	if (pOx03f10Ctx == NULL) {
 		TRACE(Ox03f10_ERROR, "%s: NULL pointer detected\n", __func__);
@@ -313,13 +321,14 @@ static RESULT Ox03f10_IsiWriteRegIss(IsiSensorHandle_t handle,
 		return RET_FAILURE;
 	}
 
+	TRACE(Ox03f10_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
 
 #ifdef ENABLE_I2C_GROUPING
 /*****************************************************************************
- *          Ox03f10_IsiWriteRegIss
+ *          Ox03f10_IsiWriteRegGroupIss
  *
  * @brief   writes a given number of bytes to the image sensor device by
  *          calling the corresponding sensor-function
@@ -342,6 +351,8 @@ static RESULT Ox03f10_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
 	RESULT result = RET_SUCCESS;
 
 	Ox03f10_Context_t *pOx03f10Ctx = (Ox03f10_Context_t *) handle;
+
+	TRACE(Ox03f10_INFO, "%s (enter)\n", __func__);
 
 	if (pOx03f10Ctx == NULL) {
 		TRACE(Ox03f10_ERROR, "%s: NULL pointer detected\n", __func__);
@@ -373,6 +384,7 @@ static RESULT Ox03f10_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
 		return RET_FAILURE;
 	}
 
+	TRACE(Ox03f10_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 #endif
@@ -444,13 +456,14 @@ static RESULT Ox03f10_IsiEnumModeIss(IsiSensorHandle_t handle,
 		if (pox03f10_mode_info[mode_idx].index == pEnumMode->index) {
 			memcpy(&pEnumMode->mode, &pox03f10_mode_info[mode_idx],
 			    sizeof(IsiSensorMode_t));
-			TRACE(Ox03f10_INFO, "%s (exit)\n", __func__);
 			return RET_SUCCESS;
 		}
 	}
 
+	TRACE(Ox03f10_INFO, "%s (exit)\n", __func__);
 	return RET_NOTSUPP;
 }
+
 /*****************************************************************************
  *          Ox03f10_IsiGetCapsIss
  *
@@ -497,6 +510,40 @@ static RESULT Ox03f10_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps)
 	return result;
 }
 
+#if (SENSOR_STATIC_CTX)
+/*****************************************************************************
+ *          Ox03f10_AllocCtx
+ *
+ * @brief   Obtain the sensor context for the given input pipe.
+ *
+ * With SENSOR_STATIC_CTX the context comes from a fixed per-pipe pool (no
+ * heap); the legacy osMalloc path is kept for the default build.
+ *
+ * @param   pipeId   Input-pipe id (halDevID / sensorDevId)
+ *
+ * @return  Pointer to the context, or NULL if pipeId is out of range.
+ *
+ *****************************************************************************/
+static Ox03f10_Context_t g_ox03f10CtxPool[IN_PIPE_LAST];
+
+static Ox03f10_Context_t *Ox03f10_AllocCtx(uint32_t pipeId)
+{
+	TRACE(Ox03f10_INFO, "STATIC ALLOCATION\n");
+	if (pipeId >= IN_PIPE_LAST) {
+		return NULL;
+	}
+	return &g_ox03f10CtxPool[pipeId];
+}
+
+/* Static context is never freed; the per-pipe slot is reused on next create. */
+#else
+static Ox03f10_Context_t *Ox03f10_AllocCtx(uint32_t pipeId)
+{
+	(void)pipeId;
+	return (Ox03f10_Context_t *)osMalloc(sizeof(Ox03f10_Context_t));
+}
+#endif
+
 /*****************************************************************************
  *          Ox03f10_IsiCreateIss
  *
@@ -521,14 +568,14 @@ static RESULT Ox03f10_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 
 	TRACE(Ox03f10_INFO, "%s (enter)\n", __func__);
 
-	Ox03f10_Context_t *pOx03f10Ctx =
-		(Ox03f10_Context_t *)osMalloc(sizeof(Ox03f10_Context_t));
-
 	if (pConfig == NULL || pHandle == NULL) {
 		TRACE(Ox03f10_ERROR, "%s: Invalid parameter (NULL pointer)\n",
 			__func__);
 		return RET_NULL_POINTER;
 	}
+
+	Ox03f10_Context_t *pOx03f10Ctx =
+		Ox03f10_AllocCtx(pConfig->halDevID);
 
 	if (!pOx03f10Ctx) {
 		TRACE(Ox03f10_ERROR, "%s: Can't allocate ox03f10 context\n", __func__);
@@ -556,7 +603,7 @@ static RESULT Ox03f10_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 		osFree(pOx03f10Ctx);
 		return RET_UNSUPPORT_ID;
 	}
-	desId = MAPPING_INPIPE_TO_DES_ID(pipeId);
+	desId = GetDesIdForPipe(pipeId);
 
 	/* REFACTORING: Get I2C bus ID from centralized core_des_map
 	 *
@@ -599,13 +646,23 @@ static RESULT Ox03f10_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 		osFree(pOx03f10Ctx);
 		return result;
 	}
+	
 	result = init_des(desId);
 	if (result != RET_SUCCESS) {
 		TRACE(Ox03f10_ERROR, "%s: init_des failed! (err=%d)\n", __func__, result);
 		osFree(pOx03f10Ctx);
 		return RET_FAILURE;
 	}
-	result = init_sensor(pipeId, desId, SENSOR_OX3F10_ADDRESS);
+
+	/*
+	 * The sensor identity check is intentionally NOT performed here. At this
+	 * point in CreateIss the sensor is not yet reachable - its I2C alias is
+	 * only remapped later, inside init_sensor, once the serializer has been
+	 * initialised. The check is therefore done at the end of init_sensor,
+	 * after serializer init, for every link type.
+	 */
+
+	result = init_sensor(pipeId, desId, SENSOR_OX3F10_ADDRESS, OX03F10_SENSOR_ID);
 	if (result != RET_SUCCESS) {
 		TRACE(Ox03f10_ERROR,
 		      "%s: init_sensor failed for pipe %d (err=%d)\n",
@@ -637,6 +694,8 @@ static RESULT Ox03f10_AecSetModeParameters(IsiSensorHandle_t handle,
 
 	uint32_t exp_line = 0, again = 0, dgain = 0;
 	uint16_t value = 0;
+
+	TRACE(Ox03f10_INFO, "%s (enter)\n", __func__);
 
 	pOx03f10Ctx->aecIntegrationTimeIncrement = pOx03f10Ctx->oneLineExpTime;
 	pOx03f10Ctx->aecGainIncrement = Ox03f10_MIN_GAIN_STEP;
@@ -2088,6 +2147,8 @@ int sensor_framecount(IsiSensorHandle_t handle)
 	uint16_t read_buf[4];
 	int Status;
 
+	TRACE(Ox03f10_INFO, "%s (enter)\n", __func__);
+
 	Status = Ox03f10_IsiReadRegIss(handle, 0x4623, &read_buf[0]);
 	if (Status !=  RET_SUCCESS) {
 		TRACE(Ox03f10_ERROR,
@@ -2123,6 +2184,7 @@ int sensor_framecount(IsiSensorHandle_t handle)
 
 	g_Sensor_frame_count = frame_counter;
 
+	TRACE(Ox03f10_INFO, "%s (exit)\n", __func__);
 	return Status;
 }
 
@@ -2247,11 +2309,12 @@ RESULT Ox03f10_IsiGetIspStatusIss(IsiSensorHandle_t handle,
 {
 	Ox03f10_Context_t *pOx03f10Ctx = (Ox03f10_Context_t *) handle;
 
+	TRACE(Ox03f10_INFO, "%s: (enter)\n", __func__);
+
 	if (pOx03f10Ctx == NULL) {
 		TRACE(Ox03f10_ERROR, "%s: NULL pointer detected\n", __func__);
 		return RET_NULL_POINTER;
 	}
-	TRACE(Ox03f10_INFO, "%s: (enter)\n", __func__);
 
 	pIspStatus->useSensorAE  = false;
 	pIspStatus->useSensorBLC = true;
@@ -2364,6 +2427,16 @@ RESULT Ox03f10_IsiGetTpgIss(IsiSensorHandle_t handle, IsiSensorTpg_t *pTpg)
 	return result;
 }
 
+/*****************************************************************************
+ *          Ox03f10_IsiGetLPDSPDWbGain
+ *
+ * @brief   Derive LPD and SPD white-balance gains from the ISP WB gains.
+ *
+ * @param   pSensorFillWBGainData   input ISP white balance gains
+ * @param   pLpd                    output LPD channel white balance gains
+ * @param   pSpd                    output SPD channel white balance gains
+ *
+ *****************************************************************************/
 static void Ox03f10_IsiGetLPDSPDWbGain
 (
 	const IsiSensorWb_t *pSensorFillWBGainData,

@@ -107,6 +107,9 @@ typedef RESULT(*IsiGetExpandCurveIss_t) (IsiSensorHandle_t handle,
 typedef RESULT(*IsiGetOtpDataIss_t) (IsiSensorHandle_t handle,
 				IsiOTP_t *pOtpData);
 
+typedef RESULT (*IsiExtendFuncIss_t) ( IsiSensorHandle_t handle,
+				void *pUserData );
+
 /* AF */
 typedef RESULT(*IsiFocusCreateIss_t) (IsiSensorHandle_t handle);
 typedef RESULT(*IsiFocusReleaseIss_t) (IsiSensorHandle_t handle);
@@ -180,6 +183,7 @@ struct IsiSensor_s {
 	/**< Get sensor expand curve */
 	IsiGetExpandCurveIss_t	pIsiGetExpandCurveIss;
 	IsiGetOtpDataIss_t	pIsiGetOtpDataIss;	/**< Get sensor OTP data */
+	IsiExtendFuncIss_t                  pIsiExtendFuncIss;   /**< set sensor extend data */
 	IsiFocusCreateIss_t	pIsiFocusCreateIss;	/**< Create VCM I2C bus */
 	IsiFocusReleaseIss_t	pIsiFocusReleaseIss;	/**< Release VCM I2C bus */
 	/**< Get focus calibration data */
@@ -215,7 +219,7 @@ typedef struct IsiCamDrvConfig_s {
 	uint8_t	i2cBusId;	/**< The I2C bus ID */
 	/**< ID of camera sensor driver that maps the port link information*/
 	uint32_t	sensorDevId;
-	uint32_t	instanceID;	/**< for virtual sensor use>*/
+	uint32_t	instanceId;	/**< for virtual sensor use>*/
 } IsiCamDrvConfig_t;
 
 

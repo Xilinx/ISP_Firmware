@@ -35,6 +35,12 @@
 CREATE_TRACER(Ox08b40_INFO, "Ox08b40: ", INFO,    1);
 CREATE_TRACER(Ox08b40_WARN, "Ox08b40: ", WARNING, 1);
 CREATE_TRACER(Ox08b40_ERROR, "Ox08b40: ", ERROR,   1);
+CREATE_TRACER(Ox08b40_DEBUG, "Ox08b40: ", DEBUG,   1);
+
+
+#if (SENSOR_STATIC_CTX)
+#define osFree(p)    ((void)(p))
+#endif
 
 /*****************************************************************************
  *Sensor Info
@@ -298,6 +304,7 @@ static  RESULT Ox08b40_IsiEnumModeIss(IsiSensorHandle_t handle,
 		}
 	}
 
+	TRACE(Ox08b40_INFO, "%s (exit)\n", __func__);
 	return RET_NOTSUPP;
 }
 
@@ -348,6 +355,39 @@ static RESULT Ox08b40_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps)
 	return result;
 }
 
+#if (SENSOR_STATIC_CTX)
+/*****************************************************************************
+ *          Ox08b40_AllocCtx
+ *
+ * @brief   Obtain the sensor context for the given input pipe.
+ *
+ * With SENSOR_STATIC_CTX the context comes from a fixed per-pipe pool (no
+ * heap); the legacy osMalloc path is kept for the default build.
+ *
+ * @param   pipeId   Input-pipe id (halDevID / sensorDevId)
+ *
+ * @return  Pointer to the context, or NULL if pipeId is out of range.
+ *
+ *****************************************************************************/
+static Ox08b40_Context_t g_ox08b40CtxPool[IN_PIPE_LAST];
+
+static Ox08b40_Context_t *Ox08b40_AllocCtx(uint32_t pipeId)
+{
+	if (pipeId >= IN_PIPE_LAST) {
+		return NULL;
+	}
+	return &g_ox08b40CtxPool[pipeId];
+}
+
+/* Static context is never freed; the per-pipe slot is reused on next create. */
+#else
+static Ox08b40_Context_t *Ox08b40_AllocCtx(uint32_t pipeId)
+{
+	(void)pipeId;
+	return (Ox08b40_Context_t *)osMalloc(sizeof(Ox08b40_Context_t));
+}
+#endif
+
 /*****************************************************************************
  *          Ox08b40_IsiCreateIss
  *
@@ -377,7 +417,7 @@ static RESULT Ox08b40_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 	}
 
 	Ox08b40_Context_t *pOx08b40Ctx =
-		(Ox08b40_Context_t *) osMalloc(sizeof(Ox08b40_Context_t));
+		Ox08b40_AllocCtx(pConfig->halDevID);
 
 	if (!pOx08b40Ctx) {
 		TRACE(Ox08b40_ERROR, "%s: Can't allocate ox08b40 context\n", __func__);
@@ -410,7 +450,7 @@ static RESULT Ox08b40_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 		*pHandle = NULL;
 		return RET_UNSUPPORT_ID;
 	}
-	desId = MAPPING_INPIPE_TO_DES_ID(pipeId);
+	desId = GetDesIdForPipe(pipeId);
 
 	pOx08b40Ctx->i2cId = GetI2cBusIdForDes(desId);
 	uint8_t busId = (uint8_t)pOx08b40Ctx->i2cId;
@@ -443,7 +483,7 @@ static RESULT Ox08b40_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 		osFree(pOx08b40Ctx);
 		return result;
 	}
-	result = init_sensor(pipeId, desId, SENSOR_OX8B40_ADDRESS);
+	result = init_sensor(pipeId, desId, SENSOR_OX8B40_ADDRESS, OX08B40_SENSOR_ID);
 	if (result != RET_SUCCESS) {
 		TRACE(Ox08b40_ERROR,
 				"%s: init_sensor failed for pipe %d (err=%d)\n",
@@ -784,7 +824,7 @@ static RESULT Ox08b40_InitialModeParameters(IsiSensorHandle_t handle)
 }
 
 /*****************************************************************************
- *         Ox08b40_ IsiOpenIss
+ *          Ox08b40_IsiOpenIss
  *
  * @brief   Open of the image sensor considering the given configuration.
  *
@@ -1287,7 +1327,7 @@ static RESULT Ox08b40_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
 			pAeBaseInfo->nativeHdrRatio[X8B_NATIVE_RATIO_LCG_SPD],
 			pAeBaseInfo->nativeHdrRatio[X8B_NATIVE_RATIO_SPD_VS]);
 
-	TRACE(Ox08b40_INFO, "%s: (enter)\n", __func__);
+	TRACE(Ox08b40_INFO, "%s: (exit)\n", __func__);
 	return result;
 }
 
@@ -1777,6 +1817,8 @@ int Ox08b40_sensor_framecount(IsiSensorHandle_t handle)
 	uint16_t read_buf[4];
 	int Status;
 
+	TRACE(Ox08b40_INFO, "%s (enter)\n", __func__);
+
 	if (pOx08b40Ctx == NULL) {
 		TRACE(Ox08b40_ERROR,
 				"%s: Invalid sensor handle (NULL pointer detected)\n",
@@ -1818,6 +1860,7 @@ int Ox08b40_sensor_framecount(IsiSensorHandle_t handle)
 
 	g_Sensor_frame_count = frame_counter;
 
+	TRACE(Ox08b40_INFO, "%s (exit)\n", __func__);
 	return Status;
 }
 
@@ -2303,6 +2346,8 @@ static RESULT Ox08b40_IsiGetExpandCurveIss(IsiSensorHandle_t handle,
 	RESULT result = RET_SUCCESS;
 	Ox08b40_Context_t *pOx08b40Ctx = (Ox08b40_Context_t *) handle;
 
+	TRACE(Ox08b40_INFO, "%s (enter)\n", __func__);
+
 	if (pOx08b40Ctx == NULL || pCurve == NULL) {
 		TRACE(Ox08b40_ERROR,
 				"%s: Invalid sensor handle or NULL pointer detected\n",
@@ -2310,6 +2355,7 @@ static RESULT Ox08b40_IsiGetExpandCurveIss(IsiSensorHandle_t handle,
 		return RET_NULL_POINTER;
 	}
 
+	TRACE(Ox08b40_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 

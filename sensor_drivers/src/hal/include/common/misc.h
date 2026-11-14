@@ -58,6 +58,14 @@
 #define SIGN(a)			(((a) < 0) ? -1 : ((a) > 0) ? 1 : 0)
 #endif
 
+#ifndef EPSILON
+#define EPSILON			(1e-6)
+#endif
+
+#ifndef FLOAT_EQUAL
+#define FLOAT_EQUAL(a, b)	(ABS((a) - (b)) < (EPSILON))
+#endif
+
 #define ARRAY_SIZE(arr)		(sizeof(arr) / sizeof((arr)[0]))
 
 #endif

@@ -29,6 +29,7 @@
 
 CREATE_TRACER(SENSOR_DRV_INFO, "SENSOR_INFO: ", INFO, 1);
 CREATE_TRACER(SENSOR_DRV_ERROR, "SENSOR_ERROR: ", ERROR, 1);
+CREATE_TRACER(SENSOR_DRV_ALWAYS, "SENSOR_ALWAYS: ", ALWAYS, 1);
 
 #define SENSOR_NAME_MAX_LEN      50
 #define VIRTUAL_PREFIX_LEN       7
@@ -38,6 +39,7 @@ CREATE_TRACER(SENSOR_DRV_ERROR, "SENSOR_ERROR: ", ERROR, 1);
 #define DEFAULT_I2C_BUS_ID       8
 
 extern int current_active_fmc;
+extern int current_active_serializer;
 
 SensorDrvConfigList_t sensorCfgList[] = {
 	{"ox03f10", SENSOR_OX3F10_ADDRESS, REGWIDTH, DATAWIDTH,
@@ -47,9 +49,11 @@ SensorDrvConfigList_t sensorCfgList[] = {
 	{"ox05b1s", SENSOR_OX5B_ADDRESS, REGWIDTH, DATAWIDTH,
 		{SC_CTRL_A, SC_CTRL_B}, OX05B1S_SENSOR_ID},
 	{"imx728", SENSOR_IMX728_ADDRESS, REGWIDTH, DATAWIDTH,
-		{CHIP_ID_1, CHIP_ID_0}, IMX728_SENSOR_ID},
+		{CHIP_ID_1, CHIP_ID_0}, IMX728_SENSOR_ID,
+		imx728_prepare_id},
 	{"imx623", SENSOR_IMX623_ADDRESS, REGWIDTH, DATAWIDTH,
-		{CHIP_ID_1, CHIP_ID_0}, IMX623_SENSOR_ID}
+		{IMX623_CHIP_ID_2, IMX623_CHIP_ID_1, IMX623_CHIP_ID_0},
+		IMX623_SENSOR_ID}
 };
 
 /****************************************************************************
@@ -142,6 +146,7 @@ RESULT SensorDrvConfigMapping(const CamDeviceSensorModuleMapCfg_t
 
 	TRACE(SENSOR_DRV_ERROR, "%s: Unsupported sensor %s !\n",
 			__func__, pModuleInfo->moduleName);
+	TRACE(SENSOR_DRV_INFO, "%s: (exit)\n", __func__);
 	return RET_NOTSUPP;
 }
 
@@ -246,7 +251,7 @@ RESULT SensorDrvGetPortInfo(sensorPortInfo_t *pPortInfo, uint32_t sensorDevId)
 	}
 
 	uint8_t pipeId = sensorDevId;
-	uint8_t desId = MAPPING_INPIPE_TO_DES_ID(pipeId);
+	uint8_t desId = GetDesIdForPipe(pipeId);
 	uint8_t found = BOOL_FALSE;
 	
 	init_iic_access(0, pipeId);
@@ -254,7 +259,7 @@ RESULT SensorDrvGetPortInfo(sensorPortInfo_t *pPortInfo, uint32_t sensorDevId)
 
 	if (Status != RET_SUCCESS)
 		return Status;
-	init_sensor(pipeId, desId, 0);
+	init_sensor(pipeId, desId, 0, 0);
 	IsiFmc_t *active_fmc = get_active_fmc();
 
 	if (!active_fmc) {
@@ -467,6 +472,7 @@ RESULT VsiCamDeviceSensorGetListInfo(CamDeviceSensorListInfo_t
 		return RET_FAILURE;
 	}
 
+
 	TRACE(SENSOR_DRV_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
 }
@@ -486,7 +492,7 @@ RESULT VsiCamDeviceSensorGetConnectPortInfo(SensorDrvId_t sensorDrvId,
 						    CamDeviceSensorConnectPortInfo_t *pPortInfo)
 {
 	RESULT result = RET_SUCCESS;
-	uint8_t desId = MAPPING_INPIPE_TO_DES_ID(sensorDrvId);
+	uint8_t desId = GetDesIdForPipe(sensorDrvId);
 
 	TRACE(SENSOR_DRV_INFO, "%s (enter)\n", __func__);
 
@@ -518,7 +524,6 @@ RESULT VsiCamDeviceSensorGetConnectPortInfo(SensorDrvId_t sensorDrvId,
 	strncpy(pPortInfo->name, portInfo.name, sizeof(pPortInfo->name) - 1);
 	pPortInfo->name[sizeof(pPortInfo->name) - 1] = '\0';
 	pPortInfo->chipId = portInfo.chipId;
-
 
 	TRACE(SENSOR_DRV_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
@@ -578,7 +583,7 @@ RESULT SelectFMCID(int fmc_id)
     TRACE(SENSOR_DRV_INFO, "%s (enter)\n", __func__);
     TRACE(SENSOR_DRV_INFO, "FMC ID Passed: %d\n",fmc_id);
 
-    if(fmc_id == 0 || fmc_id == 1){
+    if(fmc_id == 0 || fmc_id == 1 || fmc_id == 2){
     	current_active_fmc = fmc_id;
 		TRACE(SENSOR_DRV_INFO, "FMC ID updated as: %d ----- %d\n",current_active_fmc,__LINE__);
 	} else {
@@ -591,4 +596,33 @@ RESULT SelectFMCID(int fmc_id)
 
     return RET_SUCCESS;
 
+}
+
+/**************************************************************************
+ *          SelectSerializer
+ *
+ * @brief   Select the serializer paired with the deserializer FMC.
+ *
+ * @param   ser_id   SER_ID_MAX9295 or SER_ID_MAX96717
+ *
+ * @return  RET_SUCCESS or error
+ *
+ ************************************************************************/
+RESULT SelectSerializer(int ser_id)
+{
+    TRACE(SENSOR_DRV_INFO, "%s (enter)\n", __func__);
+    TRACE(SENSOR_DRV_INFO, "Serializer ID Passed: %d\n", ser_id);
+
+    if (ser_id == SER_ID_MAX9295 || ser_id == SER_ID_MAX96717) {
+        current_active_serializer = ser_id;
+        TRACE(SENSOR_DRV_INFO, "Serializer ID updated as: %d\n",
+            current_active_serializer);
+    } else {
+        TRACE(SENSOR_DRV_ERROR, "INVALID Serializer ID Passed\n");
+        return RET_FAILURE;
+    }
+
+    TRACE(SENSOR_DRV_INFO, "%s (exit)\n", __func__);
+
+    return RET_SUCCESS;
 }

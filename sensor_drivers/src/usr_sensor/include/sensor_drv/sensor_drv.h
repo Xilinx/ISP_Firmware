@@ -46,6 +46,9 @@ extern "C"
 /* Refer imx728, imx623 for the below registers */
 #define CHIP_ID_1		(0x8385)
 #define CHIP_ID_0		(0x8384)
+#define IMX623_CHIP_ID_2	(0x7E82)
+#define IMX623_CHIP_ID_1	(0x7E81)
+#define IMX623_CHIP_ID_0	(0x7E80)
 
 typedef void *CamDeviceSensorDrvHandle_t;
 
@@ -71,7 +74,18 @@ typedef struct SensorDrvConfigList_s {
 	uint8_t		dataWidth;
 	uint16_t	regAddr[3];
 	uint32_t	sensorId;
+	/*
+	 * Optional preamble run before this sensor's chip id is read, for
+	 * sensors that gate their id behind a locked register page. NULL when
+	 * the id is directly readable. Implemented by the sensor's own driver
+	 * and called handle-free (bus id + 7-bit address), so no sensor-specific
+	 * code lives in the detection path.
+	 */
+	RESULT		(*prepareId)(uint8_t i2cBusId, uint8_t addr7);
 } SensorDrvConfigList_t;
+
+/* imx728 gates its chip-ID page; its driver supplies this handle-free unlock. */
+RESULT imx728_prepare_id(uint8_t i2cBusId, uint8_t addr7);
 
 typedef enum SensorDrvId_e {
 	SENSOR_DRV_ID_0,	/* Video input sensor index 0. */
@@ -84,6 +98,7 @@ typedef enum SensorDrvId_e {
 typedef struct CamDeviceSensorModuleMapCfg_s {
 	char		moduleName[SENSOR_MODULE_NAME];
 	uint32_t	sensorDevId;
+	uint32_t	instanceId;
 } CamDeviceSensorModuleMapCfg_t;
 
 extern IsiCamDrvConfig_t Ox03f10_IsiCamDrvConfig;
@@ -223,6 +238,17 @@ RESULT VsiCamDeviceSensorMapping(
  *
  ************************************************************************/
 RESULT SelectFMCID(int fmc_id);
+
+/**************************************************************************
+ * @brief   Select the serializer paired with the deserializer FMC.
+ *
+ * @param   ser_id       SER_ID_MAX9295 or SER_ID_MAX96717
+ *
+ * @retval  RET_SUCCESS         Operation succeeded
+ * @retval  RET_FAILURE         Operation failed
+ *
+ ************************************************************************/
+RESULT SelectSerializer(int ser_id);
 
 #ifdef __cplusplus
 }

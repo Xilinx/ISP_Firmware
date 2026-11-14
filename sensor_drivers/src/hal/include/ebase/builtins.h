@@ -29,15 +29,18 @@
 
 #include "types.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #if defined(__GNUC__)
 
-#include <stddef.h>
+void infra_memset(void *s, int32_t c, size_t n);
+#define MEMSET(TARGET, C, LEN)		infra_memset(TARGET, C, LEN)
 
-void *__builtin_memset(void *s, int c, size_t n);
-#define MEMSET(TARGET, C, LEN)		__builtin_memset(TARGET, C, LEN)
-
-void *__builtin_memcpy(void *s1, const void *s2, size_t n);
-#define MEMCPY(DST, SRC, LEN)		__builtin_memcpy(DST, SRC, LEN)
+void infra_memcpy(void *s1, const void *s2, size_t n);
+#define MEMCPY(DST, SRC, LEN)		infra_memcpy(DST, SRC, LEN)
 
 #else
 
@@ -49,5 +52,9 @@ void *__builtin_memcpy(void *s1, const void *s2, size_t n);
 #endif
 
 #define WIPEOBJ(TARGET)			MEMSET(&TARGET, 0, sizeof(TARGET))
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -33,16 +33,20 @@
 CREATE_TRACER(Ox05b1s_INFO, "Ox05b1s: ", INFO,      1);
 CREATE_TRACER(Ox05b1s_WARN, "Ox05b1s: ", WARNING,   1);
 CREATE_TRACER(Ox05b1s_ERROR, "Ox05b1s: ", ERROR,    1);
-CREATE_TRACER(Ox05b1s_DEBUG, "Ox05b1s: ", INFO,     1);
+CREATE_TRACER(Ox05b1s_DEBUG, "Ox05b1s: ", DEBUG,     1);
 
 #define IR_POWER_DEVICE_SLAVE_ADDRESS		(0x4a)
 #define Ox05b1s_MIN_GAIN_STEP			(1.0f/1024.0f)
 #define OX05B1S_IR_LIGHT_STRENGTH_MAX	(26)
 #define OX05B1S_MAX_INSTANCES			(16)
 
+// #define OX05B1S_WITH_VTS			(1)
+#define OX05B1S_WITH_HTS			(1)
+
 typedef struct multiInstanceMutex_s {
 	osMutex mut;
 	bool initialized;
+	uint8_t refcount;  /* Number of active instances on this sensor */
 } multiInstanceMutex_t;
 
 multiInstanceMutex_t ox05b1sABmodeMutex[OX05B1S_MAX_INSTANCES];
@@ -95,7 +99,7 @@ IsiSensorMode_t pox05b1s_mode_info[] = {
 			.intTimeDelayFrame = 2,
 			.gainDelayFrame = 2,
 		},
-		.fps       = 30 * ISI_FPS_QUANTIZE,
+		.fps       = 60 * ISI_FPS_QUANTIZE,
 		.hdrMode  = ISI_SENSOR_MODE_LINEAR,
 		.bitWidth = 10,
 		.bayerPattern = ISI_BPAT_BGGIR,
@@ -117,7 +121,7 @@ IsiSensorMode_t pox05b1s_mode_info[] = {
 			.intTimeDelayFrame = 2,
 			.gainDelayFrame = 2,
 		},
-		.fps       = 30 * ISI_FPS_QUANTIZE,
+		.fps       = 60 * ISI_FPS_QUANTIZE,
 		.hdrMode  = ISI_SENSOR_MODE_LINEAR,
 		.bitWidth = 10,
 		.bayerPattern = ISI_BPAT_BGGIR,
@@ -143,6 +147,8 @@ int ox05b1s_mode_num =
 RESULT enable_IR_power(IsiSensorHandle_t handle)
 {
 	Ox05b1s_Context_t *pOx05b1sCtx = (Ox05b1s_Context_t *) handle;
+
+	TRACE(Ox05b1s_INFO, "%s (enter)\n", __func__);
 
 	if (pOx05b1sCtx == NULL) {
 		TRACE(Ox05b1s_ERROR, "%s: pOx05b1sCtx is NULL\n", __func__);
@@ -202,6 +208,7 @@ RESULT enable_IR_power(IsiSensorHandle_t handle)
 		return Status;
 	}
 
+	TRACE(Ox05b1s_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
 }
 
@@ -228,6 +235,8 @@ static RESULT Ox05b1s_IsiReadRegIss(IsiSensorHandle_t handle,
 	RESULT result = RET_SUCCESS;
 
 	Ox05b1s_Context_t *pOx05b1sCtx = (Ox05b1s_Context_t *) handle;
+
+	TRACE(Ox05b1s_INFO, "%s (enter)\n", __func__);
 
 	if (pOx05b1sCtx == NULL || pValue == NULL) {
 		TRACE(Ox05b1s_ERROR, "%s: pOx05b1sCtx or pValue is NULL\n", __func__);
@@ -258,6 +267,7 @@ static RESULT Ox05b1s_IsiReadRegIss(IsiSensorHandle_t handle,
 	}
 	*pValue = (uint16_t)read_val;
 
+	TRACE(Ox05b1s_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -284,6 +294,8 @@ static RESULT Ox05b1s_IsiWriteRegIss(IsiSensorHandle_t handle,
 	RESULT result = RET_SUCCESS;
 
 	Ox05b1s_Context_t *pOx05b1sCtx = (Ox05b1s_Context_t *) handle;
+
+	TRACE(Ox05b1s_INFO, "%s (enter)\n", __func__);
 
 	if (pOx05b1sCtx == NULL) {
 		TRACE(Ox05b1s_ERROR, "%s: pOx05b1sCtx is NULL\n", __func__);
@@ -314,6 +326,7 @@ static RESULT Ox05b1s_IsiWriteRegIss(IsiSensorHandle_t handle,
 			__func__, addr, result);
 		return RET_FAILURE;
 	}
+	TRACE(Ox05b1s_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -342,6 +355,8 @@ static RESULT Ox05b1s_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
 	RESULT result = RET_SUCCESS;
 
 	Ox05b1s_Context_t *pOx05b1sCtx = (Ox05b1s_Context_t *) handle;
+
+	TRACE(Ox05b1s_INFO, "%s (enter)\n", __func__);
 
 	if (pOx05b1sCtx == NULL) {
 		TRACE(Ox05b1s_ERROR, "%s: pOx05b1sCtx is NULL\n", __func__);
@@ -373,6 +388,7 @@ static RESULT Ox05b1s_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
 		return RET_FAILURE;
 	}
 
+	TRACE(Ox05b1s_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 #endif
@@ -447,11 +463,11 @@ static  RESULT Ox05b1s_IsiEnumModeIss(IsiSensorHandle_t handle,
 		if (pox05b1s_mode_info[mode_idx].index == pEnumMode->index) {
 			memcpy(&pEnumMode->mode, &pox05b1s_mode_info[mode_idx],
 			       sizeof(IsiSensorMode_t));
-			TRACE(Ox05b1s_INFO, "%s (exit)\n", __func__);
 			return RET_SUCCESS;
 		}
 	}
 
+	TRACE(Ox05b1s_INFO, "%s (exit)\n", __func__);
 	return RET_NOTSUPP;
 }
 
@@ -505,6 +521,46 @@ static RESULT Ox05b1s_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps)
 	return result;
 }
 
+#if (SENSOR_STATIC_CTX)
+/*****************************************************************************
+ *          Ox05b1s_AllocCtx
+ *
+ * @brief   Obtain the sensor context for the given input pipe.
+ *
+ * With SENSOR_STATIC_CTX the context comes from a fixed per-pipe pool (no
+ * heap); the legacy osMalloc path is kept for the default build.
+ *
+ * @param   pipeId   Input-pipe id (halDevID / sensorDevId)
+ *
+ * @return  Pointer to the context, or NULL if pipeId is out of range.
+ *
+ *****************************************************************************/
+/*
+ * Hand out a fixed per-pipe static context. For RGBIR the RGB and IR paths
+ * share the same physical sensor (same halDevID/sensorDevId), so they map to
+ * the same context slot. The shared slot is protected at release time by the
+ * per-sensorDevId refcount: it is only cleared once the last sibling releases.
+ */
+
+static Ox05b1s_Context_t g_ox05b1sCtxPool[OX05B1S_MAX_INSTANCES];
+
+static Ox05b1s_Context_t *Ox05b1s_AllocCtx(uint32_t pipeId)
+{
+	if (pipeId >= IN_PIPE_LAST) {
+		return NULL;
+	}
+	return &g_ox05b1sCtxPool[pipeId];
+}
+
+/* Static context is not heap-backed; nothing to free. */
+#else
+static Ox05b1s_Context_t *Ox05b1s_AllocCtx(uint32_t pipeId)
+{
+	(void)pipeId;
+	return (Ox05b1s_Context_t *)osMalloc(sizeof(Ox05b1s_Context_t));
+}
+#endif
+
 /*****************************************************************************
  *          Ox05b1s_IsiCreateIss
  *
@@ -527,7 +583,7 @@ static RESULT Ox05b1s_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 	TRACE(Ox05b1s_INFO, "%s (enter)\n", __func__);
 
 	Ox05b1s_Context_t *pOx05b1sCtx =
-		(Ox05b1s_Context_t *) osMalloc(sizeof(Ox05b1s_Context_t));
+		Ox05b1s_AllocCtx(pConfig->halDevID);
 
 	if (!pOx05b1sCtx) {
 		TRACE(Ox05b1s_ERROR, "%s: Can't allocate ox05b1s context\n", __func__);
@@ -549,7 +605,7 @@ static RESULT Ox05b1s_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 
 	*pHandle = (IsiSensorHandle_t) pOx05b1sCtx;
 
-	desId = MAPPING_INPIPE_TO_DES_ID(pipeId);
+	desId = GetDesIdForPipe(pipeId);
 
 	pOx05b1sCtx->i2cId = GetI2cBusIdForDes(desId);
 	uint8_t busId = (uint8_t)pOx05b1sCtx->i2cId;
@@ -576,31 +632,26 @@ static RESULT Ox05b1s_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 		return result;
 	}
 
-	static int8_t mcmABmode_initCount;
-
-	/* MCM A/B mode: init_des/init_sensor only needed once per GMSL link.
-	 * With up to 2 deserializer links, skip init after the first 3 calls
-	 * since the deserializer and serializer are already configured. */
-	if (mcmABmode_initCount <= 2) {
-		result = init_des(desId);
-		if (result != RET_SUCCESS) {
-			TRACE(Ox05b1s_ERROR,
-			      "%s: init_des failed for desId %d (err=%d)\n",
-			      __func__, desId, result);
-			osFree(pOx05b1sCtx);
-			return result;
-		}
-		result = init_sensor(pipeId, desId, SENSOR_OX5B_ADDRESS);
-		if (result != RET_SUCCESS) {
-			TRACE(Ox05b1s_ERROR,
-			      "%s: init_sensor failed for pipe %d (err=%d)\n",
-			      __func__, pipeId, result);
-			osFree(pOx05b1sCtx);
-			return result;
-		}
+	
+	if(ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].refcount==0) {
+	result = init_des(desId);
+	if (result != RET_SUCCESS) {
+		TRACE(Ox05b1s_ERROR,
+		      "%s: init_des failed for desId %d (err=%d)\n",
+		      __func__, desId, result);
+		osFree(pOx05b1sCtx);
+		return result;
 	}
-
-	mcmABmode_initCount++;
+	result = init_sensor(pipeId, desId, SENSOR_OX5B_ADDRESS, OX05B1S_SENSOR_ID);
+	if (result != RET_SUCCESS) {
+		TRACE(Ox05b1s_ERROR,
+		      "%s: init_sensor failed for pipe %d (err=%d)\n",
+		      __func__, pipeId, result);
+		osFree(pOx05b1sCtx);
+		return result;
+	}
+}
+ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].refcount++;
 
 	TRACE(Ox05b1s_INFO, "%s (exit)\n", __func__);
 	return result;
@@ -755,16 +806,13 @@ static RESULT Ox05b1s_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 				}
 				break;
 		case 1:
+		case 2:
 		if (!(ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].initialized)) {
 			int32_t osRet = OSLAYER_OK;
 
 			osRet = osMutexInit(&(ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].mut));
 			if (osRet != OSLAYER_OK)
 				return RET_FAILURE;
-
-			ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].initialized = true;
-		}
-
 		for (uint32_t reg_idx = 0;
 		     reg_idx < sizeof(Ox05b1s_mipi4lane_2592_1944_linear_ABmode_init) /
 			sizeof(Ox05b1s_mipi4lane_2592_1944_linear_ABmode_init[0]);
@@ -782,39 +830,9 @@ static RESULT Ox05b1s_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 				       Ox05b1s_mipi4lane_2592_1944_linear_ABmode_init[reg_idx][1]);
 
 		}
-		break;
-		case 2:
-		if (!(ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].initialized)) {
-			int32_t osRet = OSLAYER_OK;
-
-			osRet = osMutexInit(&(ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].mut));
-			if (osRet != OSLAYER_OK)
-				return RET_FAILURE;
-
 			ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].initialized = true;
-		}
+	}
 
-		for (uint32_t reg_idx = 0;
-			reg_idx < sizeof(Ox05b1s_mipi4lane_2592_1944_linear_ABmode_IRframe_init) /
-			sizeof(Ox05b1s_mipi4lane_2592_1944_linear_ABmode_IRframe_init[0]);
-		     reg_idx++) {
-			if (Ox05b1s_mipi4lane_2592_1944_linear_ABmode_IRframe_init
-				[reg_idx][0] == OX05B1S_TABLE_WAIT) {
-				osSleep(Ox05b1s_mipi4lane_2592_1944_linear_ABmode_IRframe_init
-					[reg_idx][1]);
-				continue;
-			}
-			if (Ox05b1s_mipi4lane_2592_1944_linear_ABmode_IRframe_init
-				   [reg_idx][0] ==
-				OX05B1S_TABLE_END)
-				break;
-			Ox05b1s_IsiWriteRegIss(handle,
-				       Ox05b1s_mipi4lane_2592_1944_linear_ABmode_IRframe_init
-					   [reg_idx][0],
-				       Ox05b1s_mipi4lane_2592_1944_linear_ABmode_IRframe_init
-					   [reg_idx][1]);
-
-		}
 		break;
 		default:
 		TRACE(Ox05b1s_INFO, "%s:not support sensor mode %d\n",
@@ -834,6 +852,7 @@ static RESULT Ox05b1s_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 		case 0:
 		pOx05b1sCtx->oneLineExpTime      = 0.000027;
 		pOx05b1sCtx->frameLengthLines    = 0x850;
+		pOx05b1sCtx->lineLengthPck        = 0x0500; /* native HTS */
 		pOx05b1sCtx->curFrameLengthLines = pOx05b1sCtx->frameLengthLines;
 		pOx05b1sCtx->maxIntegrationLine  = pOx05b1sCtx->frameLengthLines - 30;
 		pOx05b1sCtx->minIntegrationLine  = 4;
@@ -848,8 +867,9 @@ static RESULT Ox05b1s_IsiOpenIss(IsiSensorHandle_t handle, uint32_t mode)
 		break;
 		case 1:
 		case 2:
-		pOx05b1sCtx->oneLineExpTime      = 0.00001601562f; /* HTS=0x02f0 */
+		pOx05b1sCtx->oneLineExpTime      = 0.00000800781f; /* HTS=0x0178 */
 		pOx05b1sCtx->frameLengthLines    = 0x850;
+		pOx05b1sCtx->lineLengthPck        = 0x0178; /* native HTS */
 		pOx05b1sCtx->curFrameLengthLines = pOx05b1sCtx->frameLengthLines;
 		pOx05b1sCtx->maxIntegrationLine  = pOx05b1sCtx->frameLengthLines - 30;
 		pOx05b1sCtx->minIntegrationLine  = 4;
@@ -916,15 +936,17 @@ static RESULT Ox05b1s_IsiCloseIss(IsiSensorHandle_t handle)
 	}
 
 	(void)Ox05b1s_IsiSetStreamingIss(pOx05b1sCtx, BOOL_FALSE);
+	if (pOx05b1sCtx->sensorMode.index == 1 ||
+	    pOx05b1sCtx->sensorMode.index == 2) {
+		if (ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].refcount == 1 &&
+		    ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].initialized) {
+			int32_t osRet = osMutexDestroy(
+				&(ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].mut));
+			if (osRet != OSLAYER_OK)
+				return RET_FAILURE;
 
-	if (pOx05b1sCtx->sensorMode.index == 1) {
-		int32_t osRet = OSLAYER_OK;
-
-		osRet = osMutexDestroy(&(ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].mut));
-		if (osRet != OSLAYER_OK)
-			return RET_FAILURE;
-
-		ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].initialized = false;
+			ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].initialized = false;
+		}
 	}
 	TRACE(Ox05b1s_INFO, "%s (exit)\n", __func__);
 	return result;
@@ -952,16 +974,34 @@ static RESULT Ox05b1s_IsiReleaseIss(IsiSensorHandle_t handle)
 		return RET_WRONG_HANDLE;
 	}
 
-	stop_sensor(pOx05b1sCtx->sensorDevId);
+	/*
+	 * Drop this instance's reference. For RGBIR the RGB and IR paths share
+	 * one physical sensor (same sensorDevId) and, with SENSOR_STATIC_CTX,
+	 * one shared context slot. Only stop the sensor and clear the shared
+	 * context once the last reference is released, so the sibling path still
+	 * sees a valid context (non-NULL pSensor) while it is still active.
+	 */
+	if (ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].refcount > 0)
+		ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].refcount--;
 
+	if (ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].refcount == 0)
+		stop_sensor(pOx05b1sCtx->sensorDevId);
+
+#if (SENSOR_STATIC_CTX)
+	/* Shared static context: wipe only after the last sibling releases. */
+	if (ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].refcount == 0)
+		MEMSET(pOx05b1sCtx, 0, sizeof(Ox05b1s_Context_t));
+#else
+	/* Heap context is private per instance: clear and free every release. */
 	MEMSET(pOx05b1sCtx, 0, sizeof(Ox05b1s_Context_t));
 	osFree(pOx05b1sCtx);
+#endif
 	TRACE(Ox05b1s_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
 /****************************************************************************
- *          IsiCheckConnectionIss
+ *          Ox05b1s_IsiCheckConnectionIss
  *
  * @brief   Checks the connection to the camera sensor, if possible.
  *
@@ -1066,13 +1106,15 @@ static RESULT Ox05b1s_IsiSetGroupA_IR(IsiSensorHandle_t handle)
 
 	Ox05b1s_Context_t *pOx05b1sCtx = (Ox05b1s_Context_t *) handle;
 
+	TRACE(Ox05b1s_INFO, "%s (enter)\n", __func__);
+
 	if (pOx05b1sCtx == NULL) {
 		TRACE(Ox05b1s_ERROR, "%s: pOx05b1sCtx is NULL\n", __func__);
 		return RET_NULL_POINTER;
 	}
 
 	TRACE(Ox05b1s_DEBUG,
-	      "%s: (enter) expLine=0x%x, again=0x%x, dgain=0x%x\n",
+	      "%s: expLine=0x%x, again=0x%x, dgain=0x%x\n",
 	      __func__, pOx05b1sCtx->expLine, pOx05b1sCtx->again,
 	      pOx05b1sCtx->dgain);
 
@@ -1128,7 +1170,8 @@ static RESULT Ox05b1s_IsiSetGroupA_IR(IsiSensorHandle_t handle)
 	/* ---- Group 0 hold end ---- */
 	result |= Ox05b1s_IsiWriteRegIss(handle, 0x3208, 0x10);
 
-	TRACE(Ox05b1s_DEBUG, "%s: (exit) result=%d\n", __func__, result);
+	TRACE(Ox05b1s_DEBUG, "%s: result=%d\n", __func__, result);
+	TRACE(Ox05b1s_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1148,13 +1191,15 @@ static RESULT Ox05b1s_IsiSetGroupB_RGB(IsiSensorHandle_t handle)
 
 	Ox05b1s_Context_t *pOx05b1sCtx = (Ox05b1s_Context_t *) handle;
 
+	TRACE(Ox05b1s_INFO, "%s (enter)\n", __func__);
+
 	if (pOx05b1sCtx == NULL) {
 		TRACE(Ox05b1s_ERROR, "%s: pOx05b1sCtx is NULL\n", __func__);
 		return RET_NULL_POINTER;
 	}
 
 	TRACE(Ox05b1s_DEBUG,
-	      "%s: (enter) expLine=0x%x, again=0x%x, dgain=0x%x\n",
+	      "%s: expLine=0x%x, again=0x%x, dgain=0x%x\n",
 	      __func__, pOx05b1sCtx->expLine, pOx05b1sCtx->again,
 	      pOx05b1sCtx->dgain);
 
@@ -1210,7 +1255,8 @@ static RESULT Ox05b1s_IsiSetGroupB_RGB(IsiSensorHandle_t handle)
 	/* ---- Group 1 hold end ---- */
 	result |= Ox05b1s_IsiWriteRegIss(handle, 0x3208, 0x11);
 
-	TRACE(Ox05b1s_DEBUG, "%s: (exit) result=%d\n", __func__, result);
+	TRACE(Ox05b1s_DEBUG, "%s: result=%d\n", __func__, result);
+	TRACE(Ox05b1s_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -1232,8 +1278,10 @@ static RESULT Ox05b1s_IsiBufferABmodeParam(IsiSensorHandle_t handle,
 {
 	Ox05b1s_Context_t *pOx05b1sCtx = (Ox05b1s_Context_t *) handle;
 
+	TRACE(Ox05b1s_INFO, "%s (enter)\n", __func__);
+
 	TRACE(Ox05b1s_DEBUG,
-	      "%s: sensorMode=%d, paramId=%d, value=0x%x (enter)\n",
+	      "%s: sensorMode=%d, paramId=%d, value=0x%x\n",
 	      __func__, pOx05b1sCtx->sensorMode.index, paramId, value);
 
 	switch (paramId) {
@@ -1251,7 +1299,7 @@ static RESULT Ox05b1s_IsiBufferABmodeParam(IsiSensorHandle_t handle,
 		return RET_INVALID_PARM;
 	}
 
-	TRACE(Ox05b1s_DEBUG, "%s: (exit)\n", __func__);
+	TRACE(Ox05b1s_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
 }
 
@@ -1343,8 +1391,9 @@ static RESULT Ox05b1s_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t on)
 		return RET_WRONG_STATE;
 	}
 
-	if (pOx05b1sCtx->sensorMode.index != 2) {
-		result = enable_IR_power(handle);
+if (on == BOOL_TRUE) {
+	if(ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].refcount  == 1) {
+	result = enable_IR_power(handle);
 		if (result != RET_SUCCESS) {
 			TRACE(Ox05b1s_ERROR, "%s: enable_IR_power failed! (err=%d)\n", __func__, result);
 			return RET_FAILURE;
@@ -1355,6 +1404,17 @@ static RESULT Ox05b1s_IsiSetStreamingIss(IsiSensorHandle_t handle, bool_t on)
 			return RET_FAILURE;
 		}
 	}
+} else {
+if(ox05b1sABmodeMutex[pOx05b1sCtx->sensorDevId].refcount  == 1) {
+	result = Ox05b1s_IsiWriteRegIss(handle, 0x0100, on);
+		if (result != RET_SUCCESS) {
+			TRACE(Ox05b1s_ERROR, "%s: set sensor streaming error! (err=%d)\n", __func__, result);
+			return RET_FAILURE;
+		}
+	}
+}
+
+
 
 	if (on == BOOL_TRUE && pOx05b1sCtx->sensorMode.index == 1) {
 		/* RGB stream ? initialize buffer for RGB frame (Group B) */
@@ -1437,7 +1497,7 @@ static RESULT Ox05b1s_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
 	pAeBaseInfo->aecIrLightExp    = pOx05b1sCtx->irLightExp;
 	pAeBaseInfo->aecIrLightInfo   = pOx05b1sCtx->irLightInfo;
 
-	TRACE(Ox05b1s_INFO, "%s: (enter)\n", __func__);
+	TRACE(Ox05b1s_INFO, "%s: (exit)\n", __func__);
 	return result;
 }
 
@@ -1892,6 +1952,8 @@ int sensor_framecount_ox05b1s(IsiSensorHandle_t handle)
 	uint16_t read_buf[4] = {0};
 	int Status;
 
+	TRACE(Ox05b1s_INFO, "%s (enter)\n", __func__);
+
 	Status = Ox05b1s_IsiReadRegIss(handle, 0x4613, &read_buf[0]);
 	if (Status != RET_SUCCESS) {
 		TRACE(Ox05b1s_ERROR,
@@ -1928,6 +1990,7 @@ int sensor_framecount_ox05b1s(IsiSensorHandle_t handle)
 
 	g_Sensor_frame_count = frame_counter;
 
+	TRACE(Ox05b1s_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
 }
 
@@ -1984,7 +2047,12 @@ RESULT Ox05b1s_IsiGetFpsIss(IsiSensorHandle_t handle, uint32_t *pFps)
 RESULT Ox05b1s_IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps)
 {
 	RESULT result = RET_SUCCESS;
+#ifdef OX05B1S_WITH_VTS
 	int32_t NewVts = 0;
+#endif
+#ifdef OX05B1S_WITH_HTS
+	int32_t NewHts = 0;
+#endif
 
 	TRACE(Ox05b1s_INFO, "%s: (enter)\n", __func__);
 
@@ -2011,15 +2079,37 @@ RESULT Ox05b1s_IsiSetFpsIss(IsiSensorHandle_t handle, uint32_t fps)
 		fps = pOx05b1sCtx->minFps;
 	}
 
+#ifdef OX05B1S_WITH_VTS
+	TRACE(Ox05b1s_INFO, "%s: Set fps with VTS\n", __func__);
 	NewVts = pOx05b1sCtx->frameLengthLines *
 		 pOx05b1sCtx->sensorMode.fps / fps;
-	result  =  Ox05b1s_IsiWriteRegIss(handle, 0x380e, NewVts >> 8);
-	result |=  Ox05b1s_IsiWriteRegIss(handle, 0x380f, NewVts & 0xff);
-	pOx05b1sCtx->currFps              = fps;
+	result  = Ox05b1s_IsiWriteRegIss(handle, 0x380e, (NewVts >> 8) & 0xff);
+	result |= Ox05b1s_IsiWriteRegIss(handle, 0x380f, NewVts & 0xff);
+	if (result != RET_SUCCESS) {
+		TRACE(Ox05b1s_ERROR, "%s: Failed to set VTS! (err=%d)\n",
+		      __func__, result);
+		return RET_FAILURE;
+	}
 	pOx05b1sCtx->curFrameLengthLines  = NewVts;
 	pOx05b1sCtx->maxIntegrationLine   = pOx05b1sCtx->curFrameLengthLines - 30;
 	pOx05b1sCtx->aecMaxIntegrationTime = pOx05b1sCtx->maxIntegrationLine *
 					     pOx05b1sCtx->oneLineExpTime;
+#endif
+
+#ifdef OX05B1S_WITH_HTS
+	TRACE(Ox05b1s_INFO, "%s: Set fps with HTS\n", __func__);
+	NewHts = pOx05b1sCtx->lineLengthPck *
+		 pOx05b1sCtx->sensorMode.fps / fps;
+	result  = Ox05b1s_IsiWriteRegIss(handle, 0x380c, (NewHts >> 8) & 0xff);
+	result |= Ox05b1s_IsiWriteRegIss(handle, 0x380d, NewHts & 0xff);
+	if (result != RET_SUCCESS) {
+		TRACE(Ox05b1s_ERROR, "%s: Failed to set HTS! (err=%d)\n",
+		      __func__, result);
+		return RET_FAILURE;
+	}
+#endif
+
+	pOx05b1sCtx->currFps = fps;
 
 	TRACE(Ox05b1s_INFO, "%s: (exit)\n", __func__);
 	return result;
@@ -2044,11 +2134,12 @@ RESULT Ox05b1s_IsiGetIspStatusIss(IsiSensorHandle_t handle,
 {
 	Ox05b1s_Context_t *pOx05b1sCtx = (Ox05b1s_Context_t *) handle;
 
+	TRACE(Ox05b1s_INFO, "%s: (enter)\n", __func__);
+
 	if (pOx05b1sCtx == NULL) {
 		TRACE(Ox05b1s_ERROR, "%s: pOx05b1sCtx is NULL\n", __func__);
 		return RET_WRONG_HANDLE;
 	}
-	TRACE(Ox05b1s_INFO, "%s: (enter)\n", __func__);
 
 	pIspStatus->useSensorAE  = false;
 	pIspStatus->useSensorBLC = false;

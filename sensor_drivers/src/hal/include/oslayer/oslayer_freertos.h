@@ -1,177 +1,162 @@
-/****************************************************************************
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2025 Advanced Micro Devices, Inc. All right reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
- * DEALINGS IN THE SOFTWARE.
- *
- *****************************************************************************/
+/******************************************************************************\
+|* Copyright 2010, Dream Chip Technologies GmbH. used with permission by      *|
+|* VeriSilicon.                                                               *|
+|* Copyright (c) <2020> by VeriSilicon Holdings Co., Ltd. ("VeriSilicon")     *|
+|* All Rights Reserved.                                                       *|
+|*                                                                            *|
+|* The material in this file is confidential and contains trade secrets of    *|
+|* of VeriSilicon.  This is proprietary information owned or licensed by      *|
+|* VeriSilicon.  No part of this work may be disclosed, reproduced, copied,   *|
+|* transmitted, or used in any way for any purpose, without the express       *|
+|* written permission of VeriSilicon.                                         *|
+|*                                                                            *|
+\******************************************************************************/
 
+/* VeriSilicon 2020 */
+
+/**
+ * Module    : Operating System Abstraction Layer
+ *
+ * Hierarchy :
+ *
+ * Purpose   : Encapsulates and abstracts services from different operating
+ *             system, including user-mode as well as kernel-mode services.
+ ******************************************************************************/
 #ifdef FREERTOS
 
 #include <stdlib.h>
-#include <oslayer/oslayer.h>
-#include "ebase/types.h"
+#include "types.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
 #include "event_groups.h"
+#include "FreeRTOS.h"
+// #include "ff.h"
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-#define UCOSII_STACK_SIZE	(1024)
-#define OSLAYER_ASSERT		(DCT_ASSERT)
+#define UCOSII_STACK_SIZE   1024
+#define OSLAYER_ASSERT      DCT_ASSERT
 
-typedef int32_t (*osThreadFunc)(void *);
+typedef TickType_t osTickType;
+typedef BaseType_t osBaseType;
+typedef UBaseType_t osUBaseType;
+typedef StackType_t osStackType;
+typedef StaticTask_t osStaticTaskTCBType;
+typedef TaskHandle_t osTaskHandle;
+
+#define osMaxDelay portMAX_DELAY
+#define osTaskIdlePriority tskIDLE_PRIORITY
+
+typedef void (*osThreadFunc)(void *);
 typedef int32_t (*osIsrFunc)(void *);
 typedef int32_t (*osDpcFunc)(void *);
 
+
 #ifdef OSLAYER_EVENT
-/*****************************************************************************
- *          osEvent
- *
- * @brief   Event object (FreeRTOS Version) of OS Abstraction Layer
- *
- * @note    This structure encapsulates FreeRTOS event group functionality for
- *          cross-platform event synchronization in the OS abstraction layer.
- *
- *****************************************************************************/
-typedef struct _osEvent {
-	EventGroupHandle_t	event_flags;
-	int32_t			automatic;
-	int32_t			state;
-	int32_t			waitforall;
-	char			*name_ptr;
-} osEvent;
+/*****************************************************************************/
+/*  @brief  Event object (FreeRTOS Version) of OS Abstraction Layer */
+typedef struct _osEvent
+{
+    EventGroupHandle_t event_flags;
+    int32_t automatic;		/* Decides if flag to be consumed (xClearOnExit) */
+    int32_t state;			/* Not used in Freertos */
+    int32_t waitforall;		/* Added for future extension, need waiting for event bit */
+    char *name_ptr;
+#if(STATIC_ALLOCATION)
+    StaticEventGroup_t event_group_buf;
 #endif
+} osEvent;
+#endif /* OSLAYER_EVENT */
+
 
 #ifdef OSLAYER_MUTEX
-/*****************************************************************************
- *          osMutex
- *
- * @brief   Mutex object (FreeRTOS Version) of OS Abstraction Layer
- *
- * @note    This structure encapsulates FreeRTOS semaphore functionality to
- *          provide mutex synchronization primitives for the OS abstraction
- *          layer.
- *
- *****************************************************************************/
-typedef struct {
-	SemaphoreHandle_t	mutex;
-	char			*name_ptr;
-} osMutex;
+/*****************************************************************************/
+/*  @brief  Mutex object (FreeRTOS Version) of OS Abstraction Layer */
+typedef struct _osMutex
+{
+	volatile uint8_t isInited; /**<init flag: 0=uninit, 1=inited>*/
+	SemaphoreHandle_t mutex;
+    char *name_ptr;
+#if(STATIC_ALLOCATION)
+    StaticSemaphore_t mutex_buf;  /* Static storage for mutex */
 #endif
+} osMutex;
+#endif /* OSLAYER_MUTEX */
 
 
 #ifdef OSLAYER_SEMAPHORE
-/*****************************************************************************
- *          osSemaphore
- *
- * @brief   Semaphore object (FreeRTOS Version) of OS Abstraction Layer
- *
- * @note    This structure encapsulates FreeRTOS semaphore functionality
- *          for counting semaphore operations in the OS abstraction layer.
- *
- *****************************************************************************/
-typedef struct {
-	SemaphoreHandle_t	sem;
-	char			*name_ptr;
-} osSemaphore;
+/*****************************************************************************/
+/*  @brief  Semaphore object (FreeRTOS Version) of OS Abstraction Layer */
+typedef struct _osSemaphore
+{
+	SemaphoreHandle_t sem;
+    char *name_ptr;
+#if(STATIC_ALLOCATION)
+    StaticSemaphore_t semaphore_buf;  /* Static storage for semaphore */
 #endif
+} osSemaphore;
+#endif /* OSLAYER_SEMAPHORE */
+
 
 #ifdef OSLAYER_QUEUE
-/*****************************************************************************
- *          osQueue
- *
- * @brief   Queue object (FreeRTOS Version) of OS Abstraction Layer
- *
- * @note    This structure encapsulates FreeRTOS queue functionality
- *          for inter-task communication in the OS abstraction layer.
- *
- *****************************************************************************/
-typedef struct {
-	xQueueHandle		qHandle;
-	UBaseType_t		qlen;
-	UBaseType_t		qitemsize;
-} osQueue;
+
+#if(STATIC_ALLOCATION)
+
+#define MAX_QUEUE_ITEMS 80
+#define MAX_ITEM_SIZE  16
 #endif
+
+typedef struct _osQueue
+{
+	xQueueHandle	qHandle;
+	UBaseType_t 	qlen;
+	UBaseType_t 	qitemsize;
+    BaseType_t      xHigherPriorityTaskWoken;
+#if(STATIC_ALLOCATION)
+    StaticQueue_t   queueBuf;
+    uint8_t         queueStorage[MAX_QUEUE_ITEMS * MAX_ITEM_SIZE];
+#endif
+} osQueue;
+#endif /*OSLAYER_QUEUE */
+
 
 #ifdef OSLAYER_THREAD
-/*****************************************************************************
- *          osThread
- *
- * @brief   Thread object (FreeRTOS Version) of OS Abstraction Layer
- *
- * @note    This structure encapsulates FreeRTOS task functionality
- *          for thread management in the OS abstraction layer.
- *
- *****************************************************************************/
-typedef struct {
-	char			*pcName;
-	configSTACK_DEPTH_TYPE	usStackDepth;
-	UBaseType_t		uxPriority;
-	TaskHandle_t		pxCreatedTask;
+/*****************************************************************************/
+/*  @brief  Thread object (FreeRTOS Version) of OS Abstraction Layer */
+
+typedef struct _osThread
+{
+    char *pcName;
+	configSTACK_DEPTH_TYPE usStackDepth;
+	UBaseType_t uxPriority;
+	TaskHandle_t pxCreatedTask;
+    char threadName[20];
+    osEvent exit_event;
+    void (*pThreadFunc)(void *);
+    void *p_arg;
+#if(STATIC_ALLOCATION)
+    StackType_t *pxStackBuffer;
+    StaticTask_t *pxTaskBuffer;
+    StackType_t stackArray[OS_THREAD_STACK_MAX_WORDSIZE];
+    StaticTask_t taskBlock;
+#endif
 } osThread;
+#endif /* OSLAYER_THREAD */
+
+#ifdef OSLAYER_TIMESTAMP
+/*****************************************************************************/
+/*  @brief  time stamp object of OS Abstraction, just for compilation. */
+typedef uint32_t osTimeStamp;
 #endif
 
-#ifdef OSLAYER_MISC
-/*****************************************************************************
- *          osSpinLock
- *
- * @brief   Spin Lock object (FreeRTOS Version) of OS Abstraction Layer
- *
- * @note    This structure provides low-level spinlock functionality
- *          for atomic operations and hardware-level synchronization.
- *
- *****************************************************************************/
-typedef struct {
-	UINTPTR			Xil_Spinlock_Addr_tr;
-	UINTPTR			Xil_Spinlock_Flag_Addr_tr;
-	UINTPTR			base_addr;
-	u32			initstatus;
-} osSpinLock;
-
-/*****************************************************************************
- *          spinlock_sharedmem_t
- *
- * @brief   Spinlock shared memory configuration structure
- *
- * @note    This structure defines memory regions and configuration
- *          parameters for spinlock shared memory operations.
- *
- *****************************************************************************/
-typedef struct {
-	UINTPTR			start_addr;
-	UINTPTR			end_addr;
-	u32			num_regions;
-	u32			initmpuregion;
-	u32			erg_size;
-} spinlock_sharedmem_t;
-
-#endif
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+
+#endif /* FREERTOS */

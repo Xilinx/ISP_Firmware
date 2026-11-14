@@ -36,6 +36,10 @@ CREATE_TRACER(virtualSensor_DEBUG,     "virtualSensor: ", INFO, 1);
 CREATE_TRACER(virtualSensor_REG_INFO, "virtualSensor: ", INFO, 1);
 CREATE_TRACER(virtualSensor_REG_DEBUG, "virtualSensor: ", INFO, 1);
 
+#if (SENSOR_STATIC_CTX)
+#define osFree(p)    ((void)(p))
+#endif
+
 /***********************************************************************
  *Sensor Info
  **************************************************************************/
@@ -83,7 +87,13 @@ static RESULT virtualSensor_IsiGetModeIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	memcpy(p_data, pMode, sizeof(IsiSensorMode_t));
@@ -97,7 +107,7 @@ static RESULT virtualSensor_IsiGetModeIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pMode, p_data, sizeof(IsiSensorMode_t));
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -148,7 +158,13 @@ static  RESULT virtualSensor_IsiEnumModeIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	 memcpy(p_data, &pEnumMode->index, sizeof(pEnumMode->index));
@@ -179,7 +195,7 @@ static  RESULT virtualSensor_IsiEnumModeIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	//memcpy(pEnumMode, p_data, sizeof(IsiSensorEnumMode_t));
 	memcpy(&pEnumMode->index, p_data, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
@@ -265,7 +281,13 @@ static RESULT virtualSensor_IsiGetCapsIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	packet.payload_size += sizeof(IsiCaps_t);
@@ -278,13 +300,46 @@ static RESULT virtualSensor_IsiGetCapsIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pCaps, p_data, sizeof(IsiCaps_t));
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
 	return packet.resp_field.error_subcode_t;
 }
+
+#if (SENSOR_STATIC_CTX)
+/***********************************************************************
+ *          virtualSensor_AllocCtx
+ *
+ * @brief   Obtain the sensor context for the given input pipe.
+ *
+ * With SENSOR_STATIC_CTX the context comes from a fixed per-pipe pool (no
+ * heap); the legacy osMalloc path is kept for the default build.
+ *
+ * @param   pipeId   Input-pipe id (halDevID)
+ *
+ * @return  Pointer to the context, or NULL if pipeId is out of range.
+ *
+ **************************************************************************/
+static VirtualSensor_Context_t g_virtualSensorCtxPool[IN_PIPE_LAST];
+
+static VirtualSensor_Context_t *virtualSensor_AllocCtx(uint32_t pipeId)
+{
+	if (pipeId >= IN_PIPE_LAST) {
+		return NULL;
+	}
+	return &g_virtualSensorCtxPool[pipeId];
+}
+
+/* Static context is never freed; the per-pipe slot is reused on next create. */
+#else
+static VirtualSensor_Context_t *virtualSensor_AllocCtx(uint32_t pipeId)
+{
+	(void)pipeId;
+	return (VirtualSensor_Context_t *)osMalloc(sizeof(VirtualSensor_Context_t));
+}
+#endif
 
 /***********************************************************************
  *          virtualSensor_IsiCreateIss
@@ -306,7 +361,7 @@ static RESULT virtualSensor_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 	TRACE(virtualSensor_INFO, "%s (enter)\n", __func__);
 
 	VirtualSensor_Context_t *pVirtualSensorCtx =
-	(VirtualSensor_Context_t *)osMalloc(sizeof(VirtualSensor_Context_t));
+		virtualSensor_AllocCtx(pConfig->halDevID);
 
 	if (!pVirtualSensorCtx) {
 		TRACE(virtualSensor_ERROR,
@@ -339,7 +394,13 @@ static RESULT virtualSensor_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	//memcpy(p_data, pConfig, sizeof(IsiSensorInstanceConfig_t));
@@ -372,7 +433,7 @@ static RESULT virtualSensor_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 	if (result != 0)
 		return result;
 
-	packet.resp_field.error_subcode_t = rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	packet.resp_field.error_subcode_t = rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
 	return packet.resp_field.error_subcode_t;
@@ -414,7 +475,13 @@ static RESULT virtualSensor_IsiOpenIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	memcpy(p_data, &mode, sizeof(uint32_t));
@@ -429,7 +496,7 @@ static RESULT virtualSensor_IsiOpenIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -470,7 +537,13 @@ static RESULT virtualSensor_IsiCloseIss(IsiSensorHandle_t handle)
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 
@@ -482,7 +555,7 @@ static RESULT virtualSensor_IsiCloseIss(IsiSensorHandle_t handle)
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -527,7 +600,13 @@ static RESULT virtualSensor_IsiReleaseIss(IsiSensorHandle_t handle)
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 
@@ -539,7 +618,7 @@ static RESULT virtualSensor_IsiReleaseIss(IsiSensorHandle_t handle)
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -580,7 +659,13 @@ static RESULT virtualSensor_IsiCheckConnectionIss(IsiSensorHandle_t handle)
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 
@@ -592,7 +677,7 @@ static RESULT virtualSensor_IsiCheckConnectionIss(IsiSensorHandle_t handle)
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -637,7 +722,13 @@ static RESULT virtualSensor_IsiGetRevisionIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
@@ -650,7 +741,7 @@ static RESULT virtualSensor_IsiGetRevisionIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pValue, p_data, sizeof(uint32_t));
 
 
@@ -694,7 +785,13 @@ static RESULT virtualSensor_IsiSetStreamingIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	memcpy(p_data, &on, sizeof(bool_t));
@@ -709,7 +806,7 @@ static RESULT virtualSensor_IsiSetStreamingIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -756,7 +853,13 @@ static RESULT virtualSensor_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	packet.payload_size += sizeof(IsiAeBaseInfo_t);
@@ -769,7 +872,7 @@ static RESULT virtualSensor_pIsiGetAeBaseInfoIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pAeBaseInfo, p_data, sizeof(IsiAeBaseInfo_t));
 
 
@@ -815,7 +918,13 @@ static RESULT virtualSensor_IsiSetAGainIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	memcpy(p_data, pSensorAGain, sizeof(IsiSensorGain_t));
@@ -830,7 +939,7 @@ static RESULT virtualSensor_IsiSetAGainIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -875,7 +984,13 @@ static RESULT virtualSensor_IsiSetDGainIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	memcpy(p_data, pSensorDGain, sizeof(IsiSensorGain_t));
@@ -890,7 +1005,7 @@ static RESULT virtualSensor_IsiSetDGainIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -936,7 +1051,13 @@ static RESULT virtualSensor_IsiGetAGainIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	packet.payload_size += sizeof(IsiSensorGain_t);
@@ -949,7 +1070,7 @@ static RESULT virtualSensor_IsiGetAGainIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pSensorAGain, p_data, sizeof(IsiSensorGain_t));
 
 
@@ -996,7 +1117,13 @@ static RESULT virtualSensor_IsiGetDGainIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	packet.payload_size += sizeof(IsiSensorGain_t);
@@ -1009,7 +1136,7 @@ static RESULT virtualSensor_IsiGetDGainIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pSensorDGain, p_data, sizeof(IsiSensorGain_t));
 
 
@@ -1055,7 +1182,13 @@ static RESULT virtualSensor_IsiSetIntTimeIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	memcpy(p_data, pSensorIntTime, sizeof(IsiSensorIntTime_t));
@@ -1070,7 +1203,7 @@ static RESULT virtualSensor_IsiSetIntTimeIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -1115,7 +1248,13 @@ static RESULT virtualSensor_IsiGetIntTimeIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	packet.payload_size += sizeof(IsiSensorIntTime_t);
@@ -1127,7 +1266,7 @@ static RESULT virtualSensor_IsiGetIntTimeIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pSensorIntTime, p_data, sizeof(IsiSensorIntTime_t));
 
 
@@ -1174,7 +1313,13 @@ static RESULT virtualSensor_IsiGetFpsIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
@@ -1187,7 +1332,7 @@ static RESULT virtualSensor_IsiGetFpsIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pFps, p_data, sizeof(uint32_t));
 
 
@@ -1231,7 +1376,13 @@ static RESULT virtualSensor_IsiSetFpsIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	memcpy(p_data, &fps, sizeof(uint32_t));
@@ -1246,7 +1397,7 @@ static RESULT virtualSensor_IsiSetFpsIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -1292,7 +1443,13 @@ static RESULT virtualSensor_IsiGetIspStatusIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	packet.payload_size += sizeof(IsiIspStatus_t);
@@ -1305,7 +1462,7 @@ static RESULT virtualSensor_IsiGetIspStatusIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pIspStatus, p_data, sizeof(IsiIspStatus_t));
 
 
@@ -1350,7 +1507,13 @@ static RESULT virtualSensor_IsiSetTpgIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	memcpy(p_data, &tpg, sizeof(IsiSensorTpg_t));
@@ -1365,7 +1528,7 @@ static RESULT virtualSensor_IsiSetTpgIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -1411,7 +1574,13 @@ static RESULT virtualSensor_IsiGetTpgIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	packet.payload_size += sizeof(IsiSensorTpg_t);
@@ -1424,7 +1593,7 @@ static RESULT virtualSensor_IsiGetTpgIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pTpg, p_data, sizeof(IsiSensorTpg_t));
 
 
@@ -1471,7 +1640,13 @@ static RESULT virtualSensor_IsiSetWBIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	memcpy(p_data, pWb, sizeof(IsiSensorWb_t));
@@ -1486,7 +1661,7 @@ static RESULT virtualSensor_IsiSetWBIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -1533,7 +1708,13 @@ static RESULT virtualSensor_IsiGetWBIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	packet.payload_size += sizeof(IsiSensorWb_t);
@@ -1546,7 +1727,7 @@ static RESULT virtualSensor_IsiGetWBIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pWb, p_data, sizeof(IsiSensorWb_t));
 
 
@@ -1593,7 +1774,13 @@ static RESULT virtualSensor_IsiSetBlcIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	memcpy(p_data, pBlc, sizeof(IsiSensorBlc_t));
@@ -1608,7 +1795,7 @@ static RESULT virtualSensor_IsiSetBlcIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -1654,7 +1841,13 @@ static RESULT virtualSensor_IsiGetBlcIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	packet.payload_size += sizeof(IsiSensorBlc_t);
@@ -1667,7 +1860,7 @@ static RESULT virtualSensor_IsiGetBlcIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pBlc, p_data, sizeof(IsiSensorBlc_t));
 
 
@@ -1713,7 +1906,13 @@ static RESULT virtualSensor_IsiGetExpandCurveIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	packet.payload_size += sizeof(IsiSensorCompandCurve_t);
@@ -1726,7 +1925,7 @@ static RESULT virtualSensor_IsiGetExpandCurveIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pCurve, p_data, sizeof(IsiSensorCompandCurve_t));
 
 
@@ -1772,7 +1971,13 @@ static RESULT virtualSensor_IsiWriteRegIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	memcpy(p_data, &addr, sizeof(uint16_t));
@@ -1790,7 +1995,7 @@ static RESULT virtualSensor_IsiWriteRegIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, NULL, 0);
+	rpu_wait_for_ACK(apuInstanceId, NULL, 0);
 
 
 	TRACE(virtualSensor_INFO, "%s (exit)\n", __func__);
@@ -1838,7 +2043,13 @@ static RESULT virtualSensor_IsiReadRegIss(IsiSensorHandle_t handle,
 
 	uint8_t *p_data = packet.payload_data;
 
-	memcpy(p_data, &pVirtualSensorCtx->instanceId, sizeof(uint32_t));
+	uint32_t apuInstanceId = 0;
+	if(!get_apu_instance_id(pVirtualSensorCtx->instanceId,  &apuInstanceId)) {
+		TRACE(virtualSensor_ERROR, "%s: get apu instanceId faild\n", __func__);
+		return RET_FAILURE;
+	}
+
+	memcpy(p_data, &apuInstanceId, sizeof(uint32_t));
 	p_data += sizeof(uint32_t);
 	packet.payload_size += sizeof(uint32_t);
 	memcpy(p_data, &addr, sizeof(uint16_t));
@@ -1853,7 +2064,7 @@ static RESULT virtualSensor_IsiReadRegIss(IsiSensorHandle_t handle,
 		return result;
 
 	packet.resp_field.error_subcode_t =
-	rpu_wait_for_ACK(pVirtualSensorCtx->instanceId, &packet, 1);
+	rpu_wait_for_ACK(apuInstanceId, &packet, 1);
 	memcpy(pValue, p_data, sizeof(uint16_t));
 
 

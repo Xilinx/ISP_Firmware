@@ -35,7 +35,7 @@
 CREATE_TRACER(IMX728_INFO, "IMX728: ", INFO, 1);
 CREATE_TRACER(IMX728_WARN, "IMX728: ", WARNING, 1);
 CREATE_TRACER(IMX728_ERROR, "IMX728: ", ERROR, 1);
-CREATE_TRACER(IMX728_DEBUG, "IMX728: ", INFO, 1);
+CREATE_TRACER(IMX728_DEBUG, "IMX728: ", DEBUG, 1);
 
 IsiSensorMode_t pimx728_mode_info[] = {
 	{
@@ -72,8 +72,13 @@ IsiSensorMode_t pimx728_mode_info[] = {
 
 int imx728_mode_num = ARRAY_SIZE(pimx728_mode_info);
 
+#if (SENSOR_STATIC_CTX)
+#define osFree(p)    ((void)(p))
+#endif
+
+
 /*****************************************************************************
- * IMX728_IsiReadRegIss
+ *          IMX728_IsiReadRegIss
  *
  * @brief   Read register value from IMX728 sensor via I2C.
  *
@@ -94,18 +99,18 @@ static RESULT IMX728_IsiReadRegIss(IsiSensorHandle_t handle,
 	u8 slave_addr;
 	uint8_t read_val = 0;
 
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
 	if (pIMX728Ctx == NULL || pValue == NULL) {
 		TRACE(IMX728_ERROR,
 		      "%s: Invalid handle or null pointer!\n", __func__);
 		return RET_NULL_POINTER;
 	}
 
-	osMutexLock(&pIMX728Ctx->registerLock);
 	memset(pValue, 0, sizeof(uint16_t));
 	if (!pIMX728Ctx->regAccessEnable) {
 		TRACE(IMX728_ERROR,
 		      "%s: register cannot be read!\n", __func__);
-		osMutexUnlock(&pIMX728Ctx->registerLock);
 		return RET_WRONG_STATE;
 	}
 
@@ -113,7 +118,6 @@ static RESULT IMX728_IsiReadRegIss(IsiSensorHandle_t handle,
 
 	if (!active_fmc) {
 		TRACE(IMX728_ERROR, "%s: No FMC selected\n", __func__);
-		osMutexUnlock(&pIMX728Ctx->registerLock);
 		return RET_INVALID_PARM;
 	}
 
@@ -128,18 +132,17 @@ static RESULT IMX728_IsiReadRegIss(IsiSensorHandle_t handle,
 		TRACE(IMX728_ERROR,
 		      "%s: I2C read failed at addr 0x%04x (err=%d)\n",
 		      __func__, addr, Status);
-		osMutexUnlock(&pIMX728Ctx->registerLock);
 		return RET_FAILURE;
 	}
 	*pValue = (uint16_t)(read_val & 0xff);
 
-	osMutexUnlock(&pIMX728Ctx->registerLock);
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 
 	return RET_SUCCESS;
 }
 
 /*****************************************************************************
- * IMX728_IsiWriteRegIss
+ *          IMX728_IsiWriteRegIss
  *
  * @brief   Write register value to IMX728 sensor via I2C.
  *
@@ -160,16 +163,16 @@ static RESULT IMX728_IsiWriteRegIss(IsiSensorHandle_t handle,
 	u8 slave_addr;
 	u8 write_val;
 
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
 	if (pIMX728Ctx == NULL) {
 		TRACE(IMX728_ERROR, "%s: NULL pointer detected\n", __func__);
 		return RET_NULL_POINTER;
 	}
 
-	osMutexLock(&pIMX728Ctx->registerLock);
 	if (!pIMX728Ctx->regAccessEnable) {
 		TRACE(IMX728_ERROR,
 		      "%s: register cannot be written!\n", __func__);
-		osMutexUnlock(&pIMX728Ctx->registerLock);
 		return RET_WRONG_STATE;
 	}
 
@@ -177,7 +180,6 @@ static RESULT IMX728_IsiWriteRegIss(IsiSensorHandle_t handle,
 
 	if (!active_fmc) {
 		TRACE(IMX728_ERROR, "%s: No FMC selected\n", __func__);
-		osMutexUnlock(&pIMX728Ctx->registerLock);
 		return RET_INVALID_PARM;
 	}
 
@@ -193,20 +195,19 @@ static RESULT IMX728_IsiWriteRegIss(IsiSensorHandle_t handle,
 		TRACE(IMX728_ERROR,
 		      "%s: I2C write failed at addr 0x%04x (err=%d)\n",
 		      __func__, addr, Status);
-		osMutexUnlock(&pIMX728Ctx->registerLock);
 		return RET_FAILURE;
 	}
 	if ((addr == IMX728_REG_STREAM) && (value == 0xff))
 		pIMX728Ctx->regAccessEnable = BOOL_FALSE;
 
-	osMutexUnlock(&pIMX728Ctx->registerLock);
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 
 	return RET_SUCCESS;
 }
 
 #ifdef ENABLE_I2C_GROUPING
 /*****************************************************************************
- * IMX728_IsiWriteRegGroupIss
+ *          IMX728_IsiWriteRegGroupIss
  *
  * @brief   Write register value to IMX728 sensor via I2C.
  *
@@ -228,6 +229,8 @@ static RESULT IMX728_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
 	IMX728_Context_t *pIMX728Ctx = (IMX728_Context_t *)handle;
 	u8 slave_addr;
 
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
 	if (pIMX728Ctx == NULL || value == NULL) {
 		TRACE(IMX728_ERROR,
 		      "%s: Invalid handle or null pointer!\n", __func__);
@@ -237,11 +240,9 @@ static RESULT IMX728_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
 	if (datacount > 4U)
 		return RET_FAILURE;
 
-	osMutexLock(&pIMX728Ctx->registerLock);
 	if (!pIMX728Ctx->regAccessEnable) {
 		TRACE(IMX728_ERROR,
 		      "%s: register cannot be written!\n", __func__);
-		osMutexUnlock(&pIMX728Ctx->registerLock);
 		return RET_WRONG_STATE;
 	}
 
@@ -249,7 +250,6 @@ static RESULT IMX728_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
 
 	if (!active_fmc) {
 		TRACE(IMX728_ERROR, "%s: No FMC selected\n", __func__);
-		osMutexUnlock(&pIMX728Ctx->registerLock);
 		return RET_INVALID_PARM;
 	}
 
@@ -264,13 +264,13 @@ static RESULT IMX728_IsiWriteRegGroupIss(IsiSensorHandle_t handle,
 		TRACE(IMX728_ERROR,
 		      "%s: I2C group write failed at addr 0x%04x (err=%d)\n",
 		      __func__, addr, Status);
-		osMutexUnlock(&pIMX728Ctx->registerLock);
 		return RET_FAILURE;
 	}
 	if ((addr == IMX728_REG_STREAM) && (value[0] == 0xff))
 		pIMX728Ctx->regAccessEnable = BOOL_FALSE;
 
-	osMutexUnlock(&pIMX728Ctx->registerLock);
+
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 
 	return RET_SUCCESS;
 }
@@ -298,6 +298,8 @@ static RESULT IMX728_IsiUpdateRegIss(IsiSensorHandle_t handle,
 	RESULT result = RET_SUCCESS;
 	uint16_t reg_val16 = 0;
 
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
 	result = IMX728_IsiReadRegIss(handle, addr, &reg_val16);
 	if (result != RET_SUCCESS) {
 		TRACE(IMX728_ERROR,
@@ -315,6 +317,8 @@ static RESULT IMX728_IsiUpdateRegIss(IsiSensorHandle_t handle,
 		      "%s: Failed to update reg - %x\n", __func__, addr);
 		return RET_FAILURE;
 	}
+
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 
 	return result;
 }
@@ -337,6 +341,8 @@ IMX728_RemapMode_e IMX728_GetRemapMode(IsiSensorHandle_t handle)
 
 	RESULT result = RET_SUCCESS;
 
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
 	result = IMX728_IsiReadRegIss(handle, IMX728_REG_REGMAP,
 				      &remap_mode);
 	if (result != RET_SUCCESS) {
@@ -344,6 +350,8 @@ IMX728_RemapMode_e IMX728_GetRemapMode(IsiSensorHandle_t handle)
 		      "%s: Failed to read remap mode!\n", __func__);
 		return IMX728_REMAP_MODE_INVALID;
 	}
+
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 
 	return (IMX728_RemapMode_e)remap_mode;
 }
@@ -364,11 +372,15 @@ IMX728_SensorState_e IMX728_GetSensorState(IsiSensorHandle_t handle)
 {
 	uint16_t sensor_state = 0;
 
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
 	if (IMX728_IsiReadRegIss(handle, IMX728_REG_STATE,
 				(uint16_t *)&sensor_state) != RET_SUCCESS) {
 		TRACE(IMX728_ERROR, "%s: Failed to read sensor state!\n", __func__);
 		return IMX728_SENSOR_STATE_INVALID;
 	}
+
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 
 	return (IMX728_SensorState_e)sensor_state;
 }
@@ -389,6 +401,8 @@ int imx728_sensor_framecount(IsiSensorHandle_t handle)
 {
 	uint16_t read_buf[4] = {0};
 	int Status = RET_SUCCESS;
+
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
 
 	Status = IMX728_IsiReadRegIss(handle, 0x8280, &read_buf[0]);
 	if (Status != RET_SUCCESS) {
@@ -424,8 +438,42 @@ int imx728_sensor_framecount(IsiSensorHandle_t handle)
 	g_Sensor_frame_count = (read_buf[3] << 24) | (read_buf[2] << 16) |
 			       (read_buf[1] << 8) | (read_buf[0]);
 
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
+
 	return Status;
 }
+#if (SENSOR_STATIC_CTX)
+/*****************************************************************************
+ *          IMX728_AllocCtx
+ *
+ * @brief   Obtain the sensor context for the given input pipe.
+ *
+ * With SENSOR_STATIC_CTX the context comes from a fixed per-pipe pool (no
+ * heap); the legacy osMalloc path is kept for the default build.
+ *
+ * @param   pipeId   Input-pipe id (halDevID / sensorDevId)
+ *
+ * @return  Pointer to the context, or NULL if pipeId is out of range.
+ *
+ *****************************************************************************/
+static IMX728_Context_t g_imx728CtxPool[IN_PIPE_LAST];
+
+static IMX728_Context_t *IMX728_AllocCtx(uint32_t pipeId)
+{
+	if (pipeId >= IN_PIPE_LAST) {
+		return NULL;
+	}
+	return &g_imx728CtxPool[pipeId];
+}
+
+/* Static context is never freed; the per-pipe slot is reused on next create. */
+#else
+static IMX728_Context_t *IMX728_AllocCtx(uint32_t pipeId)
+{
+	(void)pipeId;
+	return (IMX728_Context_t *)osMalloc(sizeof(IMX728_Context_t));
+}
+#endif
 
 /*****************************************************************************
  *          IMX728_IsiCreateIss
@@ -448,7 +496,10 @@ static RESULT IMX728_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 	uint8_t busId;
 	IMX728_Context_t *pIMX728Ctx;
 
-	pIMX728Ctx = (IMX728_Context_t *) osMalloc(sizeof(IMX728_Context_t));
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
+	pIMX728Ctx = IMX728_AllocCtx(pConfig->halDevID);
+	
 	if (!pIMX728Ctx) {
 		TRACE(IMX728_ERROR,
 		      "%s: Can't allocate IMX728 context\n", __func__);
@@ -465,7 +516,6 @@ static RESULT IMX728_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 	pIMX728Ctx->i2cId		= 0;
 	pIMX728Ctx->sensorDevId		= pConfig->halDevID;
 	pIMX728Ctx->regAccessEnable	= BOOL_TRUE;
-	osMutexInit(&pIMX728Ctx->registerLock);
 
 	*pHandle = (IsiSensorHandle_t) pIMX728Ctx;
 	pipeId = pIMX728Ctx->sensorDevId;
@@ -479,7 +529,7 @@ static RESULT IMX728_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 		return RET_UNSUPPORT_ID;
 	}
 
-	desId = MAPPING_INPIPE_TO_DES_ID(pipeId);
+	desId = GetDesIdForPipe(pipeId);
 
 	pIMX728Ctx->i2cId = GetI2cBusIdForDes(desId);
 	busId = (uint8_t)pIMX728Ctx->i2cId;
@@ -511,7 +561,7 @@ static RESULT IMX728_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 		osFree(pIMX728Ctx);
 		return result;
 	}
-	result = init_sensor(pipeId, desId, SENSOR_IMX728_ADDRESS);
+	result = init_sensor(pipeId, desId, SENSOR_IMX728_ADDRESS, IMX728_SENSOR_ID);
 	if (result != RET_SUCCESS) {
 		TRACE(IMX728_ERROR,
 		      "%s: init_sensor failed for pipe %d\n", __func__, pipeId);
@@ -519,6 +569,7 @@ static RESULT IMX728_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 		return result;
 	}
 
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -542,6 +593,8 @@ static RESULT IMX728_IsiEnumModeIss(IsiSensorHandle_t handle,
 	IMX728_Context_t *pIMX728Ctx = (IMX728_Context_t *) handle;
 	uint32_t mode_idx;
 
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
 	if (pIMX728Ctx == NULL) {
 		TRACE(IMX728_ERROR, "%s: NULL pointer detected\n", __func__);
 		return RET_NULL_POINTER;
@@ -559,13 +612,52 @@ static RESULT IMX728_IsiEnumModeIss(IsiSensorHandle_t handle,
 		}
 	}
 
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 	return RET_NOTSUPP;
 }
 
 /*****************************************************************************
- *          IMX728_SetClknStartup
+ *          imx728_prepare_id
  *
- * @brief   Set clock frequency during sensor startup.
+ * @brief   Handle-free preamble that unlocks the imx728 chip-ID page so the
+ *          sensor id can be read during detection (before any driver handle
+ *          exists). Enables the input clock, moves the sensor to standby and
+ *          selects the standby register map via raw I2C writes. Best-effort:
+ *          a NAK'd write leaves the id unreadable and the caller reports
+ *          not-detected.
+ *
+ * @param   i2cBusId   I2C bus the sensor is reached on
+ * @param   addr7      7-bit I2C address the imx728 responds at
+ *
+ * @return  RET_SUCCESS
+ *
+ *****************************************************************************/
+RESULT imx728_prepare_id(uint8_t i2cBusId, uint8_t addr7)
+{
+	uint8_t v;
+
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
+	v = FMC_CLK_HZ / 1000000;
+	HalWriteI2CReg(i2cBusId, addr7, IMX728_REG_INCK_FREQ, 0x2, &v, 1);
+	v = 0x01;
+	HalWriteI2CReg(i2cBusId, addr7, IMX728_REG_INCK_EN, 0x2, &v, 1);
+	v = 0xFF;
+	HalWriteI2CReg(i2cBusId, addr7, IMX728_REG_SLEEP, 0x2, &v, 1);
+	osSleep(30);
+	v = IMX728_REMAP_MODE_STANDBY;
+	HalWriteI2CReg(i2cBusId, addr7, IMX728_REG_REGMAP, 0x2, &v, 1);
+	osSleep(1);
+
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
+
+	return RET_SUCCESS;
+}
+
+/*****************************************************************************
+ *          IMX728_SetClknSteadyby
+ *
+ * @brief   Configure input clock and move the sensor to standby state.
  *
  * @param   handle      Sensor instance handle
  *
@@ -735,7 +827,8 @@ static RESULT IMX728_IsiCheckConnectionIss(IsiSensorHandle_t handle)
 	TRACE(IMX728_INFO,
 	      "%s ChipID = 0x%08x, sensor_id = 0x%08x, success!\n",
 	      __func__, correct_id, sensor_id);
-	TRACE(IMX728_INFO, "%s: check connection done\n", __func__);
+
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 	return RET_SUCCESS;
 }
 
@@ -883,6 +976,8 @@ RESULT IMX728_IsiGetFpsIss(IsiSensorHandle_t handle, uint32_t *pFps)
 	uint16_t fps_reg = 0;
 	uint16_t value = 0;
 
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
 	/* 0x9630 */
 	result = IMX728_IsiReadRegIss(handle, IMX728_REG_FPS_APL_L, &value);
 	if (result != RET_SUCCESS) {
@@ -905,6 +1000,8 @@ RESULT IMX728_IsiGetFpsIss(IsiSensorHandle_t handle, uint32_t *pFps)
 
 	imx728_sensor_framecount(handle);
 	Fmc_Sensor_Statustask();
+
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 
 	return RET_SUCCESS;
 }
@@ -934,6 +1031,8 @@ static RESULT IMX728_InitFixedExposure(IsiSensorHandle_t handle)
 	unsigned int sp1ec_gain = 21;	/* 0x15 */
 	unsigned int sp2_gain = 33;	/* 0x21 */
 	unsigned int sp1vs_gain = 84;	/* 0x54 */
+
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
 
 	/* Exposure time of SP1 */
 	result  = IMX728_IsiWriteRegIss(handle, IMX728_REG_EXPOSURE_SP1_LL,
@@ -1009,6 +1108,8 @@ static RESULT IMX728_InitFixedExposure(IsiSensorHandle_t handle)
 		return RET_FAILURE;
 	}
 
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
+
 	return result;
 }
 
@@ -1030,6 +1131,8 @@ static RESULT IMX728_HDRConfigure(IsiSensorHandle_t handle,
 {
 	IMX728_Context_t *pIMX728Ctx = (IMX728_Context_t *) handle;
 	RESULT result = RET_SUCCESS;
+
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
 
 	if (pIMX728Ctx == NULL || points == NULL) {
 		TRACE(IMX728_ERROR, "%s: NULL pointer detected\n", __func__);
@@ -1155,6 +1258,8 @@ static RESULT IMX728_HDRConfigure(IsiSensorHandle_t handle,
 		return RET_FAILURE;
 	}
 
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
+
 	return result;
 }
 
@@ -1174,6 +1279,8 @@ static RESULT IMX728_Configure(IsiSensorHandle_t handle)
 {
 	IMX728_Context_t *pIMX728Ctx = (IMX728_Context_t *) handle;
 	RESULT result = RET_SUCCESS;
+
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
 
 	if (pIMX728Ctx == NULL) {
 		TRACE(IMX728_ERROR, "%s: NULL pointer detected\n", __func__);
@@ -1313,6 +1420,8 @@ static RESULT IMX728_Configure(IsiSensorHandle_t handle)
 		      "%s: Failed to set Sub Pixel1 register!\n", __func__);
 		return RET_FAILURE;
 	}
+
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 
 	return result;
 }
@@ -1594,7 +1703,7 @@ static RESULT IMX728_IsiGetCapsIss(IsiSensorHandle_t handle, IsiCaps_t *pCaps)
 }
 
 /*****************************************************************************
- *          IMX728_pIsiGetAeBaseInfoIss
+ *          IMX728_IsiGetAeBaseInfoIss
  *
  * @brief   Returns the Ae base info of a sensor
  *          instance
@@ -1712,15 +1821,45 @@ static RESULT IMX728_IsiExcuteExpControlIss(IsiSensorHandle_t handle,
 	pExpResult->sensorDgain[0] = 1.0;
 
 	/* multip 10ms x, unit s */
-	pExpResult->sensorExpTime[0] =
-		(int)(pExpParam->sensorExpTime[0] * 100) / 100.0;
+#ifdef IMX728_WITH_VTS
+	float32_t setSensorExpTime = pExpParam->sensorExpTime[0];
+    	pExpResult->sensorExpTime[0] = (int)(pExpParam->sensorExpTime[0] * 100) / 100.0; //unit s, retain the integer part of 10ms
+
+	TRACE(IMX728_INFO, "%s: input integration time(s): %02f, output1 integration time(s): %02f.\n", __func__, pExpParam->sensorExpTime[0], pExpResult->sensorExpTime[0]);
+
+	if(pExpResult->sensorExpTime[0] == 0){
+		if(setSensorExpTime <  0.005)
+		    pExpResult->sensorExpTime[0] = 0.005; //0.005s = 5ms
+		else     // 5ms - 10 ms
+		    pExpResult->sensorExpTime[0] = setSensorExpTime; //5ms - 10ms continuous change
+	}
+	pExpResult->ispGain = 1.0f;
+
+	pExpResult->sensorAgain[1] = 1.0;
+	pExpResult->sensorDgain[1] = 1.0;
+	pExpResult->sensorExpTime[1] = pExpResult->sensorExpTime[0];
+
+	pExpResult->sensorAgain[2] = 1.0;
+	pExpResult->sensorDgain[2] = 1.0;
+	pExpResult->sensorExpTime[2] = pExpResult->sensorExpTime[0];
+
+	pExpResult->sensorAgain[3] = 1.0;
+	pExpResult->sensorDgain[3] = 1.0;
+	pExpResult->sensorExpTime[3] = 0.000056; //56us set in sensor setting fixed
+#else
+	float32_t setSensorExpTime = pExpParam->sensorExpTime[0];
+	pExpResult->sensorExpTime[0] = (int)(pExpParam->sensorExpTime[0] * 100) / 100.0; //unit s, retain the integer part of 10ms
 	TRACE(IMX728_INFO,
 	      "%s: input intTime(s): %02f, output1 intTime(s): %02f.\n",
 	      __func__, pExpParam->sensorExpTime[0],
 	      pExpResult->sensorExpTime[0]);
 
-	if (pExpResult->sensorExpTime[0] == 0)
-		pExpResult->sensorExpTime[0] = 0.01; /* 0.01s = 10ms, min unit */
+	if (pExpResult->sensorExpTime[0] == 0) {
+		if(setSensorExpTime <  0.005)
+			pExpResult->sensorExpTime[0] = 0.005; //0.005s = 5ms
+		else     // 5ms - 10 ms
+			pExpResult->sensorExpTime[0] = setSensorExpTime; //5ms - 10ms continuous change
+	}
 
 	pExpResult->ispGain = 1.0f;
 
@@ -1734,7 +1873,8 @@ static RESULT IMX728_IsiExcuteExpControlIss(IsiSensorHandle_t handle,
 
 	pExpResult->sensorAgain[3] = 1.0;
 	pExpResult->sensorDgain[3] = 1.0;
-	pExpResult->sensorExpTime[3] = pExpResult->sensorExpTime[0];
+	pExpResult->sensorExpTime[3] = 0.000056; //56us set in sensor setting fixed
+#endif
 	TRACE(IMX728_INFO,
 	      "%s: input intTime(s): %02f, output2 intTime(s): %02f.\n",
 	      __func__, pExpParam->sensorExpTime[0],
@@ -1864,7 +2004,6 @@ static RESULT IMX728_IsiReleaseIss(IsiSensorHandle_t handle)
 		return RET_WRONG_HANDLE;
 
 	stop_sensor(pIMX728Ctx->sensorDevId);
-	osMutexDestroy(&pIMX728Ctx->registerLock);
 
 	MEMSET(pIMX728Ctx, 0, sizeof(IMX728_Context_t));
 	osFree(pIMX728Ctx);
@@ -2104,6 +2243,7 @@ static RESULT IMX728_IsiGetIntTimeIss(IsiSensorHandle_t handle,
 
 /*****************************************************************************
  *          IMX728_IsiSetIntTimeIss
+ *
  * @brief   Writes integration time values to the image sensor module.
  *
  * @param   handle                   sensor instance handle
@@ -2355,10 +2495,14 @@ static RESULT IMX728_IsiSetWBIss(IsiSensorHandle_t handle,
 	RESULT result = RET_SUCCESS;
 	IMX728_Context_t *pIMX728Ctx = (IMX728_Context_t *) handle;
 
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
 	if (pIMX728Ctx == NULL || pWb == NULL) {
 		TRACE(IMX728_ERROR, "%s: NULL pointer detected\n", __func__);
 		return RET_NULL_POINTER;
 	}
+
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -2381,10 +2525,14 @@ static RESULT IMX728_IsiGetWBIss(IsiSensorHandle_t handle,  IsiSensorWb_t *pWb)
 	RESULT result = RET_SUCCESS;
 	IMX728_Context_t *pIMX728Ctx = (IMX728_Context_t *) handle;
 
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
 	if (pIMX728Ctx == NULL || pWb == NULL) {
 		TRACE(IMX728_ERROR, "%s: NULL pointer detected\n", __func__);
 		return RET_NULL_POINTER;
 	}
+
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 	return result;
 }
 
@@ -2409,10 +2557,14 @@ static RESULT IMX728_IsiSetBlcIss(IsiSensorHandle_t handle,
 
 	IMX728_Context_t *pIMX728Ctx = (IMX728_Context_t *) handle;
 
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
 	if (pIMX728Ctx == NULL || pBlc == NULL) {
 		TRACE(IMX728_ERROR, "%s: NULL pointer detected\n", __func__);
 		return RET_NULL_POINTER;
 	}
+
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 
 	return result;
 }
@@ -2436,10 +2588,14 @@ static RESULT IMX728_IsiGetBlcIss(IsiSensorHandle_t handle,
 	RESULT result = RET_SUCCESS;
 	IMX728_Context_t *pIMX728Ctx = (IMX728_Context_t *) handle;
 
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
 	if (pIMX728Ctx == NULL || pBlc == NULL) {
 		TRACE(IMX728_ERROR, "%s: NULL pointer detected\n", __func__);
 		return RET_NULL_POINTER;
 	}
+
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 
 	return result;
 }
@@ -2552,10 +2708,14 @@ static RESULT IMX728_IsiGetExpandCurveIss(IsiSensorHandle_t handle,
 	RESULT result = RET_SUCCESS;
 	IMX728_Context_t *pIMX728Ctx = (IMX728_Context_t *) handle;
 
+	TRACE(IMX728_INFO, "%s (enter)\n", __func__);
+
 	if (pIMX728Ctx == NULL || pCurve == NULL) {
 		TRACE(IMX728_ERROR, "%s: NULL pointer detected\n", __func__);
 		return RET_NULL_POINTER;
 	}
+
+	TRACE(IMX728_INFO, "%s (exit)\n", __func__);
 
 	return result;
 }

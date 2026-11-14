@@ -48,8 +48,6 @@
     #endif
 #endif
 
-#include <stddef.h>
-
 #if defined(__cplusplus) || ((__STDC_VERSION__ >= 199901L))
     #include <stdint.h>
 #else
@@ -92,9 +90,14 @@ typedef long double float128_t;
 
 typedef enum {
 	BOOL_FALSE = 0,
-	BOOL_TRUE  = (!BOOL_FALSE),
-	DUMMY_BOOL = 0xDEADFEED
+	BOOL_TRUE  = (!BOOL_FALSE)
 } bool_t;
+
+#ifdef ISP_AXI_BUS_ADDRESS_64_BIT
+typedef uint64_t	vsi_addr_t;
+#else
+typedef uint32_t	vsi_addr_t;
+#endif
 
 
 #define UNUSED_PARAM(unref_param)			((void) (unref_param))
@@ -103,6 +106,5 @@ typedef enum {
 #define CAST_UINT32_TO_POINTER(pointerType, value)	((pointerType)(value))
 #define CAST_INT32_TO_POINTER(value)			((int32_t *)(value))
 #define N_ELEMENTS(s)					(sizeof(s) / sizeof((s)[0]))
-#define ABS(a)						((a) > 0 ? (a) : -(a))
 
 #endif

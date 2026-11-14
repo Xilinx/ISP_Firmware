@@ -957,6 +957,26 @@ RESULT IsiGetOtpDataIss(IsiSensorHandle_t handle, IsiOTP_t *pOtpData);
 
 /*****************************************************************************/
 /**
+ * @brief   sensor extend function.
+ * @startuml IsiExtendFuncIss
+ * !include E05_External/IsiExtendFuncIss.plantuml
+ * @enduml
+ *
+ * @param[in]   handle                  sensor instance handle
+ * @param[in]   pUserData               sensor extend info
+ * @details This function calls: \ref [sensor_drv]_pIsiExtendFuncIss
+ * @details This function is called by: \ref NULL
+ * 
+ * @return  Return the result of the function call.
+ * @retval  RET_SUCCESS
+ * @retval  RET_WRONG_HANDLE
+ * @retval  RET_NULL_POINTER
+ *
+ *****************************************************************************/
+RESULT IsiExtendFuncIss(IsiSensorHandle_t   handle, void  *pUserData);
+
+/*****************************************************************************/
+/**
  * @brief   This function creates VCM I2C bus handle.
  * @startuml IsiFocusCreateIss
  * !include E05_External/IsiFocusCreateIss.plantuml

@@ -47,6 +47,10 @@ const uint32_t semuss_baseaddr[SEMU_ID_MAX] = {
 
 #define Semu_MIN_GAIN_STEP    (1.0f/1024.0f)
 
+#if (SENSOR_STATIC_CTX)
+#define osFree(p)    ((void)(p))
+#endif
+
 /*****************************************************************************
  *Semu Info
  *****************************************************************************/
@@ -371,6 +375,39 @@ static RESULT Semu_IsiWriteRegIss(IsiSensorHandle_t handle,
 	return result;
 }
 
+#if (SENSOR_STATIC_CTX)
+/******************************************************************************
+ *          Semu_AllocCtx
+ *
+ * @brief   Obtain the sensor context for the given input pipe.
+ *
+ * With SENSOR_STATIC_CTX the context comes from a fixed per-pipe pool (no
+ * heap); the legacy osMalloc path is kept for the default build.
+ *
+ * @param   pipeId   Input-pipe id (halDevID / sensorDevId)
+ *
+ * @return  Pointer to the context, or NULL if pipeId is out of range.
+ *
+ *****************************************************************************/
+static Semu_Context_t g_semuCtxPool[IN_PIPE_LAST];
+
+static Semu_Context_t *Semu_AllocCtx(uint32_t pipeId)
+{
+	if (pipeId >= IN_PIPE_LAST) {
+		return NULL;
+	}
+	return &g_semuCtxPool[pipeId];
+}
+
+/* Static context is never freed; the per-pipe slot is reused on next create. */
+#else
+static Semu_Context_t *Semu_AllocCtx(uint32_t pipeId)
+{
+	(void)pipeId;
+	return (Semu_Context_t *)osMalloc(sizeof(Semu_Context_t));
+}
+#endif
+
 /******************************************************************************
  *          Semu_IsiCreateIss
  *
@@ -390,7 +427,7 @@ static RESULT Semu_IsiCreateIss(IsiSensorInstanceConfig_t *pConfig,
 	TRACE(Semu_INFO, "%s (enter)\n", __func__);
 
 	Semu_Context_t *pSemuCtx =
-		(Semu_Context_t *) osMalloc(sizeof(Semu_Context_t));
+		Semu_AllocCtx(pConfig->halDevID);
 
 	if (!pSemuCtx) {
 		TRACE(Semu_ERROR, "%s: Can't allocate context\n", __func__);

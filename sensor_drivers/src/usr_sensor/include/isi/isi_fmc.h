@@ -28,10 +28,6 @@
 #define __ISI_FMC_H_
 
 #include <sleep.h>
-#include "FreeRTOS.h"
-#include "task.h"
-#include "queue.h"
-#include "timers.h"
 #include "xparameters.h"
 #include "trace.h"
 #include "return_codes.h"
@@ -78,6 +74,11 @@
 #define LINK_REVERSE_SPLITTER			(0x03)
 #define NO_LINK					(0x04)
 #define AUTO_LINK				(0x4)
+/* Lane identifiers for 4-link serializers (e.g. max96717); stored only in
+ * serializer_driver.link_lane (informational), never in a des link_type.
+ * Values match the bitmask in max96724.h. */
+#define LINK_C					(0x04)
+#define LINK_D					(0x08)
 #define RESET_ONE_SHOT				(0x5)
 #define LOCKED					(0x3)
 
@@ -144,7 +145,7 @@
 #define SENSOR_6_ALIAS_ADDR			(0x3A)
 #define SENSOR_7_ALIAS_ADDR			(0x3C)
 #define SENSOR_8_ALIAS_ADDR			(0x3E)
-#define SENSOR_9_ALIAS_ADDR			(0x20)
+#define SENSOR_9_ALIAS_ADDR			(0x28)
 #define SENSOR_10_ALIAS_ADDR			(0x22)
 #define SENSOR_11_ALIAS_ADDR			(0x24)
 
@@ -179,6 +180,20 @@ typedef struct {
 	u8	serializer_alias_addr;
 	u8	sensor_default_addr;
 	u8	sensor_alias_addr;
+	char	sensor_name[16];	/* validated sensor name for the summary;
+					 * '\0' = none. Shared across cores via
+					 * the shared des topology. */
+	u8	owner_core;		/* core that launched this link; valid
+					 * when sensor_name is set. Lets the
+					 * MAX9296 (which has no core map) label
+					 * each des with its real owning core in
+					 * a multi-core setup. */
+	u8	killed;			/* summary DISPLAY flag (not a state
+					 * machine): 1 = this link's pipeline was
+					 * killed/torn-down -> shown as "killed";
+					 * 0 = live, so active/pending is derived
+					 * from the sensor_name. Set by
+					 * mark_pipe_killed(); cleared on launch. */
 } dslink;
 
 typedef struct {
@@ -189,6 +204,8 @@ typedef struct {
 	u8	link_type;
 	dslink	link_a;
 	dslink	link_b;
+	dslink	link_c;
+	dslink	link_d;
 } desInterface;
 
 /**
@@ -235,6 +252,10 @@ struct IsiFmc_s {
 typedef struct IsiFmc_s IsiFmc_t;
 extern IsiFmc_t g_fmc_max9296;
 extern IsiFmc_t g_fmc_max96716;
+extern IsiFmc_t g_fmc_rave;			/* RAVE board: MAX96724 quad deserializer */
+extern desInterface ndes_arr[];
+extern const core_des_mapping_t max96724_core_des_map[];
+extern u8 MAX96724_CORE_DES_MAP_SIZE;
 extern int g_Sensor_frame_count;
 
 typedef struct {
@@ -278,6 +299,20 @@ struct serializer_driver {
 				int alias_addr);
 	int (*enable_link)(struct serializer_driver *ser_inst, int link);
 	int (*disable_link)(struct serializer_driver *ser_inst, int link);
+	/* Optional serializer ops (implemented by MAX96717; left NULL by drivers
+	 * that don't provide them and not invoked by the framework core). */
+	int (*reset_links)(struct serializer_driver *ser_inst);
+	int (*phy_lanes_enable)(struct serializer_driver *ser_inst, int phy_count);
+	int (*set_virt_ch_map)(struct serializer_driver *ser_inst,
+				struct map_struct *map, int map_count);
+	int (*set_sensor_addr_map)(struct serializer_driver *ser_inst,
+				struct map_struct *map, int map_count);
+	int (*set_broadcast_addr)(struct serializer_driver *ser_inst,
+				int broadcast_addr);
+	int (*send_broadcast)(struct serializer_driver *ser_inst,
+				char *data, int size);
+	int (*i2c_write)(struct serializer_driver *ser_inst, char *data, int size);
+	int (*i2c_read)(struct serializer_driver *ser_inst, char *data, int size);
 };
 
 struct accessIIC {
@@ -337,7 +372,8 @@ extern int init_des(int des_index);
 /**
  * @brief Initialize sensor driver for the specified pipeline and deserializer
  */
-extern int init_sensor(int in_pipe, int des_index, int sensor_address);
+extern int init_sensor(int in_pipe, int des_index, int sensor_address,
+	uint32_t expected_id);
 
 /**
  * @brief Stop streaming on the specified sensor pipeline
@@ -355,6 +391,19 @@ extern void Fmc_Sensor_Statustask(void);
 extern IsiFmc_t *get_active_fmc(void);
 
 extern struct serializer_driver max9295_instance[];
+
+/* Serializer selection: a deserializer FMC (e.g. MAX96716) can pair with
+ * either the MAX9295 or the MAX96717 serializer. The choice is runtime-driven
+ * via SelectSerializer() instead of the hardcoded serializer_array. */
+#define SER_ID_MAX9295		(0)
+#define SER_ID_MAX96717		(1)
+
+extern int current_active_serializer;
+extern struct serializer_driver max96717_instance[];
+
+/* Serializer instance array for the currently selected serializer. */
+extern struct serializer_driver *get_active_serializer_array(void);
+
 extern void byte_memcpy(void *dest, const void *src, u32 size);
 extern void revert_to_400khz(void);
 
@@ -364,9 +413,19 @@ extern desInterface max96716_des_arr[];
 extern const core_des_mapping_t max9296_core_des_map[];
 extern const core_des_mapping_t max96716_core_des_map[];
 extern u8 GetI2cBusIdForDes(u8 desId);
+extern u8 GetDesIdForPipe(u8 pipeId);
 extern unsigned int *I2C_INIT_STATUS_REG;
 extern u8 MAX96716_CORE_DES_MAP_SIZE;
 
 extern IsiFmc_t g_fmc_max9296;
 extern IsiFmc_t g_fmc_max96716;
+
+/**
+ * @brief Shared plain-English fault reporter (see ms_fw.c). Prints a clear
+ *        box that first states what failed and then tells the operator how
+ *        to resolve it. Usable by every driver in the sensor library (FMC,
+ *        deserializer, serializer and sensor drivers).
+ */
+extern void report_pipeline_fault(const char *device, const char *stage,
+	const char *problem, const char *action);
 #endif
